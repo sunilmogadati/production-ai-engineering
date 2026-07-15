@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 6: Analyzing Call Transcripts with LLMs (Simulated)</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    textarea { width: 100%; padding: 10px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 12px 24px; font-size: 14px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 4px; margin-top: 10px; }
+    button:hover { background: #0052a3; }
+    button:active { background: #003d7a; }
+    .result { background: #f0f8ff; padding: 15px; border-radius: 4px; border-left: 4px solid #0066cc; margin-top: 15px; }
+    .result h4 { margin: 10px 0 5px 0; }
+    .result p { margin: 5px 0; }
+    .loading { color: #666; font-style: italic; }
+    .prompt-box { background: #fff9e6; padding: 10px; border-radius: 4px; border-left: 4px solid #ff9800; margin: 10px 0; font-family: monospace; font-size: 12px; }
+    .lead-score { font-size: 24px; font-weight: bold; color: #d32f2f; margin: 10px 0; }
+    .hot { color: #d32f2f; font-weight: bold; }
+    .warm { color: #ff9800; font-weight: bold; }
+    .cold { color: #666; font-weight: bold; }
+    .example-btn { background: #4caf50; font-size: 12px; padding: 8px 16px; margin-right: 5px; }
+    .example-btn:hover { background: #45a049; }
+    .code { background: #222; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; overflow-x: auto; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+    .tab { padding: 10px 15px; background: #e0e0e0; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .tab.active { background: #0066cc; color: white; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ============================================================
+    // SIMULATED LLM RESPONSES (In step7, this will call real API)
+    // ============================================================
+    const simulatedResponses = {
+      summarize: {
+        summary: "Sarah Chen from TechCorp called about their Q4 expansion. They need a solution to automate their sales pipeline. Currently using manual spreadsheets, losing 20% of leads. Budget approved for next quarter (~$50k). Very interested in demo.",
+        prospect: "Sarah Chen",
+        company: "TechCorp",
+        painPoints: ["Manual lead tracking", "Lost deals due to poor follow-up", "Team spending 10 hrs/week on admin"],
+        interest: "High",
+        nextStep: "Schedule demo for next Thursday"
+      },
+      classify: {
+        leadQuality: "🔥 HOT",
+        buyingIntent: 9,
+        signals: [
+          "Budget already approved",
+          "Clear pain point (losing 20% of leads)",
+          "Specific timeline (Q4)",
+          "Multiple stakeholders aware of problem",
+          "Requested demo"
+        ],
+        reasoning: "This prospect has funding, urgency, and clear ROI. Very likely to convert within 2 months."
+      },
+      structuredOutput: {
+        prospect_name: "Sarah Chen",
+        company: "TechCorp",
+        industry: "SaaS",
+        company_size: "50-100 employees",
+        pain_points: ["Manual lead tracking", "Lead loss", "Admin overhead"],
+        solution_interest: "Sales pipeline automation",
+        budget: "$50k approved",
+        timeline: "Q4 (next 3 months)",
+        decision_maker: true,
+        buying_intent_score: 9,
+        lead_classification: "hot",
+        recommended_action: "Schedule demo immediately"
+      }
+    };
+
+    // ============================================================
+    // DEMO 1: Basic Summarize & Extract
+    // ============================================================
+    function SummarizeDemo() {
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+
+      const handleAnalyze = () => {
+        setLoading(true);
+        // Simulate API delay
+        setTimeout(() => {
+          setResult(simulatedResponses.summarize);
+          setLoading(false);
+        }, 1000);
+      };
+
+      return (
+        <div>
+          <h3>Summarize & Extract Key Info</h3>
+          <p>The LLM reads the transcript and extracts the important details.</p>
+
+          <div className="prompt-box">
+            <strong>Prompt sent to LLM:</strong>
+            <pre>
+{`Analyze this sales call transcript.
+Extract and provide:
+1. Summary (2-3 sentences)
+2. Prospect name
+3. Company name
+4. Pain points mentioned
+5. Interest level (Low/Medium/High)
+6. Next steps
+
+Transcript:
+[...call transcript...]`}
+            </pre>
+          </div>
+
+          <button onClick={handleAnalyze} disabled={loading}>
+            {loading ? "Analyzing..." : "Analyze Transcript"}
+          </button>
+
+          {result && (
+            <div className="result">
+              <h4>📝 Summary</h4>
+              <p>{result.summary}</p>
+
+              <h4>👤 Prospect Info</h4>
+              <p><strong>Name:</strong> {result.prospect}</p>
+              <p><strong>Company:</strong> {result.company}</p>
+
+              <h4>💔 Pain Points</h4>
+              <ul>
+                {result.painPoints.map((point, i) => (
+                  <li key={i}>{point}</li>
+                ))}
+              </ul>
+
+              <h4>📊 Interest Level</h4>
+              <p><strong>{result.interest}</strong></p>
+
+              <h4>📅 Next Step</h4>
+              <p>{result.nextStep}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 2: Classify Lead Quality
+    // ============================================================
+    function ClassifyDemo() {
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+
+      const handleClassify = () => {
+        setLoading(true);
+        setTimeout(() => {
+          setResult(simulatedResponses.classify);
+          setLoading(false);
+        }, 1000);
+      };
+
+      return (
+        <div>
+          <h3>Classify Lead Quality</h3>
+          <p>Rate the lead quality: Hot 🔥, Warm 🟠, or Cold ❄️</p>
+
+          <div className="prompt-box">
+            <strong>Prompt sent to LLM:</strong>
+            <pre>
+{`Based on this call transcript, classify the lead quality.
+
+Rate on these factors:
+- Budget availability
+- Timeline urgency
+- Problem clarity
+- Decision authority
+- Buying signals
+
+Provide:
+1. Lead classification (🔥 HOT, 🟠 WARM, ❄️ COLD)
+2. Buying intent score (1-10)
+3. Top 3 signals
+4. Reasoning (1 sentence)
+
+Transcript:
+[...call transcript...]`}
+            </pre>
+          </div>
+
+          <button onClick={handleClassify} disabled={loading}>
+            {loading ? "Classifying..." : "Classify Lead"}
+          </button>
+
+          {result && (
+            <div className="result">
+              <h4>🎯 Classification</h4>
+              <div className="lead-score">
+                {result.leadQuality}
+              </div>
+
+              <h4>💡 Buying Intent Score</h4>
+              <p><strong>{result.buyingIntent}/10</strong></p>
+
+              <h4>✨ Top Signals</h4>
+              <ul>
+                {result.signals.map((signal, i) => (
+                  <li key={i}>{signal}</li>
+                ))}
+              </ul>
+
+              <h4>🧠 Analysis</h4>
+              <p>{result.reasoning}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 3: Structured Output (JSON)
+    // ============================================================
+    function StructuredDemo() {
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+
+      const handleStructure = () => {
+        setLoading(true);
+        setTimeout(() => {
+          setResult(simulatedResponses.structuredOutput);
+          setLoading(false);
+        }, 1000);
+      };
+
+      return (
+        <div>
+          <h3>Extract as Structured JSON</h3>
+          <p>Get lead data as JSON for databases or integrations.</p>
+
+          <div className="prompt-box">
+            <strong>Prompt sent to LLM:</strong>
+            <pre>
+{`Extract call details as JSON with these fields:
+- prospect_name
+- company
+- industry
+- company_size
+- pain_points (array)
+- solution_interest
+- budget
+- timeline
+- decision_maker (true/false)
+- buying_intent_score (1-10)
+- lead_classification (hot/warm/cold)
+- recommended_action
+
+Return ONLY valid JSON, no explanation.
+
+Transcript:
+[...call transcript...]`}
+            </pre>
+          </div>
+
+          <button onClick={handleStructure} disabled={loading}>
+            {loading ? "Extracting..." : "Extract as JSON"}
+          </button>
+
+          {result && (
+            <div className="result">
+              <h4>📋 Structured Data</h4>
+              <div className="code">
+                <pre>{JSON.stringify(result, null, 2)}</pre>
+              </div>
+              <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+                This JSON can be saved to a database, sent to CRM, or used in automations.
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Main App
+    // ============================================================
+    function App() {
+      const [activeTab, setActiveTab] = useState(1);
+
+      const sampleTranscript = `Sales Rep: "Hi Sarah, thanks for jumping on the call. How's the quarter going?"
+
+Sarah: "Pretty busy actually. We're growing fast but our sales team is drowning in admin work. We're manually tracking leads in spreadsheets, and we're definitely losing deals because follow-ups fall through the cracks."
+
+Sales Rep: "How many leads are you losing?"
+
+Sarah: "Best guess? About 20%. And our team spends probably 10 hours a week just updating spreadsheets. It's killing productivity."
+
+Sales Rep: "That sounds painful. Have you looked at solutions?"
+
+Sarah: "We have. Actually, the VP of Sales approved a budget of $50k for Q4. We need something that automates this. Can you do a demo?"
+
+Sales Rep: "Absolutely. How does next Thursday look?"
+
+Sarah: "Perfect. I'll get the VP and the sales team lead on the call too."`;
+
+      return (
+        <div>
+          <div className="section">
+            <h1>Step 6: Analyzing Call Transcripts with LLMs</h1>
+            <p>
+              This shows how LLMs analyze sales calls to find hot leads. It uses <strong>simulated responses</strong>
+              —in Step 7, we'll wire this to a real LLM API.
+            </p>
+          </div>
+
+          <div className="section">
+            <h2>Sample Call Transcript</h2>
+            <textarea readOnly rows={12} value={sampleTranscript} />
+          </div>
+
+          <div className="section">
+            <h2>What Can an LLM Do?</h2>
+            <div className="tabs">
+              {[1, 2, 3].map(num => (
+                <div
+                  key={num}
+                  className={`tab ${activeTab === num ? 'active' : ''}`}
+                  onClick={() => setActiveTab(num)}
+                >
+                  Demo {num}
+                </div>
+              ))}
+            </div>
+
+            {activeTab === 1 && <SummarizeDemo />}
+            {activeTab === 2 && <ClassifyDemo />}
+            {activeTab === 3 && <StructuredDemo />}
+          </div>
+
+          <div className="section">
+            <h2>What's Happening</h2>
+            <ol>
+              <li>
+                <strong>You write a prompt:</strong> Tell the LLM what to extract/analyze
+              </li>
+              <li>
+                <strong>LLM reads the transcript:</strong> Understands context, nuance, buying signals
+              </li>
+              <li>
+                <strong>LLM returns structured output:</strong> JSON, classifications, scores
+              </li>
+              <li>
+                <strong>You use the data:</strong> Rank leads, trigger automations, send alerts
+              </li>
+            </ol>
+          </div>
+
+          <div className="section">
+            <h2>The Power</h2>
+            <ul>
+              <li>
+                <strong>Consistency:</strong> LLM analyzes every call the same way (no human bias)
+              </li>
+              <li>
+                <strong>Speed:</strong> Seconds to rank 50 transcripts (humans take hours)
+              </li>
+              <li>
+                <strong>Insight:</strong> LLM catches subtle buying signals humans miss
+              </li>
+              <li>
+                <strong>Automation:</strong> Plug JSON output into CRM, email sequences, alerts
+              </li>
+            </ul>
+          </div>
+
+          <div className="section">
+            <h2>Next Step (Step 7)</h2>
+            <p>
+              In Step 7, we'll wire this up to a real LLM API. Instead of simulated responses,
+              you'll paste a real transcript and it will call Claude or GPT in real time.
+            </p>
+            <div className="code">
+              <pre>{`React (step7.html)
+    ↓ (sends transcript)
+FastAPI Backend (step7_backend.py)
+    ↓ (sends prompt + transcript)
+Claude / OpenAI API
+    ↓ (returns analysis)
+FastAPI (formats response)
+    ↓ (returns JSON)
+React (displays result)`}
+              </pre>
+            </div>
+          </div>
+
+          <div className="section">
+            <h2>Key Concepts</h2>
+            <ul>
+              <li>
+                <strong>Prompting:</strong> How you phrase the request matters. Be specific.
+              </li>
+              <li>
+                <strong>Structured Output:</strong> Ask for JSON/format so you can parse it programmatically.
+              </li>
+              <li>
+                <strong>Tokens:</strong> Longer transcripts = more tokens = higher cost.
+              </li>
+              <li>
+                <strong>Consistency:</strong> LLM output varies slightly; might need retry logic.
+              </li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

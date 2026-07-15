@@ -1,0 +1,16 @@
+# Local/private instructor notes (do not commit)
+TEACHER_AID_PRIVATE.md
+
+# Optional local planning scratch files
+*.local.md
+
+# Generated artifacts (regenerate with ml01 / ml09)
+data/
+models/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+node_modules/

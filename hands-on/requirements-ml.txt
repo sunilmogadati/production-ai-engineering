@@ -1,0 +1,13 @@
+# ML add-on dependencies for Sessions 3 and 4 (ml01-ml06 scripts).
+# Kept separate from requirements.txt so the Session 1-2 API setup
+# never breaks if an ML package fails to install.
+#
+# Install with:
+#   ./venv/bin/python -m pip install -r requirements-ml.txt
+
+pandas>=2.2,<3.0
+scikit-learn>=1.5,<2.0
+
+# Optional: ml05 falls back to scikit-learn gradient boosting if this
+# is missing (xgboost needs libomp on macOS: brew install libomp).
+xgboost>=2.1,<4.0

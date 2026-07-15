@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 3: useEffect — Side Effects & Data Fetching</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; }
+    .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .box { background: #f9f9f9; padding: 15px; border-left: 4px solid #0066cc; margin: 10px 0; }
+    button { padding: 8px 16px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+    .console { background: #222; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; margin-top: 10px; }
+    .log-line { margin: 2px 0; }
+    .log-info { color: #0f0; }
+    .log-warn { color: #ff0; }
+    .log-error { color: #f00; }
+    .loading { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Step 3: useEffect — Why, When, and Dependencies</h1>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ============================================================
+    // PROBLEM: Why useEffect exists
+    // ============================================================
+    // When you call a component, it RENDERS (returns JSX).
+    // If you put async code directly in render, it blocks rendering.
+    // You CAN'T do:
+    //   function App() {
+    //     fetch('/data').then(...)  // ❌ This runs EVERY render, blocks, confuses React
+    //     return <div>...</div>
+    //   }
+    // Instead, useEffect lets you say: "After render, DO this side effect."
+    //
+    // Side effects = anything that has consequences outside the component:
+    //   - API calls
+    //   - Timers
+    //   - Local storage
+    //   - Subscriptions
+    //   - Event listeners
+    //
+
+    // ============================================================
+    // DEMO 1: useEffect runs AFTER render
+    // ============================================================
+    function Demo1() {
+      const [count, setCount] = useState(0);
+
+      // This logs DURING render
+      console.log('📍 RENDER: Demo1 component rendering, count =', count);
+
+      // This logs AFTER render
+      useEffect(() => {
+        console.log('✅ EFFECT: useEffect ran, count =', count);
+      });
+
+      return (
+        <div className="box">
+          <p>Count: {count}</p>
+          <button onClick={() => setCount(count + 1)}>
+            Increment
+          </button>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            👉 Open DevTools console to see "RENDER" logs first, then "EFFECT" logs
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 2: Dependency array = "run effect when these change"
+    // ============================================================
+    function Demo2() {
+      const [count, setCount] = useState(0);
+      const [name, setName] = useState('Alice');
+
+      console.log(`📍 RENDER: count=${count}, name=${name}`);
+
+      // No dependency array = runs EVERY render (bad!)
+      useEffect(() => {
+        console.log('🔄 EFFECT (no deps): Runs every render');
+      });
+
+      // Empty dependency array = runs ONCE on mount
+      useEffect(() => {
+        console.log('🎯 EFFECT ([]): Runs ONCE when component mounts');
+      }, []);
+
+      // Dependencies = runs when these values change
+      useEffect(() => {
+        console.log(`📤 EFFECT ([count]): count changed to ${count}`);
+      }, [count]);
+
+      useEffect(() => {
+        console.log(`📤 EFFECT ([name]): name changed to "${name}"`);
+      }, [name]);
+
+      return (
+        <div className="box">
+          <p>Count: {count} | Name: {name}</p>
+          <button onClick={() => setCount(count + 1)}>Increment Count</button>
+          <button onClick={() => setName(name === 'Alice' ? 'Bob' : 'Alice')}>
+            Toggle Name
+          </button>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            👉 Try clicking each button. See which effects re-run.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 3: Practical example — fetch data on mount
+    // ============================================================
+    function DataFetcher() {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      console.log('📍 RENDER: DataFetcher, loading =', loading);
+
+      useEffect(() => {
+        console.log('✅ EFFECT: Starting fetch...');
+        setLoading(true);
+
+        // Simulate API call (2 second delay)
+        setTimeout(() => {
+          console.log('✅ EFFECT: Fetch complete!');
+          setData({ id: 1, message: 'Hello from API!' });
+          setLoading(false);
+        }, 2000);
+
+        // Empty deps = fetch runs ONCE when component mounts
+      }, []);
+
+      return (
+        <div className="box">
+          {loading && <p className="loading">Loading...</p>}
+          {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+          {data && <p>✅ Data: {data.message}</p>}
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            👉 The fetch happens AFTER first render. Watch console.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 4: Dependency changes = re-fetch
+    // ============================================================
+    function SearchableDataFetcher() {
+      const [query, setQuery] = useState('');
+      const [result, setResult] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      console.log('📍 RENDER: query =', query);
+
+      useEffect(() => {
+        if (!query) {
+          setResult(null);
+          return;
+        }
+
+        console.log(`✅ EFFECT: Fetching for query="${query}"`);
+        setLoading(true);
+
+        // Simulate API call
+        setTimeout(() => {
+          console.log(`✅ EFFECT: Got result for "${query}"`);
+          setResult(`Results for: ${query}`);
+          setLoading(false);
+        }, 1000);
+
+        // When query changes, this effect re-runs
+      }, [query]);
+
+      return (
+        <div className="box">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ padding: '8px', width: '200px' }}
+          />
+          {loading && <p className="loading">Searching...</p>}
+          {result && <p>📍 {result}</p>}
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            👉 Every time you type, the effect re-runs because query changed
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Main App
+    // ============================================================
+    function App() {
+      const [activeDemo, setActiveDemo] = useState(1);
+
+      return (
+        <div>
+          <div className="section">
+            <h2>The Problem</h2>
+            <p>
+              React components are functions that <strong>render</strong> (return JSX).
+              You can't call async code during render—it blocks React and confuses state updates.
+            </p>
+            <p>
+              <strong>Solution:</strong> useEffect lets you say "After render, do this side effect."
+            </p>
+          </div>
+
+          <div className="section">
+            <h2>Which Demo?</h2>
+            {[1, 2, 3, 4].map(num => (
+              <button
+                key={num}
+                onClick={() => setActiveDemo(num)}
+                style={{ fontWeight: activeDemo === num ? 'bold' : 'normal' }}
+              >
+                Demo {num}
+              </button>
+            ))}
+          </div>
+
+          <div className="section">
+            <h2>
+              {activeDemo === 1 && "Demo 1: useEffect runs AFTER render"}
+              {activeDemo === 2 && "Demo 2: Dependency arrays (the key!)"}
+              {activeDemo === 3 && "Demo 3: Practical—fetch data on mount"}
+              {activeDemo === 4 && "Demo 4: Re-fetch when dependency changes"}
+            </h2>
+            {activeDemo === 1 && <Demo1 />}
+            {activeDemo === 2 && <Demo2 />}
+            {activeDemo === 3 && <DataFetcher />}
+            {activeDemo === 4 && <SearchableDataFetcher />}
+          </div>
+
+          <div className="section">
+            <h3>Key Takeaways</h3>
+            <ul>
+              <li><strong>useEffect solves:</strong> "How do I run code after render?" (fetch, timers, subscriptions)</li>
+              <li><strong>When it runs:</strong> AFTER React renders, not during</li>
+              <li><strong>Dependency array:</strong>
+                <ul>
+                  <li><code>[]</code> = run ONCE on mount</li>
+                  <li><code>[x]</code> = run when x changes</li>
+                  <li>No array = run every render (usually wrong)</li>
+                </ul>
+              </li>
+              <li><strong>Console.log is your friend:</strong> Watch the order to understand the magic</li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

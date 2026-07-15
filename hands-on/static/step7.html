@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 7: Real LLM Analysis with FastAPI Backend</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    textarea { width: 100%; padding: 10px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 12px 24px; font-size: 14px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 4px; margin-top: 10px; margin-right: 10px; }
+    button:hover { background: #0052a3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .result { background: #f0f8ff; padding: 15px; border-radius: 4px; border-left: 4px solid #0066cc; margin-top: 15px; max-height: 400px; overflow-y: auto; }
+    .loading { color: #0066cc; font-style: italic; display: flex; align-items: center; gap: 10px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #0066cc; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .error { background: #ffebee; color: #c62828; padding: 15px; border-radius: 4px; border-left: 4px solid #c62828; margin-top: 15px; }
+    .code { background: #222; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; overflow-x: auto; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .tab { padding: 10px 15px; background: #e0e0e0; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; }
+    .tab.active { background: #0066cc; color: white; }
+    .sample-button { background: #4caf50; }
+    .sample-button:hover { background: #45a049; }
+    .info { background: #fff9e6; padding: 10px; border-radius: 4px; border-left: 4px solid #ff9800; margin: 10px 0; font-size: 13px; }
+    h3 { margin-top: 0; }
+    pre { margin: 0; overflow-x: auto; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ============================================================
+    // MAIN APP
+    // ============================================================
+    function App() {
+      const [transcript, setTranscript] = useState("");
+      const [analysisType, setAnalysisType] = useState("summarize");
+      const [result, setResult] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const sampleTranscript = `Sales Rep: "Hi Sarah, thanks for jumping on the call. How's the quarter going?"
+
+Sarah: "Pretty busy actually. We're growing fast but our sales team is drowning in admin work. We're manually tracking leads in spreadsheets, and we're definitely losing deals because follow-ups fall through the cracks."
+
+Sales Rep: "How many leads are you losing?"
+
+Sarah: "Best guess? About 20%. And our team spends probably 10 hours a week just updating spreadsheets. It's killing productivity."
+
+Sales Rep: "That sounds painful. Have you looked at solutions?"
+
+Sarah: "We have. Actually, the VP of Sales approved a budget of $50k for Q4. We need something that automates this. Can you do a demo?"
+
+Sales Rep: "Absolutely. How does next Thursday look?"
+
+Sarah: "Perfect. I'll get the VP and the sales team lead on the call too."`;
+
+      const handleLoadSample = () => {
+        setTranscript(sampleTranscript);
+        setError(null);
+        setResult(null);
+      };
+
+      const handleAnalyze = async () => {
+        if (!transcript.trim()) {
+          setError("Please enter a transcript");
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setResult(null);
+
+        try {
+          const response = await fetch("http://localhost:8000/analyze-transcript", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              transcript: transcript,
+              analysis_type: analysisType,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Analysis failed");
+          }
+
+          const data = await response.json();
+          setResult(data);
+        } catch (err) {
+          setError(`Error: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div>
+          <div className="section">
+            <h1>Step 7: Real LLM Analysis with FastAPI</h1>
+            <p>
+              This connects React frontend → FastAPI backend → Claude API.
+              The LLM <strong>actually analyzes your transcript</strong> in real time.
+            </p>
+            <div className="info">
+              ℹ️ Make sure FastAPI is running: <code>cd /Users/sunilmogadati/Downloads/fastapi-hello && python -m uvicorn main:app --reload</code>
+            </div>
+          </div>
+
+          <div className="section">
+            <h2>Enter a Call Transcript</h2>
+            <textarea
+              rows={12}
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Paste a sales call transcript here..."
+            />
+            <div>
+              <button className="sample-button" onClick={handleLoadSample}>
+                Load Sample Transcript
+              </button>
+            </div>
+          </div>
+
+          <div className="section">
+            <h2>Analysis Type</h2>
+            <div className="tabs">
+              {["summarize", "classify", "structured"].map(type => (
+                <button
+                  key={type}
+                  className={`tab ${analysisType === type ? "active" : ""}`}
+                  onClick={() => setAnalysisType(type)}
+                >
+                  {type === "summarize" && "📝 Summarize"}
+                  {type === "classify" && "🔥 Classify"}
+                  {type === "structured" && "📋 Structured"}
+                </button>
+              ))}
+            </div>
+
+            <p>
+              {analysisType === "summarize" && "Extract key info: prospect, company, pain points, interest, next steps"}
+              {analysisType === "classify" && "Rate lead quality: 🔥 HOT, 🟠 WARM, or ❄️ COLD"}
+              {analysisType === "structured" && "Get all data as JSON for database/CRM"}
+            </p>
+
+            <button onClick={handleAnalyze} disabled={loading}>
+              {loading ? "Analyzing..." : "Analyze Transcript"}
+            </button>
+          </div>
+
+          {loading && (
+            <div className="section">
+              <div className="loading">
+                <div className="spinner"></div>
+                Calling Claude API...
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="section">
+              <div className="error">
+                <strong>Error:</strong> {error}
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="section">
+              <h2>✅ Analysis Result</h2>
+              <div className="result">
+                <h3>Response from Claude:</h3>
+                <pre>{JSON.stringify(result.result, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+
+          <div className="section">
+            <h2>What's Happening</h2>
+            <div className="code">
+              <pre>{`React Component
+  ↓ (user clicks "Analyze")
+  ↓ fetch("http://localhost:8000/analyze-transcript", {
+      transcript: "...",
+      analysis_type: "summarize"
+    })
+  ↓
+FastAPI Backend (main.py)
+  ↓ GET /analyze-transcript
+  ↓ client = anthropic.Anthropic(api_key=...)
+  ↓ message = client.messages.create(model="claude-3-5-sonnet", ...)
+  ↓
+Claude API (via anthropic library)
+  ↓ processes transcript + prompt
+  ↓ returns analysis
+  ↓
+FastAPI
+  ↓ parses JSON response
+  ↓ returns to React
+  ↓
+React
+  ↓ displays result in browser`}
+              </pre>
+            </div>
+          </div>
+
+          <div className="section">
+            <h2>The Full Stack</h2>
+            <ul>
+              <li><strong>Frontend (you are here):</strong> React component, takes user input, calls API</li>
+              <li><strong>Backend (main.py):</strong> FastAPI server, receives request, calls Claude API</li>
+              <li><strong>LLM (Claude):</strong> Analyzes transcript, returns structured data</li>
+              <li><strong>Database:</strong> You could save results here later</li>
+            </ul>
+          </div>
+
+          <div className="section">
+            <h2>What You Just Learned</h2>
+            <ul>
+              <li><strong>Frontend ↔ Backend:</strong> React calls FastAPI via fetch</li>
+              <li><strong>Backend ↔ LLM:</strong> FastAPI calls Claude API via anthropic library</li>
+              <li><strong>Real-time AI:</strong> No more simulated responses—this is actually running LLM inference</li>
+              <li><strong>Production pattern:</strong> This is how real AI products work</li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

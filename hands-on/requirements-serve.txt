@@ -1,0 +1,14 @@
+# Minimal SERVE-TIME dependencies for serve.py.
+#
+# WHY separate from requirements.txt (API+DB) and requirements-ml.txt (training):
+# a serving image should contain ONLY what INFERENCE needs -- not the Postgres
+# drivers and not the full training toolchain (xgboost, etc.).
+# Smaller image = faster deploys, smaller attack surface, fewer things to break.
+#
+# serve.py needs: the web framework, the server, pandas (reads leads.csv),
+# and scikit-learn + joblib (to unpickle and run the RandomForest model).
+fastapi>=0.116,<1.0
+uvicorn[standard]>=0.35,<1.0
+pandas>=2.2,<3.0
+scikit-learn>=1.5,<2.0
+joblib>=1.3,<2.0

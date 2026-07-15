@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 2: Two Components + State</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; }
+    .box { background: white; padding: 20px; border-radius: 8px; margin: 10px 0; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Step 2: Two Components + State + Parent Sends Data to Child</h1>
+  <p>The parent has state. It passes data to the child via props.</p>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ============================================================
+    // Component 1: Display (child component)
+    // ============================================================
+    // This component ONLY receives props and displays them.
+    // No state, no side effects — just displays.
+    //
+    function Display(props) {
+      return (
+        <div className="box">
+          <h3>Display Component (child)</h3>
+          <p>I received: <strong>{props.message}</strong></p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Component 2: Button (child component)
+    // ============================================================
+    // This component has a button that calls a function from the parent.
+    // When button is clicked, it calls props.onButtonClick()
+    // This is how a child talks back to the parent (callback).
+    //
+    function Button(props) {
+      return (
+        <div className="box">
+          <h3>Button Component (child)</h3>
+          <button onClick={props.onButtonClick}>
+            Click me!
+          </button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Component 3: App (parent component)
+    // ============================================================
+    // This has the state. It:
+    // 1. Passes data DOWN to Display via props
+    // 2. Passes a callback DOWN to Button via props
+    // 3. When Button is clicked, the callback runs and updates state
+    // 4. The whole component re-renders with new state
+    // 5. Display sees new props and re-renders
+    //
+    function App() {
+      // State: a counter
+      const [count, setCount] = useState(0);
+
+      // Callback: called when child's button is clicked
+      const handleClick = () => {
+        setCount(count + 1);  // Update state
+      };
+
+      return (
+        <div>
+          <h2>App Component (parent)</h2>
+
+          <Display message={`Count is ${count}`} />
+          <Button onButtonClick={handleClick} />
+
+          <div style={{ padding: '20px', background: '#fffacd', borderRadius: '8px', marginTop: '20px' }}>
+            <strong>What's happening:</strong>
+            <ol>
+              <li>App has state: count</li>
+              <li>App passes count to Display via props</li>
+              <li>App passes handleClick to Button via props</li>
+              <li>When you click the button, handleClick runs</li>
+              <li>setCount updates the state</li>
+              <li>App re-renders (automatically!)</li>
+              <li>Display sees new props and displays new message</li>
+            </ol>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

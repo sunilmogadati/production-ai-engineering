@@ -1,0 +1,33 @@
+# ============================================================
+#  Sensitive data — NEVER commit. Course data must be public/open
+#  (World Bank etc). Any CSV/XLSX here is a red flag by default.
+# ============================================================
+*.csv
+*.xlsx
+*.xls
+*.env
+.env*
+*.key
+*.pem
+secrets*
+credentials*
+
+# Reference-only prior-cohort materials live OUTSIDE this repo
+# (they contain PII + a live API key). Never vendor them in.
+Quintrix-AI-Cohort1/
+**/cohort1-raw/
+
+# ============================================================
+#  Heavy / generated / local
+# ============================================================
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+models/
+*.pkl
+*.joblib
+.ipynb_checkpoints/
+node_modules/
+.DS_Store

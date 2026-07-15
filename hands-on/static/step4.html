@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 4: useEffect Cleanup — Preventing Leaks</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; }
+    .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .box { background: #f9f9f9; padding: 15px; border-left: 4px solid #0066cc; margin: 10px 0; }
+    .bad { border-left-color: #cc0000; }
+    .good { border-left-color: #00cc00; }
+    button { padding: 8px 16px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+    .log { background: #222; color: #0f0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 150px; overflow-y: auto; margin-top: 10px; }
+    .log-line { margin: 2px 0; }
+    .timer-display { font-size: 24px; font-weight: bold; margin: 10px 0; }
+    .warning { background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #ff9800; }
+  </style>
+</head>
+<body>
+  <h1>Step 4: useEffect Cleanup — Memory Leaks & Subscriptions</h1>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ============================================================
+    // PROBLEM: Memory leaks (the gotcha!)
+    // ============================================================
+    // When you set up a timer, listener, or subscription in useEffect,
+    // you need to CLEAN UP when the component unmounts or deps change.
+    // Otherwise:
+    //   - Timers keep running in the background
+    //   - Event listeners pile up
+    //   - Subscriptions leak memory
+    //   - Fetch requests hang
+    //
+
+    // ============================================================
+    // DEMO 1: Timer WITHOUT cleanup (BAD)
+    // ============================================================
+    function TimerWithoutCleanup() {
+      const [count, setCount] = useState(0);
+
+      console.log('📍 RENDER: TimerWithoutCleanup');
+
+      useEffect(() => {
+        console.log('✅ EFFECT: Starting timer (no cleanup!)');
+        const interval = setInterval(() => {
+          console.log('⏰ Tick! (this will keep running even after unmount)');
+          setCount(c => c + 1);
+        }, 1000);
+
+        // ❌ PROBLEM: No cleanup! The interval keeps running.
+        // When component unmounts, interval still ticks in background.
+      }, []);
+
+      return (
+        <div className="box bad">
+          <h3>❌ Timer without Cleanup</h3>
+          <p className="timer-display">{count}</p>
+          <p className="warning">
+            ⚠️ The timer never stops! Unmount this component (toggle below)
+            and watch the console—it KEEPS ticking.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 2: Timer WITH cleanup (GOOD)
+    // ============================================================
+    function TimerWithCleanup() {
+      const [count, setCount] = useState(0);
+
+      console.log('📍 RENDER: TimerWithCleanup');
+
+      useEffect(() => {
+        console.log('✅ EFFECT: Starting timer (WITH cleanup)');
+        const interval = setInterval(() => {
+          console.log('⏰ Tick! (will stop when component unmounts)');
+          setCount(c => c + 1);
+        }, 1000);
+
+        // ✅ CLEANUP: Return a function that runs when:
+        //   1. Component unmounts, OR
+        //   2. Dependencies change and effect runs again
+        return () => {
+          console.log('🧹 CLEANUP: Clearing interval');
+          clearInterval(interval);
+        };
+      }, []);
+
+      return (
+        <div className="box good">
+          <h3>✅ Timer with Cleanup</h3>
+          <p className="timer-display">{count}</p>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            Unmount this component (toggle below) and watch the console—it stops.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 3: Event listener cleanup
+    // ============================================================
+    function EventListenerDemo() {
+      const [clicks, setClicks] = useState(0);
+
+      console.log('📍 RENDER: EventListenerDemo');
+
+      useEffect(() => {
+        console.log('✅ EFFECT: Adding click listener');
+
+        const handleClick = () => {
+          console.log('🖱️ Document clicked!');
+          setClicks(c => c + 1);
+        };
+
+        // Add listener
+        document.addEventListener('click', handleClick);
+
+        // ✅ CLEANUP: Remove listener
+        return () => {
+          console.log('🧹 CLEANUP: Removing click listener');
+          document.removeEventListener('click', handleClick);
+        };
+      }, []);
+
+      return (
+        <div className="box good">
+          <h3>✅ Event Listener with Cleanup</h3>
+          <p>Document clicks (from this demo): {clicks}</p>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            Click anywhere on the page. The listener is cleaned up when this
+            component unmounts.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // DEMO 4: Fetch abort (realistic example)
+    // ============================================================
+    function FetchWithAbort() {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      console.log('📍 RENDER: FetchWithAbort');
+
+      useEffect(() => {
+        console.log('✅ EFFECT: Starting fetch');
+
+        // Create an AbortController to cancel the fetch
+        const controller = new AbortController();
+
+        // Simulate async fetch
+        setTimeout(() => {
+          // Check if request was cancelled
+          if (controller.signal.aborted) {
+            console.log('🚫 CLEANUP: Request was aborted, not updating state');
+            return;
+          }
+
+          console.log('✅ EFFECT: Fetch complete');
+          setData({ message: 'Data loaded!' });
+          setLoading(false);
+        }, 2000);
+
+        // ✅ CLEANUP: Abort fetch if component unmounts before it finishes
+        return () => {
+          console.log('🧹 CLEANUP: Aborting fetch request');
+          controller.abort();
+        };
+      }, []);
+
+      return (
+        <div className="box good">
+          <h3>✅ Fetch with Abort Cleanup</h3>
+          {loading && <p>Loading...</p>}
+          {data && <p>{data.message}</p>}
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            Unmount before 2 seconds and the fetch is cancelled.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Demo 5: Re-running cleanup (dependency changes)
+    // ============================================================
+    function CleanupOnDependencyChange() {
+      const [query, setQuery] = useState('Alice');
+      const [result, setResult] = useState(null);
+
+      console.log('📍 RENDER: query =', query);
+
+      useEffect(() => {
+        console.log(`✅ EFFECT: Subscribing to updates for "${query}"`);
+
+        // Simulate subscription
+        const subscription = {
+          unsubscribe: () => console.log(`  → Unsubscribed from "${query}"`),
+        };
+
+        // Simulate receiving data
+        setTimeout(() => {
+          setResult(`Subscribed to: ${query}`);
+        }, 500);
+
+        // ✅ CLEANUP: Runs when query changes OR component unmounts
+        return () => {
+          console.log(`🧹 CLEANUP: Query changed, cleaning up old subscription`);
+          subscription.unsubscribe();
+        };
+      }, [query]); // <-- When query changes, cleanup runs then effect runs again
+
+      return (
+        <div className="box good">
+          <h3>✅ Cleanup Runs When Dependencies Change</h3>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ padding: '8px', width: '200px' }}
+          />
+          {result && <p>{result}</p>}
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            Change the input. Watch console: cleanup runs, then new effect.
+          </p>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Main App
+    // ============================================================
+    function App() {
+      const [showBad, setShowBad] = useState(true);
+      const [activeDemo, setActiveDemo] = useState(1);
+
+      return (
+        <div>
+          <div className="section">
+            <h2>The Problem: Memory Leaks</h2>
+            <p>
+              When you set up a timer, listener, or subscription in useEffect,
+              you must clean it up when the component unmounts or dependencies change.
+            </p>
+            <p>
+              <strong>Solution:</strong> Return a cleanup function from useEffect.
+            </p>
+          </div>
+
+          <div className="section">
+            <h2>When to Cleanup</h2>
+            <ul>
+              <li><strong>Component unmounts:</strong> Always cleanup</li>
+              <li><strong>Dependencies change:</strong> Cleanup old, then setup new</li>
+              <li><strong>Common cases:</strong> timers, listeners, subscriptions, fetch requests</li>
+            </ul>
+          </div>
+
+          <div className="section">
+            <h2>Which Demo?</h2>
+            {[1, 2, 3, 4, 5].map(num => (
+              <button
+                key={num}
+                onClick={() => setActiveDemo(num)}
+                style={{ fontWeight: activeDemo === num ? 'bold' : 'normal' }}
+              >
+                Demo {num}
+              </button>
+            ))}
+          </div>
+
+          <div className="section">
+            <h2>
+              {activeDemo === 1 && "Demo 1: Timer WITHOUT Cleanup (Memory Leak)"}
+              {activeDemo === 2 && "Demo 2: Timer WITH Cleanup (Fixed)"}
+              {activeDemo === 3 && "Demo 3: Event Listener Cleanup"}
+              {activeDemo === 4 && "Demo 4: Fetch with Abort"}
+              {activeDemo === 5 && "Demo 5: Cleanup When Dependencies Change"}
+            </h2>
+            {activeDemo === 1 && <TimerWithoutCleanup />}
+            {activeDemo === 2 && <TimerWithCleanup />}
+            {activeDemo === 3 && <EventListenerDemo />}
+            {activeDemo === 4 && <FetchWithAbort />}
+            {activeDemo === 5 && <CleanupOnDependencyChange />}
+          </div>
+
+          <div className="section">
+            <h3>The Cleanup Pattern</h3>
+            <pre style={{ background: '#222', color: '#0f0', padding: '10px', overflow: 'auto' }}>
+{`useEffect(() => {
+  console.log('Setting up...');
+  // Do your side effect here
+
+  return () => {
+    console.log('Cleaning up...');
+    // Cleanup here: clear timers, remove listeners, abort requests
+  };
+}, [dependencies]); // Cleanup runs when deps change or component unmounts`}
+            </pre>
+          </div>
+
+          <div className="section">
+            <h3>Key Takeaways</h3>
+            <ul>
+              <li><strong>Cleanup function:</strong> Return a function from useEffect</li>
+              <li><strong>When it runs:</strong> Before unmount OR before effect runs again</li>
+              <li><strong>What to cleanup:</strong> timers, listeners, subscriptions, fetch requests</li>
+              <li><strong>Forgetting cleanup:</strong> Memory leaks, multiple listeners, hidden bugs</li>
+              <li><strong>Console.log:</strong> Add logs to see when effect and cleanup run</li>
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

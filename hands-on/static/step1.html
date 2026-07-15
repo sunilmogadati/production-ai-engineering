@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step 1: Hello World Component</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: system-ui; background: #f0f0f0; padding: 20px; }
+    .box { background: white; padding: 20px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Step 1: One Component, Hello World</h1>
+  <p>A component is just a JavaScript function that returns HTML (JSX).</p>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ============================================================
+    // Component: Greeting
+    // ============================================================
+    // This is a component — just a function.
+    // It receives props (data passed in) and returns JSX (HTML-like code).
+    //
+    function Greeting(props) {
+      return <h2>Hello, {props.name}!</h2>;
+    }
+
+    // ============================================================
+    // Component: App (the root component)
+    // ============================================================
+    function App() {
+      return (
+        <div className="box">
+          <Greeting name="Alice" />
+          <Greeting name="Bob" />
+          <Greeting name="Charlie" />
+        </div>
+      );
+    }
+
+    // Render the App into the page
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

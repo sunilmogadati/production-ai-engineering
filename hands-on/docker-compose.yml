@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fastapi-class-postgres
+    environment:
+      POSTGRES_DB: classdemo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init/001_create_students.sql:/docker-entrypoint-initdb.d/001_create_students.sql:ro
+
+  # The Prospect Scoring API (serve.py), built from the Dockerfile in this folder.
+  # serve.py does NOT use Postgres, so there is deliberately no depends_on here -
+  # the API and the database are independent services that happen to share a compose file.
+  #   Start everything:  docker compose up --build
+  #   API:               http://localhost:8000   (health: /health, metrics: /metrics)
+  api:
+    build: .
+    container_name: prospect-api
+    ports:
+      - "8000:8000"
+    # WHY a healthcheck here too: compose/orchestrators use it to know when the
+    # service is truly READY (not merely started). It hits the /health endpoint.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
