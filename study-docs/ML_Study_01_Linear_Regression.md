@@ -1,122 +1,9 @@
-# ML Study 01 — Intro + Linear Regression
+# ML Study 01 — Linear Regression
 
-**Covers:** Intro (AI / ML / DL / Data Science) → Types of ML → **Linear Regression** → R² / Adjusted R².
-**Goal:** understand this well enough to *explain the idea, the math, and the graphs in plain English* — and to see *why* each piece works, not just *that* it works. We start from intuition; the formulas follow.
+**Covers:** the best-fit line → the cost function → gradient descent → R² / Adjusted R² → real World Bank data.
+**Goal:** understand it well enough to *explain the idea, the math, and the graphs in plain English* — and to see *why* each piece works, not just *that* it works. We start from intuition; the formulas follow.
 
----
-
-## Where this is going — and what you'll be able to build
-
-Before the algorithms, here's the map — so you can see how each session builds on the last, and what becomes possible as you go.
-
-**The mindset first.** An AI engineer isn't someone who memorizes algorithms. It's someone who looks at a messy real-world problem and asks: *what is actually going on in this data, and what's the simplest thing that would capture it?* Every technique in this series is a tool for answering that question. We learn the math not to tick a box, but because understanding *why* a method works is what lets you trust it, debug it, and reach for the right one next time. Curiosity is the real skill — the algorithms are how it gets expressed.
-
-**What you'll be able to do, step by step:**
-
-```mermaid
-flowchart TB
-    P1["Phase 1 — Foundations (we are here now)<br/>Python + the core ideas of ML:<br/>regression, classification,<br/>and how to tell a good model from a bad one"]
-    P2["Phase 2 — AI (the techniques)<br/>deep learning (TF/PyTorch),<br/>transformers &amp; fine-tuning (Hugging Face),<br/>LLM apps (LangChain), and the frontier —<br/>RAG, agents, model routing"]
-    P3["Phase 3 — Build &amp; Deploy<br/>take any model — ML OR AI —<br/>run it live in the cloud (AWS + GCP),<br/>watch it, catch drift, fix it"]
-    P4["Phase 4 — Capstone<br/>an end-to-end project that's genuinely yours:<br/>real data, ML + AI, deployed and documented"]
-    P1 --> P2 --> P3 --> P4
-```
-
-The shape is deliberate: **first you learn** (Phase 1 the ML foundations, Phase 2 the AI techniques on top), **then you ship** (Phase 3 deploy any of it, Phase 4 pull it together into one real project). Building and deploying come *after* the techniques — not sprinkled through them — because you deploy ML and AI models the same way, once.
-
-**What each phase opens up:**
-- **Foundations** — you stop seeing "the model" as a black box. You can look at data and reason about what will and won't work, and why.
-- **AI** — the whole modern toolkit: deep learning, transformers you fine-tune and *publish* (to the Hugging Face Hub — out in the world for others to use), LLM apps, and the frontier where models start to *reason and act* (RAG, agents, model routing). This is where "AI engineer" earns its name — and there's no ceiling; the same fundamentals keep compounding.
-- **Build & Deploy** — you take a model — ML *or* AI — from a notebook on your laptop to something *anyone can use over the internet*, then watch it, notice when it drifts, and fix it. Most people never cross this line; it's where a lot of the real craft lives.
-- **Capstone** — you build something real, on real data, end to end — combining what you've learned into one deployed, documented project that's genuinely yours.
-
-**One rule holds the whole thing together: foundations first.** The exciting LLM and agent work only holds up when the basics — how data behaves, how you know a model is any good, how you put it in front of real people — are solid underneath. Build the base well and everything above it comes easier.
-
-**Between sessions — the habit that matters most:**
-- Pick a dataset you're actually curious about and try each new idea on it. A concept sticks when *you* care about the answer.
-- Keep your work on **GitHub** — not as a checkbox, but as a record of what you've built and figured out.
-- Explain what you learned to someone else, out loud. If you can make it simple, you understand it. If you can't yet, you've just found the next thing to learn.
-
----
-
-## Part 1 — The Landscape: AI vs ML vs DL vs Data Science
-
-> These four terms nest inside each other. **AI** is the broadest — *anything* that lets a machine act on its own (Netflix suggesting a movie, a Tesla steering itself). **Machine Learning** sits inside AI: the specific approach of *learning patterns from data* instead of being hand-coded. **Deep Learning** sits inside ML: the same idea using brain-like neural networks for the hardest problems (recognizing faces, understanding language). **Data Science** isn't one of the nested layers — it's the *role* that reaches for whichever layer the business problem needs.
-
-```mermaid
-flowchart TB
-    subgraph AI["Artificial Intelligence — machines that act WITHOUT human intervention"]
-        subgraph ML["Machine Learning — learn patterns from data to make predictions"]
-            subgraph DL["Deep Learning — brain-like neural networks for hard problems"]
-                core["algorithms & models"]
-            end
-        end
-    end
-    DS["Data Science — the role that uses ALL of the above to solve a business problem"] -.->|reaches into all of it| AI
-```
-
-| Term | Plain definition | Everyday example |
-|---|---|---|
-| **AI** | Any app that makes decisions/acts on its own. | Netflix & Amazon recommendations, Tesla autopilot. |
-| **ML** *(subset of AI)* | Learns from data using **statistics** to predict/forecast. | "Given past data, predict this." |
-| **DL** *(subset of ML)* | ML using **multi-layer neural networks** that mimic the brain. | Image recognition, speech, language. |
-| **Data Science** | The **role** that uses ML + DL + plain data analysis to solve a business use case. | A data scientist might build a dashboard Monday, an ML model Tuesday. |
-
-**🎯 Say it clearly:** *"AI is the umbrella — any autonomous app. ML is a subset that learns patterns from data. DL is a subset of ML using neural networks for complex problems. Data science is the role that combines all three to solve a business problem."*
-
----
-
-## Part 2 — Types of Machine Learning
-
-> There are two main ways a machine learns, and the difference is simply **"do we have an answer key?"**
-> - **Supervised learning = studying with an answer key.** You show the model lots of examples where you *already know the right answer* (people's age *and* their weight), and it learns the age→weight pattern. Like flashcards with the answer on the back.
-> - **Unsupervised learning = no answer key.** You hand the model data with *no "right answer"* and ask it to find structure by itself — like being handed a pile of photos and asked to sort them into groups nobody labeled.
-
-```mermaid
-flowchart TB
-    ML["Machine Learning"] --> S["Supervised<br/>(we HAVE the answers)"]
-    ML --> U["Unsupervised<br/>(NO answer key)"]
-    ML --> RL["Reinforcement<br/>(learn by reward/penalty)<br/>e.g. Q-Learning (covered later)"]
-    S --> REG["Regression — answer is a NUMBER<br/>(e.g. predict weight)<br/>Algorithms: Linear Regression,<br/>Ridge, Lasso"]
-    S --> CLF["Classification — answer is a CATEGORY<br/>(e.g. pass / fail)<br/>Algorithms: Logistic Regression,<br/>Naive Bayes, SVM, KNN"]
-    S --> BOTH["Tree-based and Ensembles<br/>(do BOTH regression and classification)<br/>Decision Tree, Random Forest, AdaBoost,<br/>Gradient Boosting, XGBoost"]
-    CLF --> BIN["Binary<br/>(2 categories)"]
-    CLF --> MUL["Multiclass<br/>(3+ categories)"]
-    U --> CLU["Clustering — find natural groups<br/>(e.g. customer segments)<br/>Algorithms: K-Means, DBSCAN,<br/>Hierarchical"]
-    U --> DIM["Dimensionality Reduction<br/>squeeze many columns into few<br/>Algorithms: PCA, LDA"]
-```
-
-> **Note on the "do both" group:** decision trees and the ensembles built on them (Random Forest, AdaBoost, Gradient Boosting, XGBoost) can handle *either* a number (regression) *or* a category (classification) — that's why they get their own box rather than sitting under just one.
-
-### Inputs vs the thing you predict (independent vs dependent features)
-> In any prediction problem you have **the stuff you know** and **the thing you want to guess.** Predicting weight from age: age is *the stuff you know* (input), weight is *the thing you want to guess* (output). Jargon: inputs are **independent features** (you can have many), the output is the **dependent feature** (exactly one). It's called "dependent" because it *depends on* the inputs — change the age, the predicted weight changes.
-
-The trained model is also called a **hypothesis** — fancy word for "the rule the model learned that turns a new input into a predicted output."
-
-> The whole supervised flow in one picture: you **train once** using data where the answers are known, which produces the **hypothesis** (the learned rule). Then, for any **new** input, you feed it through that hypothesis to get a **prediction**.
-
-```mermaid
-flowchart LR
-    D["Training data:<br/>inputs x + KNOWN answers y"] --> M["Model learns<br/>the pattern"]
-    M --> H["Hypothesis =<br/>the learned rule / best-fit line"]
-    NX["A NEW input x<br/>(e.g. a new age)"] --> H
-    H --> P["Predicted output<br/>(e.g. weight)"]
-```
-
-### Regression vs Classification
-> The only question is **"is the answer a number or a bucket?"** A *number* (weight = 71.5 kg, price = 412K dollars) → **regression**. A *bucket/category* (pass or fail, spam or not-spam) → **classification**. Two buckets = **binary**; three or more = **multiclass**.
-
-| | Regression | Classification |
-|---|---|---|
-| Answer is… | a **continuous number** | a **category** |
-| Example | ad spend → weekly sales | study hours → pass/fail |
-
-### Unsupervised jobs
-> - **Clustering = automatic grouping.** Give it customers' age + salary and it finds natural groups ("young high-earners," "middle-class," etc.) so marketing can target each group differently. It's *grouping, not labeling* — nobody told it the groups in advance.
-> - **Dimensionality reduction = decluttering.** If you have 1,000 columns, squeeze them down to the ~100 that actually carry the signal, so models run faster and cleaner (e.g. **PCA**, **LDA**).
-
-![Clustering](ML_Study_Figures/07_clustering.png)
-*What this graph shows: customers plotted by age and salary, with no labels given. Clustering finds the natural groups on its own (here: young high-earners, middle-class, older high-earners) so a business can target each group differently. This is **grouping**, not labeling — nobody told it the categories in advance.*
+**Series context:** this is **Parts 3–5**. The map — AI vs ML vs DL, and *regression vs classification* — is in **[ML Study 00 — ML Foundations](ML_Study_00_ML_Foundations.html)**. Three ideas carry over from there: **regression** predicts a *number*; **supervised** learning trains on labelled examples; and the **hypothesis** $h_\theta(x)$ is the line the model learns.
 
 ---
 
@@ -165,9 +52,32 @@ $$h_\theta(x) = \theta_0 + \theta_1 x$$
 > Finding the best line = finding the best *starting point* and the best *rate*.
 
 ![Anatomy of the line](ML_Study_Figures/08_line_anatomy.png)
-*What this graph shows: any straight line is just a **starting value** ($\theta_0$, where it meets the vertical axis) plus a **rate** ($\theta_1$, how much it climbs per step right). Finding the best line = finding the best starting value and rate.*
+*What this graph shows: our ad-spend line, **sales = 3 + 1.9 × spend**. The **starting value** ($\theta_0 = 3$, where it meets the vertical axis) plus a **rate** ($\theta_1 = 1.9$, how much it climbs per step right). Finding the best line = finding the best starting value and rate.*
 
 **The math.** $\theta_0$ = **intercept** (value of $h_\theta(x)$ when $x = 0$). $\theta_1$ = **slope/coefficient** (change in $y$ per one-unit increase in $x$).
+
+**So what's the actual formula for the slope?** Two different questions hide here — answer both:
+
+**(a) Given the line, read the slope off it — "rise over run":**
+
+$$\theta_1 = \frac{\text{rise}}{\text{run}} = \frac{\Delta y}{\Delta x} = \frac{y_2 - y_1}{x_2 - x_1}$$
+
+📖 *"theta-one equals rise over run — the change in y divided by the change in x."* Step 1 unit right, see how far the line climbs. On our line that climb is **1.9** — every extra $1,000 of ad spend lifts sales by $1,900.
+
+**(b) Given only the data, compute the best slope — the least-squares formula:**
+
+$$\theta_1 = \frac{\sum_i (x^{(i)} - \bar{x})(y^{(i)} - \bar{y})}{\sum_i (x^{(i)} - \bar{x})^2}
+\qquad\qquad \theta_0 = \bar{y} - \theta_1\bar{x}$$
+
+📖 *"theta-one equals the sum of (x minus x-bar)(y minus y-bar), over the sum of (x minus x-bar) squared; then theta-zero equals y-bar minus theta-one times x-bar."* ($\bar{x}, \bar{y}$ are just the averages.)
+
+**Run it on our four weeks** ($\bar{x} = 2.5$, $\bar{y} = 7.75$):
+
+$$\theta_1 = \frac{9.5}{5.0} = \mathbf{1.9} \qquad\qquad \theta_0 = 7.75 - 1.9 \times 2.5 = \mathbf{3.0}$$
+
+**That's where the 3 and the 1.9 come from** — not magic, just that formula.
+
+> **Then why bother with gradient descent?** Fair question. This closed-form shortcut exists *only* because linear regression is simple enough to solve exactly. Most models — neural networks especially — have **no such formula**. Gradient descent is the general method that works for all of them, which is why we learn it here on the one problem where we can check its answer against the truth. *(And we do: §3.4 walks downhill and lands on exactly 3.0 and 1.9.)*
 
 ### 3.3 Scoring a line: the cost function
 > To find the *best* line, you first need a way to say how *bad* any given line is — a single **badness score**. Here's the recipe: for each dot, measure how far the line's prediction missed (the error). **Square** each error, then **average** them. Low score = good line, high score = bad line. **It's literally a golf score: lower is better, and our goal is the lowest score possible.**
@@ -194,6 +104,35 @@ $$J(\theta_0, \theta_1) = \frac{1}{2m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{
 
 The single number $J$ that pops out = "how bad is this line." **Goal:** find $\theta_0, \theta_1$ that make $J$ as small as possible ($\min J$).
 
+**Now do it with real numbers — this table *is* the code.** Take the worst possible line, the flat one the algorithm starts from: $\theta_0 = 0,\ \theta_1 = 0$, which predicts **0 sales no matter what you spend**. Walk the four weeks one row at a time:
+
+| week | $x$ (spend) | $y$ (sales) | $\hat{y} = h_\theta(x)$ | error $= \hat{y} - y$ | error$^2$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | 1 | 5 | 0 | −5 | 25 |
+| 2 | 2 | 7 | 0 | −7 | 49 |
+| 3 | 3 | 8 | 0 | −8 | 64 |
+| 4 | 4 | 11 | 0 | −11 | 121 |
+| | | | | **sum →** | **259** |
+
+Then divide by $2m = 2 \times 4 = 8$:
+
+$$J(0,\,0) = \frac{259}{8} = \mathbf{32.375}$$
+
+*(Here every error is negative because a flat line at 0 under-predicts every week. We write error as **prediction − actual** to match the formula; §3.1 wrote it the other way round — but we **square** it, so 25 is 25 either way.)*
+
+**That single number, 32.375, is the badness of the flat line** — and it's not abstract. Run `hands-on/hello_gradient_descent.py` and the very first row of its output reads `cost 32.3750`. The table above **is** the `cost()` function, done by hand — each column is one line of code:
+
+```python
+def cost(theta0, theta1):
+    total = 0.0
+    for x, y in zip(ad_spend, sales):          # ← one table ROW per loop pass
+        error = predict(theta0, theta1, x) - y #   the "error" column
+        total += error ** 2                    #   the "error²" column, summed
+    return total / (2 * m)                     # ← the final ÷ 2m step
+```
+
+Every other line gradient descent tries gets scored this exact same way. Its whole job (§3.4) is to hunt for the line whose score is the **lowest** — which turns out to be $J(3,\,1.9) = 0.0875$, down from 32.375.
+
 ### 3.4 Watch it learn: gradient descent on a real example
 > You can't test *every* possible line — there are infinitely many. So instead you **start with a guess and let the math improve it, step by step**, until it can't get better. Let's watch that actually happen on a small, realistic dataset — with a genuine intercept and slope, not a perfect 45° line.
 
@@ -208,22 +147,48 @@ The single number $J$ that pops out = "how bad is this line." **Goal:** find $\t
 
 These are the same actual data points you saw fitted in §3.1 — but there we just *showed* you the answer line; here we watch the algorithm **find** it. The best fit *turns out to be* **sales = 3 + 1.9 × spend** — our algorithm doesn't know that yet; it has to discover it, starting from nothing.
 
-**Step 0 — start with a deliberately bad guess.** Set θ₀ = 0 and θ₁ = 0 (a flat line predicting 0 sales for everything), and pick a **learning rate** α = 0.05 (how big a step we take — more in §3.6).
+**Step 0 — set everything up, then start from a deliberately bad guess.** Before the loop can run we make a handful of choices. It's worth seeing *all* of them at once, because only two are things the algorithm will *learn* — the rest are dials **we** set and the algorithm never touches:
+
+| We choose… | Our choice here | What it is |
+|---|---|---|
+| the model's **shape** | a straight line, $h_\theta(x)=\theta_0+\theta_1 x$ | our assumption that sales rise linearly with spend |
+| the **badness score** | mean squared error, $J$ | how we grade a line (§3.3) |
+| **starting values** for the knobs | $\theta_0 = 0,\ \theta_1 = 0$ | a flat line — deliberately terrible, so we can watch it recover |
+| the **learning rate** $\alpha$ | 0.05 | step size downhill (§3.6) |
+| **how much data** per step | all 4 weeks | "batch" gradient descent (§3.7) |
+| **when to stop** | cost stops dropping (`TOLERANCE`) or a cap (`MAX_ITERS`) | the exit conditions (§3.5) |
+
+**Only $\theta_0$ and $\theta_1$ get *learned*** — those two are the **parameters**, the numbers the loop hunts for. **Everything else in that table we set by hand** before pressing go — those are the **hyperparameters** (plus the modelling choices). The algorithm never adjusts them; tuning them well is *your* job. Keep that line sharp — it's one of the most useful distinctions in all of ML:
+
+> **Parameters** are found *by* the model (here: θ₀, θ₁). **Hyperparameters** are chosen *by you* (here: α, the initial guess, batch size, the stopping rules). A model "learns" its parameters; you "tune" its hyperparameters.
+
+> **One notation note before the table — $\hat{y}$ and $h_\theta(x)$ are the *same thing*.** Both mean "the model's prediction." We keep both on purpose, because you'll see both everywhere: **$h_\theta(x)$** is natural in the *machinery* (the cost and gradient formulas, where the parameters $\theta$ are the whole point), while **$\hat{y}$** — "y-hat" — is the everyday shorthand for a predicted value that reads cleaner in *tables* and in error terms like $\hat{y}-y$ (and it's what R² and scikit-learn use). Same quantity, two names — so $\hat{y} = h_\theta(x)$.
 
 **Step 1 — do the math once, and watch the line improve.** With θ₀ = θ₁ = 0:
 
 | | value |
 |---|---|
-| **Predictions** ŷ (= 0 + 0·x) | 0, 0, 0, 0 |
-| **Errors** (ŷ − y) | −5, −7, −8, −11 |
-| **Cost** J = (1/2·4)(5²+7²+8²+11²) = (1/8)(259) | **32.4** (very bad, as expected) |
-| **Slope for θ₀** = average error = (−5−7−8−11)/4 | **−7.75** |
-| **Slope for θ₁** = avg error weighted by x = [(−5)(1)+(−7)(2)+(−8)(3)+(−11)(4)]/4 | **−21.75** |
-| **Update** θ₀ := 0 − 0.05(−7.75) | **0.39** |
-| **Update** θ₁ := 0 − 0.05(−21.75) | **1.09** |
+| **Predictions** $\hat{y} = h_\theta(x) = \theta_0 + \theta_1 x = 0 + 0\cdot x$ | 0, 0, 0, 0 |
+| **Errors** $(\hat{y} - y)$ | −5, −7, −8, −11 |
+| **Cost** $J(\theta_0,\theta_1) = \frac{1}{2\cdot 4}\left[(0-5)^2+(0-7)^2+(0-8)^2+(0-11)^2\right] = \frac{259}{8}$ | **32.4** (very bad, as expected) |
+| **Slope for θ₀** $=\dfrac{\partial J}{\partial\theta_0}=$ average error $=\dfrac{-5-7-8-11}{4}$ | **−7.75** |
+| **Slope for θ₁** $=\dfrac{\partial J}{\partial\theta_1}=$ avg error weighted by $x=\dfrac{(-5)(1)+(-7)(2)+(-8)(3)+(-11)(4)}{4}$ | **−21.75** |
+| **Update** $\theta_0 := 0 - 0.05(-7.75)$ | **0.39** |
+| **Update** $\theta_1 := 0 - 0.05(-21.75)$ | **1.09** |
 | **New cost** with the updated line | **11.3** ↓ |
 
-The cost fell from **32.4 → 11.3 in one step** — the math nudged the line toward the data, automatically. (The slope formulas are derived in §3.7; for now just note *which way is downhill* is: for θ₀ the average error, for θ₁ the average error weighted by x.)
+*(Reading row 1: the prediction is the full line $\theta_0 + \theta_1 x$ — here both knobs are 0, so $0 + 0\cdot x = 0$ for every week. Reading row 3: each squared term is $(\hat{y}-y)^2$, e.g. $(0-5)^2 = 25$ — that's where the 25 comes from.)*
+
+**"Those last two slope rows — that's a derivative, isn't it?"** Exactly right. Each "slope" is a **partial derivative** of the cost — $\dfrac{\partial J}{\partial\theta_0}$ and $\dfrac{\partial J}{\partial\theta_1}$ — meaning *"if I wiggle only this one knob, how fast does the badness $J$ change?"* §3.7 does the full derivation; here is the one-line reason they come out so clean.
+
+Differentiating the squared cost brings the power down ($x^2 \to 2x$), and that **2 cancels the ½** in $\frac{1}{2m}$ — leaving a plain **average** ($\frac{1}{m}\sum$). What survives is the derivative of the **inside**, $(\theta_0 + \theta_1 x - y)$, and *that* is where the two rows part ways:
+
+- wiggle **θ₀** — it sits **alone**, so its inside-derivative is just **1** → the slope is the **plain average error**.
+- wiggle **θ₁** — it is **multiplied by $x$**, so its inside-derivative is **$x$** → every term gets **weighted by its own $x$**.
+
+**That's the entire difference between the two slope rows: θ₀ carries no $x$, so it's a plain average; θ₁ is attached to $x$, so it's $x$-weighted.** (Full working in §3.7; the single calculus rule behind it is in the primer just below.)
+
+The cost fell from **32.4 → 11.3 in one step** — the math nudged the line toward the data on its own.
 
 **Repeat the same step over and over, and it keeps improving until it settles:**
 
@@ -234,7 +199,8 @@ The cost fell from **32.4 → 11.3 in one step** — the math nudged the line to
 | 2 | 0.62 | 1.72 | 4.12 |
 | 3 | 0.76 | 2.08 | 1.69 |
 | 5 | 0.91 | 2.42 | 0.58 |
-| 10 | 1.04 | 2.55 | 0.41 |
+| 10 | 1.04 | **2.55** ← overshoot peak | 0.41 |
+| 30 | 1.32 | 2.47 ← easing back | 0.32 |
 | 100 | 2.01 | 2.24 | 0.17 |
 | 500 | 2.95 | 1.92 | 0.088 |
 | 3000 | **3.00** | **1.90** | **0.0875** |
@@ -242,7 +208,7 @@ The cost fell from **32.4 → 11.3 in one step** — the math nudged the line to
 It lands on exactly **θ₀ = 3.0, θ₁ = 1.9** — the true best fit — with the cost bottoming out at 0.0875. (θ₁ overshoots to ~2.55 early then eases back as θ₀ catches up: a normal zig-zag; what matters is the **cost drops every step**.)
 
 ![The line improving over iterations](ML_Study_Figures/10_gd_line_improving.png)
-*What this graph shows: the same four data points (dots) with the line drawn at different iterations. It starts flat (the bad guess at 0), then swings up step by step until the final red line fits the points.*
+*What this graph shows: the same four data points (dots) with the line drawn at different iterations. It starts flat (the bad guess at 0) and swings up fast. **Look closely at "iter 30": it is steeper than the final line, not closer to it** — that's the overshoot from the table above (θ₁ races to ≈2.55 while θ₀ lags behind), and it then eases back down as θ₀ catches up. That's not an error in the picture — it's the zig-zag, and it's normal. What matters is that the **cost drops at every single step**, even while the line looks like it's wandering.*
 
 ![Learning curve](ML_Study_Figures/11_learning_curve.png)
 *What this graph shows: the cost (badness score) at each iteration — it drops fast at first, then flattens as the line reaches the best fit. This falling curve is the **learning curve**, and it's how you confirm training is actually working.*
@@ -256,6 +222,16 @@ That back-and-forth — **predict → measure the error → nudge the line downh
 - **Positive** derivative → the ground tilts **up to the right** → the bottom is to your **left**.
 - **Negative** derivative → tilts **down to the right** → the bottom is to your **right**.
 - **Zero** derivative → **flat ground** → you're at the **bottom** (the minimum). *This is why gradient descent stops when the slope reaches ≈ 0.*
+
+**But when is it actually negative or positive? Read it straight off your errors.** For the intercept knob, the slope turns out to be nothing more than the **average error** (§3.7 shows why):
+
+| Where your line sits | Average error $(\hat{y} - y)$ | Derivative | The update $\theta_0 - \alpha(\text{slope})$ does… |
+|---|:---:|:---:|---|
+| **too low** (under-predicting) | negative | **negative** | subtracting a negative → **raises** the line ✓ |
+| **too high** (over-predicting) | positive | **positive** | subtracting a positive → **lowers** the line ✓ |
+| **balanced** through the middle | ≈ 0 | **≈ 0** | nothing moves — **you've converged** |
+
+The sign always points *away* from where you want to go — which is exactly why the update rule **subtracts** it.
 
 **Partial derivative — same thing, one knob at a time.** When a function depends on several inputs (our cost $J$ depends on both θ₀ and θ₁), the **partial derivative** $\frac{\partial J}{\partial \theta_0}$ means "the slope if I wiggle **only** θ₀ and hold θ₁ still." The curly $\partial$ (read *"partial-dee"*) just signals "one variable at a time" — we compute one slope per knob.
 
@@ -293,6 +269,15 @@ flowchart TB
     Q -- yes --> D["Done → best-fit line"]
 ```
 
+**Yes — it's a loop.** Notice the arrow curving back: gradient descent isn't one calculation, it's **"repeat until convergence."** Each trip around the loop is **one iteration** — exactly the rows of the table in §3.4. Training a model *is* running this loop.
+
+**So when does the loop exit?** Any one of three conditions stops it:
+1. **The slope reaches ≈ 0** — flat ground, which only happens at the bottom. This is the true "converged" signal.
+2. **The cost stops dropping** — each pass improves $J$ by less than some tiny tolerance, so more steps buy nothing. *(In our run: iteration 500 gave J = 0.0877, iteration 3000 gave J = 0.0875 — it had effectively stopped moving. That's convergence.)*
+3. **A maximum iteration count is hit** — a safety stop, so a bad learning rate can't spin forever. (Recall §3.6: too large an α *never* settles — without this cap it would loop endlessly.)
+
+In practice #2 and #3 do the real work: you rarely land on a slope of *exactly* zero, you just get close enough that the numbers stop changing. **That state — "the score stopped improving" — is what the word convergence means.**
+
 ### 3.6 How big a step? The learning rate
 > The **learning rate** is simply *how big a step you take downhill each time*. Too big and you'll leap right over the valley bottom and bounce back and forth forever, never settling — like a hyperactive marble that can't stop in the bowl. Too small and you're inching down the hill all day. You want steps **"just right."** A common starting value is 0.01.
 
@@ -326,6 +311,60 @@ $$\theta_1 := \theta_1 - \alpha \, \frac{1}{m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)
 
 📖 **Read it aloud:** *"theta-zero gets updated to theta-zero minus alpha times the average error; theta-one gets updated to theta-one minus alpha times the average error weighted by x."*
 **What it does:** plug the two slopes into the downhill-step rule and repeat both — that *is* training a linear regression.
+
+#### Do we converge θ₀ first, then θ₁? No — every knob moves on every step
+
+A natural question, and the answer is **no**. There is **one** loop, and **every** parameter is updated on **every** pass. You never finish θ₀ and then start on θ₁.
+
+**The rule that makes it work — the "simultaneous update."** Within one iteration you must compute **all** the slopes *first*, using the **current** θ values, and only **then** write the new values in:
+
+```text
+CORRECT — simultaneous:
+    temp0 := θ₀ − α · (∂J/∂θ₀  evaluated at the CURRENT θ₀, θ₁)
+    temp1 := θ₁ − α · (∂J/∂θ₁  evaluated at the CURRENT θ₀, θ₁)
+    θ₀ := temp0          ← both written only after
+    θ₁ := temp1             both slopes are computed
+
+NOT gradient descent — sequential:
+    θ₀ := θ₀ − α · ∂J/∂θ₀     ← θ₀ moves here...
+    θ₁ := θ₁ − α · ∂J/∂θ₁     ← ...so THIS slope is measured from a hill you already stepped off
+```
+
+**Why it matters.** The gradient *is* "all the slopes measured at the **same** point." Mix in a slope measured *after* θ₀ has already moved and your step is no longer along the gradient — you're combining readings from two different places on the bowl. That's a different algorithm (a cousin of Gauss–Seidel / coordinate descent), not gradient descent.
+
+> **An honest footnote — don't over-fear this one.** On a convex bowl like ours, the sequential version *still lands on exactly the same answer* (θ₀=3.0, θ₁=1.9). The stopping point is wherever all the slopes vanish, and that's the same place either way — it just takes a different route there (and here it's even a hair *faster* early on). So why insist on simultaneous? Three reasons: **(1)** it's the **definition** everything else is reasoned from — the steepest-descent argument, the learning-rate analysis, and the convergence proofs all assume the true gradient; **(2)** real vectorized code does it simultaneously *by construction* ($\theta := \theta - \alpha\nabla J(\theta)$), so hand-rolling a loop is the main way to drift off-definition without noticing; **(3)** on surfaces less forgiving than this bowl, the two genuinely part ways. **Run `hands-on/hello_gradient_descent.py` to watch both paths side by side — same destination, different route.**
+
+**Why they can't be tuned separately: the knobs are coupled.** $J$ depends on both at once, so "downhill" is a **single combined direction**, not two independent ones. And you already have the proof in the §3.4 table: **θ₁ shot up to 2.55, then eased back to 1.90** as θ₀ climbed to 3.0. If the knobs were independent, θ₁ would have gone straight to 1.9 and stayed. It retreated *because* θ₀ moved — the best slope depends on where the intercept is, and vice versa. One ball, one path.
+
+**Convergence is checked once, on the whole thing** — not per knob. You stop when the *total* cost stops dropping (all slopes ≈ 0 **together**), never when "θ₀ is done."
+
+**More features? Identical.** With θ₂, θ₃ … θₙ you compute every partial derivative from the current values, then update them all in the same step. In real code it's a single vector operation — $\theta := \theta - \alpha \nabla J(\theta)$ — which updates every parameter at once, by construction. (A neural network does exactly this, just with millions of knobs instead of two.)
+
+> *Aside for the curious:* there **is** a method that deliberately tunes one knob at a time until it settles — **coordinate descent** (it's what Lasso often uses). It's a legitimate algorithm and it converges perfectly well on a convex bowl. So the instinct behind "why not one at a time?" isn't wrong — it describes a real method. It just isn't *gradient descent*, which by definition steps along the true gradient with every knob moving at once.
+
+#### Does every step use ALL the data? Yes — and that has a name
+
+Look at the slope formulas again: $\sum_{i=1}^{m}$. **That symbol is the answer.** Every single iteration walks the **entire** training set, adds up all $m$ errors, and averages them ($\div m$). Nothing is skipped, nothing is sampled.
+
+Our run did **1,035 iterations × 4 weeks = 4,140 visits to a data point** — to learn two numbers.
+
+That's called **batch gradient descent** — *"batch"* meaning **the whole batch of training data, on every step.**
+
+**With 4 rows that's free. With 10 million rows it's brutal:** one step = one full pass over 10 million rows. A thousand steps = a thousand full passes. You'd wait days to nudge two knobs. So the same math comes in three flavours — identical idea, different amount of data per step:
+
+| Flavour | Data per step | Character | Where you'll meet it |
+|---|---|---|---|
+| **Batch** GD | **all $m$** rows | smooth, accurate path; expensive per step | small data — *what this doc does* |
+| **Stochastic** GD (SGD) | **1** random row | very fast, very noisy — zig-zags hard but gets there | huge / streaming data |
+| **Mini-batch** GD | a **chunk** (32, 64, 256…) | the practical middle ground | **almost all deep learning** |
+
+**Why do the noisy ones work at all?** One row's error is a *rough estimate* of the average error — wrong on any given step, but right on average. So you trade a few expensive, perfect steps for many cheap, sloppy ones. That's usually the better deal: the noise even helps escape the bad spots on the bumpy deep-learning terrain from §3.8.
+
+> **One word you must not mix up — *epoch*.**
+> - **iteration** = one update of the knobs (one trip around the loop)
+> - **epoch** = one full pass through all the training data
+>
+> In **batch** GD they're **the same thing** — which is exactly why the distinction is invisible here and confusing later. With 10M rows and mini-batches of 100, **one epoch = 100,000 iterations.** So when a deep-learning tutorial says *"train for 10 epochs,"* it means *"sweep the whole dataset 10 times"* — not "take 10 steps."
 
 **Why a bowl — and why only *one* path down it?** Good question to ask. The badness score depends on **the knobs we tune** — the parameters. Even with a *single* feature there are already **two** knobs, θ₀ and θ₁, so the honest cost surface is a **3D bowl**: θ₀ on one floor axis, θ₁ on the other, and the badness score as the height. *(The flat U-curve back in §3.3 was a simplification — it froze θ₀ to look at just the slope. This bowl is the real, both-knobs-at-once picture.)*
 
@@ -391,6 +430,80 @@ The log is one tool for one shape. Here's the broader map — the common shapes 
 
 **Rule of thumb:** if you can *see* the shape and it's a known one, a transform or polynomial keeps you in cheap, interpretable linear-regression land. If it's messy or unknown, reach for a model that learns the non-linearity on its own (trees, boosting, neural nets).
 
+#### The data behind the shapes — real scenarios, sources, and the transform
+
+Abstract shapes are easy to nod at and hard to *feel*. Here's a concrete case for each — the situation, **where the data comes from**, the raw pattern, and the transform that straightens it. This figure runs all four on actual data:
+
+![Real non-linear data, straightened](ML_Study_Figures/16_data_transforms.png)
+*What this graph shows: LEFT column = raw data (curved). RIGHT column = the right transform (straight), each with its real R². Row ① is **real World Bank data, 210 countries**; ② is compound-interest math; ③ is illustrative agronomy; ④ is **real World Bank data**. Reproduce it yourself with `hands-on/hello_nonlinear_transforms.py`.*
+
+**① Logarithmic — income → life expectancy** — the **Preston curve** (Preston, 1975).
+The first few thousand dollars of national income buy huge health gains; past that, each extra dollar buys less and less life. **Real data** — GDP per capita and life expectancy, 210 countries, 2021:
+
+| Country | GDP per capita | ln(GDP) | Life expectancy |
+|:---|---:|---:|---:|
+| Sierra Leone | $885 | 6.8 | 60.3 |
+| India | $2,240 | 7.7 | 67.3 |
+| Brazil | $7,973 | 9.0 | 73.0 |
+| Poland | $18,636 | 9.8 | 75.4 |
+| Germany | $52,349 | 10.9 | 80.8 |
+
+*A straight line on raw income gives **R² = 0.41** (it can't follow the flattening curve); with **ln(GDP)** it jumps to **R² = 0.71** — `life_exp = 32.3 + 4.4·ln(GDP)`. The USA is a famous outlier: $71,441 but only 76.3 years — richer than Germany, shorter-lived.*
+*Source: World Bank — [GDP per capita](https://data.worldbank.org/indicator/NY.GDP.PCAP.CD) (`NY.GDP.PCAP.CD`), [life expectancy](https://data.worldbank.org/indicator/SP.DYN.LE00.IN) (`SP.DYN.LE00.IN`), 2021.*
+
+**② Exponential — compound growth** *(this table is math, not a dataset)*
+Anything multiplying by a constant factor each period. The cleanest instance is the **compound-interest formula** itself, `A = P·(1+r)^t` — here $10,000 at 8%/yr:
+
+| Year | Amount | ln(Amount) |
+|:---:|---:|---:|
+| 0 | $10,000 | 9.21 |
+| 10 | $21,589 | 9.98 |
+| 20 | $46,610 | 10.75 |
+| 30 | $100,627 | 11.52 |
+| 40 | $217,245 | 12.29 |
+
+*The dollar gain per decade explodes, but **ln(Amount)** climbs a constant +0.77 — dead straight. Fix: regress ln(Amount) on Year.*
+> **Honesty check — verify the shape, don't assume it.** "Population grows exponentially" is the textbook line, but **real** World Bank world population, 1960–2020, is nearly **linear** (raw R² = 0.999): the growth *rate* fell over the period and cancelled the compounding. Clean exponentials are *unchecked* growth — epidemics, viral spread, a product's first months. *(Source: World Bank [SP.POP.TOTL](https://data.worldbank.org/indicator/SP.POP.TOTL).)*
+
+**③ Polynomial — the "sweet spot"** *(illustrative numbers — Mitscherlich's law of diminishing returns)*
+More of a good thing helps, until it hurts. Fertilizer lifts crop yield, then scorches it. (The numbers are illustrative; the inverted-U is a real, named agronomic law.)
+
+| Fertilizer (kg N/ha) | Yield (t/ha) |
+|:---:|:---:|
+| 0 | 2.0 |
+| 100 | 6.0 |
+| 150 | **6.5** ← peak |
+| 200 | 6.0 |
+| 250 | 5.0 |
+
+*A straight line can't bend both ways (R² = 0.42). Fix: **polynomial regression** — add fertilizer² as a feature (R² = 1.0). Note this is **not an axis transform**: you're adding a feature, and the model stays linear in θ. Same shape: drug dose→effect, ad frequency→response, the environmental Kuznets curve.*
+
+**④ S-curve — technology adoption** — and the twist you asked about.
+Anything spreading through a fixed population saturates toward a ceiling. **Real data** — share of the world online:
+
+| Year | % online |
+|:---:|:---:|
+| 2005 | 15.6% |
+| 2010 | 28.4% |
+| 2015 | 39.9% |
+| 2020 | 60.1% |
+| 2021 | 63.8% |
+
+*Source: World Bank — [Individuals using the Internet](https://data.worldbank.org/indicator/IT.NET.USER.ZS) (`IT.NET.USER.ZS`). The world series starts in 2005, so this is the rising **middle** of the S — not the slow start or the plateau.*
+
+> **Is the S-curve "linearizing" like the others? No — this is the key distinction.** A plain **log does NOT straighten an S-curve**: it has a *ceiling* (100%), not runaway growth, so `ln(%)` gives R² = 0.98 — no better than raw. The S-curve has its **own** transform: the **logit**, `ln( p / (1−p) )` — the *log-odds*. *That* straightens it (R² = 0.99). And the logit **is the engine of logistic regression** — the whole subject of **ML Study 03**.
+
+**So the "fixes" come in four kinds — worth keeping straight:**
+
+| Situation | What you do | Still linear regression? |
+|---|---|---|
+| Exponential / power / logarithmic | **transform an axis** (log y, log both, log x) | ✅ yes — on the transformed variable |
+| Polynomial (humps, U-shapes) | **add features** (x², x³) | ✅ yes — "linear in θ", curved in x |
+| S-curve (floor **and** ceiling) | **logit → logistic regression** | ❌ a different (but closely related) model |
+| Complex / unknown | **a model that learns the shape** (trees, boosting, neural nets) | ❌ no |
+
+**Are these shapes "industry standard"?** Yes — each is a named, well-established model: the **Preston curve** (income ↔ longevity), **compound / Malthusian growth** (exponential), **Mitscherlich's law of diminishing returns** (the fertilizer hump), and **Rogers' Diffusion of Innovations / the Bass model / logistic growth** (the adoption S-curve). Recognizing which shape you're looking at is the skill; the fix follows from it.
+
 ---
 
 ## Part 4 — Is the model any good? R² and Adjusted R²
@@ -417,6 +530,9 @@ $$R^2 = 1 - \frac{SS_{res}}{SS_{tot}} = 1 - \frac{\sum_i (y^{(i)} - \hat{y}^{(i)
 > R² has one dangerous flaw: **it never goes down when you add a new column of data — even a totally useless one.** Add "customer's favorite color" to a house-price model and R² will still tick *up*, tricking you into thinking the junk-filled model is better. **Adjusted R² is the skeptical manager who fixes this.** It only gives credit for a new feature if that feature genuinely pulls its weight; add a useless column and Adjusted R² actually goes **down**, flagging "that column isn't earning its seat." So when comparing models with different numbers of features, you trust **Adjusted R², not R²**.
 >
 > *Example:* house price from `bedrooms` → R² 0.85. Add `location` (relevant) → 0.90, and Adjusted R² also rises. Add `gender` (irrelevant) → R² still creeps to 0.91, but **Adjusted R² drops** (say 0.86 → 0.82), correctly warning you off.
+
+![R² vs Adjusted R² as features are added](ML_Study_Figures/16_adjusted_r2.png)
+*What this graph shows: we keep adding features left to right. On the **real** features (bedrooms, location, square footage) both scores climb together. Then we start adding **junk** (favorite colour, zodiac sign, house number): **R² keeps ticking up — its bad habit — while Adjusted R² turns down.** The spot where Adjusted R² **peaks** is the signal to stop adding features; everything past it is the model fooling itself. That divergence is the entire reason you compare models with Adjusted R², not R².*
 
 **The math.**
 
@@ -463,6 +579,8 @@ model = LinearRegression().fit(X, y)     # the gradient-descent-style fit, done 
 print(model.intercept_, model.coef_[0])  # θ₀ , θ₁
 print(model.score(X, y))                 # R²
 ```
+
+**▶ Run the whole thing:** `hands-on/hello_worldbank.py` does exactly this on all **210 countries** (bundled offline; `--live` refetches). It prints the line, the interpretation, sample predictions — and, best of all, the **residuals**: which countries live *longer* or *shorter* than their income predicts (Sri Lanka beats its income by +7 years; Central African Republic falls 19 short). That gap — the 29% income *doesn't* explain — is where the real analysis begins.
 
 **Why this matters for the plan:** this is the applied World Bank context in miniature — a real development question answered with the linear regression you just learned. In the sessions you'll run it live in the notebook; then you **repeat it on your own dataset** (a different indicator, or a Kaggle set) — and *that* becomes a project that's genuinely your own, a real question you answered with your own hands.
 
@@ -511,4 +629,6 @@ print(model.score(X, y))                 # R²
 | $R^2$ / Adjusted $R^2$ | How much you beat the average-guess / same, but penalizing junk features |
 
 ---
-*ML Study 01 — Intro → Linear Regression → R²/Adjusted R². Diagrams built for clarity. Next: Ridge & Lasso → Logistic Regression.*
+**◄ Previous: [ML Study 00 — ML Foundations](ML_Study_00_ML_Foundations.html)**  ·  **Next → [ML Study 02 — Overfitting, Ridge & Lasso](ML_Study_02_Overfitting_Ridge_Lasso.html)**
+
+*ML Study 01 — Linear Regression → cost function → gradient descent → R²/Adjusted R².*

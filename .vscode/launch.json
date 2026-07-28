@@ -1,0 +1,23 @@
+{
+  // VS Code run/debug configs for this course.
+  // Press F5 with a Python file open, or pick a config from the Run panel.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Demo: gradient descent (hello_gradient_descent.py)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/hands-on/hello_gradient_descent.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Run the current Python file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
