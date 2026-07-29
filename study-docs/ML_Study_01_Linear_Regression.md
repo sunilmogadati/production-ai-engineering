@@ -71,13 +71,40 @@ $$\theta_1 = \frac{\sum_i (x^{(i)} - \bar{x})(y^{(i)} - \bar{y})}{\sum_i (x^{(i)
 
 📖 *"theta-one equals the sum of (x minus x-bar)(y minus y-bar), over the sum of (x minus x-bar) squared; then theta-zero equals y-bar minus theta-one times x-bar."* ($\bar{x}, \bar{y}$ are just the averages.)
 
-**Run it on our four weeks** ($\bar{x} = 2.5$, $\bar{y} = 7.75$):
+**What is that formula actually asking?** *"When x goes up, does y go up too — and by how much?"* Read the top and bottom separately:
+- **Top — "do they move together?"** For each point, $(x^{(i)} - \bar{x})$ asks *"is this a high-x or low-x point?"* and $(y^{(i)} - \bar{y})$ asks *"high-y or low-y?"* **Multiply them:** the product is **positive** when a point is high on *both* (or low on both) — x and y **moving together** — and negative when one's high and the other low. Summing gives the total "move-together" signal.
+- **Bottom — "how spread out is x?"** $\sum(x^{(i)}-\bar{x})^2$ is just how much the x-values vary.
+- So **slope = (how much x and y move together) ÷ (how much x spreads out).**
 
-$$\theta_1 = \frac{9.5}{5.0} = \mathbf{1.9} \qquad\qquad \theta_0 = 7.75 - 1.9 \times 2.5 = \mathbf{3.0}$$
+**Trace it on our four weeks** ($\bar{x} = 2.5,\ \bar{y} = 7.75$) — *this* is where the 9.5 and 5.0 come from:
 
-**That's where the 3 and the 1.9 come from** — not magic, just that formula.
+| week | x | y | $x - \bar{x}$ | $y - \bar{y}$ | product | $(x-\bar{x})^2$ |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | 1 | 5 | −1.5 | −2.75 | 4.125 | 2.25 |
+| 2 | 2 | 7 | −0.5 | −0.75 | 0.375 | 0.25 |
+| 3 | 3 | 8 | +0.5 | +0.25 | 0.125 | 0.25 |
+| 4 | 4 | 11 | +1.5 | +3.25 | 4.875 | 2.25 |
+| | | | | **sum →** | **9.5** | **5.0** |
 
-> **Then why bother with gradient descent?** Fair question. This closed-form shortcut exists *only* because linear regression is simple enough to solve exactly. Most models — neural networks especially — have **no such formula**. Gradient descent is the general method that works for all of them, which is why we learn it here on the one problem where we can check its answer against the truth. *(And we do: §3.4 walks downhill and lands on exactly 3.0 and 1.9.)*
+$$\theta_1 = \frac{9.5}{5.0} = \mathbf{1.9}$$
+
+**Then the intercept.** The best-fit line *always* passes through the **average point** $(\bar{x}, \bar{y}) = (2.5, 7.75)$ — the data's center of mass. So once you know the slope, slide the line until it hits that point: $\bar{y} = \theta_0 + \theta_1\bar{x}$, which gives
+
+$$\theta_0 = \bar{y} - \theta_1\bar{x} = 7.75 - 1.9 \times 2.5 = \mathbf{3.0}$$
+
+**That's where the 3 and the 1.9 come from** — not magic, just that formula, one row at a time.
+
+**What about more than one feature?** This formula is the **one-feature** case. With several features ($x_1, x_2, \dots$ and $\theta_1, \theta_2, \dots$) the same closed-form idea generalizes to the **Normal Equation** — one *matrix* formula that solves for **all** the θ's at once:
+
+$$\theta = (X^\top X)^{-1}\, X^\top y$$
+
+where $X$ stacks the data (one row per point, one column per feature) and $y$ is the answers. *(The scalar formula above is just this collapsed to one dimension.)* Two things to know: you **can't** run the one-feature formula on each feature separately — features can be **correlated**, and the matrix is what solves them *jointly* (so no feature double-counts another's effect). And notice the catch: it must **invert a matrix**, which grows expensive fast (≈ features³) and can even fail if features are redundant — **yet another reason gradient descent is the general workhorse.** Gradient descent, by contrast, scales trivially: just more knobs, all nudged together each step (§3.7).
+
+> **Wait — if a formula hands us the best slope, why do gradient descent at all?** *(Gradient descent is the step-by-step "start with a guess and walk downhill" method we build in §3.4 — for now, just "the other way to find the best line.")* (And the flip side: *how can a formula know the "best" without trying anything?*) Here's the resolution — it's one of the most important ideas in ML. The best line sits at the **bottom of the cost bowl** (§3.3), where the slope is **zero**. The formula and gradient descent are **two roads to that same bottom:**
+> - **The formula** uses calculus to *solve* "where is the slope zero?" in one shot — possible *only* because linear regression's bowl is simple enough to solve exactly.
+> - **Gradient descent** *walks* to that same zero-slope point, step by step.
+>
+> They reach the **identical** answer (3.0, 1.9). **So why learn the walk?** Because almost every other model — neural networks especially, and even logistic regression next — has a cost surface too complex to solve with any formula. There, walking downhill is the **only** option. We learn it here, on the one problem where a formula *does* exist, precisely so we can **check the walk against the exact answer.** *(And we do: §3.4 walks downhill and lands on exactly 3.0 and 1.9.)*
 
 ### 3.3 Scoring a line: the cost function
 > To find the *best* line, you first need a way to say how *bad* any given line is — a single **badness score**. Here's the recipe: for each dot, measure how far the line's prediction missed (the error). **Square** each error, then **average** them. Low score = good line, high score = bad line. **It's literally a golf score: lower is better, and our goal is the lowest score possible.**
@@ -89,11 +116,20 @@ $$\theta_1 = \frac{9.5}{5.0} = \mathbf{1.9} \qquad\qquad \theta_0 = 7.75 - 1.9 \
 ![Cost curve](ML_Study_Figures/02_cost_curve.png)
 *What this graph shows: each candidate slope for the line gets a badness score; plotting slope (across) vs. score (up) gives a U-shaped valley, and the bottom of the valley is the best-fit line. Our whole job is to reach that bottom.*
 
+> **Where's θ₀ in this picture?** To keep the graph 2D, this U-curve varies only the **slope (θ₁)** and holds the intercept **θ₀** fixed — a flat picture shows one knob at a time. **θ₀ has its own U-curve too** — you just slice the bowl the other way:
+
+![Each knob has its own U-curve](ML_Study_Figures/18_two_ucurves.png)
+*What this graph shows: slice the cost bowl along **θ₁** (holding θ₀) → the slope's valley; slice it along **θ₀** (holding θ₁) → the intercept's valley. Same bowl, two slices, each a U-curve with its own bottom. With both knobs varying at once, the true shape is the **3D bowl** of §3.7.*
+
+> **Same *process*, different *formula*.** θ₀ gets treated exactly like θ₁ — its own slope, its own downhill step, moved together every iteration — **but its slope *formula* is different:** θ₀'s slope is the **plain average error**, while θ₁'s is the **average error weighted by x**. You'll compute both in the §3.4 table, and see *why* they differ in the calculus primer (the chain-rule "inside derivative" is **1** for θ₀ but **x** for θ₁). So: same method, two different slope formulas.
+
 **The math.** The badness score is the **cost function** $J$ — the mean squared error:
 
 $$J(\theta_0, \theta_1) = \frac{1}{2m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{(i)}\Big)^2$$
 
 📖 **Read it aloud:** *"J of theta-zero and theta-one equals one over two-m, times the sum from i equals 1 to m of, open paren, h-theta of x-i minus y-i, close paren, squared."*
+
+*Why "**of θ₀ and θ₁**"? Because the badness score depends on **both** knobs — change either the intercept or the slope and the score changes, so J is a function of both. With more features you'd tune more knobs and simply write $J(\theta_0, \theta_1, \theta_2, \dots)$ — the cost is always a function of **every** parameter you're adjusting.*
 
 **What it does, step by step:** for each data point $i$ —
 1. $h_\theta(x^{(i)})$ = the line's **prediction** for that point,
@@ -162,6 +198,26 @@ These are the same actual data points you saw fitted in §3.1 — but there we j
 
 > **Parameters** are found *by* the model (here: θ₀, θ₁). **Hyperparameters** are chosen *by you* (here: α, the initial guess, batch size, the stopping rules). A model "learns" its parameters; you "tune" its hyperparameters.
 
+**How to set each dial — a first field guide.** These are the knobs *you* turn; here's what each does and where to start:
+
+| Hyperparameter | What it controls | How to set it / what to try |
+|---|---|---|
+| **learning rate α** | the size of each downhill step — *the one you'll tune most* | Start ~**0.01**; try a ladder **0.001 → 0.01 → 0.1**. If the cost goes **up**, α is too big (overshooting); if it barely moves, too small (crawling). Both failure modes are in §3.6. |
+| **starting values** (θ₀, θ₁) | where the walk begins | For linear regression's single bowl it **doesn't matter** (every start reaches the one bottom), so `0` is fine. For models with many local minima (neural nets) it matters — you start from small **random** values. |
+| **MAX_ITERS** | a hard cap on the number of steps | A safety net so a bad α can't loop forever. If training stops here *without the cost flattening*, it hasn't converged — raise the cap (or fix α). |
+| **TOLERANCE** | *"close enough to stop"* — how tiny a cost improvement still counts as progress | Each step lowers the score a little; once one whole step improves it by **less than TOLERANCE**, more steps aren't worth it, so we stop. **Smaller → more precise answer but more iterations; larger → stops sooner, rougher.** Typical values are tiny, e.g. $10^{-6}$. |
+| **batch size** | how much data each step looks at | **all** rows (*batch* — what we do here: smooth but slower steps), **one** row (*stochastic*: fast, noisy), or a **chunk** of ~32–256 (*mini-batch*: the deep-learning default). More in §3.7. |
+
+**The mental model:** *parameters* are the answer the model finds; *hyperparameters* are the settings that control **how** it searches. Getting them wrong doesn't give a slightly-wrong answer — it can give **no** answer (α too big → diverges) or a wasted afternoon (α too small → never finishes). Tuning them is a real part of the job.
+
+> **Is that the *full* list of hyperparameters for linear regression?** No — it depends on *which* linear regression:
+> - **Plain / closed-form (OLS)** — solved directly by the Normal Equation (§3.2), so it has **essentially none**; there's nothing to tune.
+> - **Gradient-descent** linear regression — the five dials above (α, starting values, MAX_ITERS, TOLERANCE, batch size), plus optionally a **learning-rate schedule** (shrink α as you go).
+> - **Regularized** linear regression (**Ridge / Lasso** — Study 02) — adds the big one: the **regularization strength λ** (how hard to penalize large weights), and for Elastic Net the **L1/L2 mix**.
+> - **Modelling choices** that behave like hyperparameters: the **polynomial degree** (§3.9) and whether you **scale the features** (§3.7).
+>
+> So the five above are the core *gradient-descent* set — not a universal "linear regression" list. Add regularization or polynomial features and you add more.
+
 > **One notation note before the table — $\hat{y}$ and $h_\theta(x)$ are the *same thing*.** Both mean "the model's prediction." We keep both on purpose, because you'll see both everywhere: **$h_\theta(x)$** is natural in the *machinery* (the cost and gradient formulas, where the parameters $\theta$ are the whole point), while **$\hat{y}$** — "y-hat" — is the everyday shorthand for a predicted value that reads cleaner in *tables* and in error terms like $\hat{y}-y$ (and it's what R² and scikit-learn use). Same quantity, two names — so $\hat{y} = h_\theta(x)$.
 
 **Step 1 — do the math once, and watch the line improve.** With θ₀ = θ₁ = 0:
@@ -211,12 +267,12 @@ It lands on exactly **θ₀ = 3.0, θ₁ = 1.9** — the true best fit — with 
 *What this graph shows: the same four data points (dots) with the line drawn at different iterations. It starts flat (the bad guess at 0) and swings up fast. **Look closely at "iter 30": it is steeper than the final line, not closer to it** — that's the overshoot from the table above (θ₁ races to ≈2.55 while θ₀ lags behind), and it then eases back down as θ₀ catches up. That's not an error in the picture — it's the zig-zag, and it's normal. What matters is that the **cost drops at every single step**, even while the line looks like it's wandering.*
 
 ![Learning curve](ML_Study_Figures/11_learning_curve.png)
-*What this graph shows: the cost (badness score) at each iteration — it drops fast at first, then flattens as the line reaches the best fit. This falling curve is the **learning curve**, and it's how you confirm training is actually working.*
+*What this graph shows: the cost (badness score) at **every** iteration — it drops fast in the first ~10 steps, then flattens as the line nears the best fit and the last ~40 steps barely move it. (Plotting every step shows it's a smooth descent, not a cliff.) This falling curve is the **learning curve**, and watching it fall is how you confirm training is actually working.*
 
 That back-and-forth — **predict → measure the error → nudge the line downhill → repeat** — is **gradient descent.** The next section states the one-line rule behind it.
 
 ### A 90-second calculus primer — only the bits this doc needs
-> You don't need a calculus course for this. You need **one idea** and **one rule.**
+> You don't need a calculus course for this. You need **one idea** and a handful of **small rules.**
 
 **The one idea: a derivative is just a slope.** The **derivative** of a function at a point tells you **how steep it is and which way it tilts** there — how fast the output changes when you nudge the input. On our badness-score valley:
 - **Positive** derivative → the ground tilts **up to the right** → the bottom is to your **left**.
@@ -233,11 +289,27 @@ That back-and-forth — **predict → measure the error → nudge the line downh
 
 The sign always points *away* from where you want to go — which is exactly why the update rule **subtracts** it.
 
-**Partial derivative — same thing, one knob at a time.** When a function depends on several inputs (our cost $J$ depends on both θ₀ and θ₁), the **partial derivative** $\frac{\partial J}{\partial \theta_0}$ means "the slope if I wiggle **only** θ₀ and hold θ₁ still." The curly $\partial$ (read *"partial-dee"*) just signals "one variable at a time" — we compute one slope per knob.
+**Derivative vs. partial derivative — and how they're written.** A plain **derivative** (written $\frac{d}{dx}$, a *straight* "d") is for a function of **one** input — one variable, one slope. But our cost $J(\theta_0, \theta_1)$ has **two** inputs, so there's no single "the derivative" — there are two directions you could move. So we take a **partial derivative**, written with a *curly* **∂** (read "partial-dee"), one per knob:
 
-**The one rule we actually use — the power rule:** the derivative of $x^2$ is $2x$ (bring the power down to the front, drop it by one). And the derivative of a plain term $x$ is just $1$ (a straight line has constant slope). That's the whole toolkit — plus one add-on:
+- $\dfrac{\partial J}{\partial \theta_0}$ — "the slope if I wiggle **only** θ₀ and hold θ₁ fixed"
+- $\dfrac{\partial J}{\partial \theta_1}$ — "the slope if I wiggle **only** θ₁ and hold θ₀ fixed"
 
-**Chain rule (one line):** to differentiate *something-squared*, bring the 2 down and multiply by the derivative of the inside. For example $\frac{d}{d\theta_1}(\theta_0 + \theta_1 x - y)^2 = 2(\theta_0 + \theta_1 x - y)\cdot x$ — the extra $x$ is the inside's derivative. *(That extra $x$ is exactly where the $x^{(i)}$ in the θ₁ slope comes from in §3.7.)*
+The **rules are exactly the same** as for an ordinary derivative — the *only* thing "partial" changes is that you treat the **other** variable as a fixed number (a constant). That's why the constant rule does the heavy lifting: the held-fixed symbols differentiate to 0.
+
+> **So which one handles "both θ₀ and θ₁ together"?** Not a plain derivative, and not a single partial — it's the **gradient**, written $\nabla J = \left[\dfrac{\partial J}{\partial \theta_0},\ \dfrac{\partial J}{\partial \theta_1}\right]$: the *pair* of partials stacked into one vector. So the hierarchy is: **derivative** = the one-variable case ($\frac{d}{dx}$); **partial derivative** = one knob of a many-variable function ($\frac{\partial}{\partial \theta_j}$, others held fixed); **gradient** = all the partials bundled together ($\nabla J$). Gradient descent uses the whole gradient — it nudges θ₀ and θ₁ *together*, each by its own partial (that's the "simultaneous update" of §3.7).
+
+**The rules we use** — all small ones, and **the same whether it's a derivative or a partial derivative**:
+
+- **Power rule:** the derivative of $x^2$ is $2x$ (bring the power down to the front, drop it by one). The derivative of a plain $x$ is just $1$.
+- **Constant rule:** the derivative of a **constant** — any plain number, *or any term with no θ in it* — is **0** (flat ground has no slope). And a constant *times* θ just keeps the constant: $\frac{d}{d\theta}(c\,\theta) = c$.
+- **Sum rule:** the derivative of a *sum* is the *sum of the derivatives*. So a big $\sum(\dots)^2$ can be differentiated **one term at a time**, then added up — the $\sum$ just comes along for the ride.
+- **Chain rule:** to differentiate *something-squared*, bring the 2 down and multiply by the derivative of the **inside**: $\frac{d}{d\theta}(\text{inside})^2 = 2\,(\text{inside})\cdot(\text{inside})'$.
+
+**Now the step that trips everyone up — the derivative of the inside $(\theta_0 + \theta_1 x - y)$.** Because we take the slope for **one knob at a time** (that's the partial derivative), we treat every *other* symbol as a **fixed number** and lean on the constant rule:
+- **with respect to θ₁:** $\theta_0$ has no θ₁ → **0**; $-y$ has no θ₁ → **0**; $\theta_1 x$ is a constant ($x$) times θ₁ → **$x$**. Add them: $0 + x - 0 = \boldsymbol{x}$. *(So yes — we "ignore" θ₀ and y, because the **constant rule** makes their derivatives 0. That leftover $x$ is why θ₁'s slope is weighted by x.)*
+- **with respect to θ₀:** $\theta_0$ → **1**; $\theta_1 x$ has no θ₀ → **0**; $-y$ → **0**. Add them: $\boldsymbol{1}$. *(That's why θ₀'s slope is the plain average error — no x attached.)*
+
+So the full chain-rule step for θ₁ is $\frac{d}{d\theta_1}(\theta_0 + \theta_1 x - y)^2 = \underbrace{2\,(\theta_0+\theta_1 x - y)}_{\text{power rule}}\cdot \underbrace{x}_{\text{inside derivative}}$ — the **2** from the square, the **x** from the inside.
 
 **And *this* is why the cost function carried that ½.** Look at what just happened: differentiating the square produced a **2** out front. If the cost were plain $\frac{1}{m}\sum(\dots)^2$, every slope formula would come out as a messy $\frac{2}{m}$. So we quietly put a ½ in the cost *up front* — making it $\frac{1}{2m}$ — precisely so the 2 and the ½ cancel: $\frac{1}{2m}\cdot 2 = \frac{1}{m}$. It's a cosmetic choice made *before* the calculus purely so the answer *after* the calculus is clean — and it changes nothing about the best line (scaling every score by ½ doesn't move the minimum). *(You'll see it cancel for real in §3.7.)*
 
@@ -430,6 +502,8 @@ The log is one tool for one shape. Here's the broader map — the common shapes 
 
 **Rule of thumb:** if you can *see* the shape and it's a known one, a transform or polynomial keeps you in cheap, interpretable linear-regression land. If it's messy or unknown, reach for a model that learns the non-linearity on its own (trees, boosting, neural nets).
 
+**▶ Run it:** **`hands-on/hello_nonlinear_transforms.py`** demonstrates four of these shapes on real data and straightens each one — **log the x** (income → life expectancy, World Bank), **log the y** (exponential compound growth), **add an x² feature** (fertilizer → crop yield), and the **logit** transform for an S-curve (world internet adoption %). It's the runnable companion to this field guide — you watch a curved relationship become a straight line, then fit it with plain linear regression.
+
 #### The data behind the shapes — real scenarios, sources, and the transform
 
 Abstract shapes are easy to nod at and hard to *feel*. Here's a concrete case for each — the situation, **where the data comes from**, the raw pattern, and the transform that straightens it. This figure runs all four on actual data:
@@ -580,7 +654,7 @@ print(model.intercept_, model.coef_[0])  # θ₀ , θ₁
 print(model.score(X, y))                 # R²
 ```
 
-**▶ Run the whole thing:** `hands-on/hello_worldbank.py` does exactly this on all **210 countries** (bundled offline; `--live` refetches). It prints the line, the interpretation, sample predictions — and, best of all, the **residuals**: which countries live *longer* or *shorter* than their income predicts (Sri Lanka beats its income by +7 years; Central African Republic falls 19 short). That gap — the 29% income *doesn't* explain — is where the real analysis begins.
+**▶ Run the whole thing:** `hands-on/hello_worldbank.py` does exactly this on all **210 countries** (bundled offline; `--live` refetches). It prints the line, **R² *and* Adjusted R²** — with a live demo of the §4 idea (junk features fool R² but not Adjusted R², shown on real data) — sample predictions, and, best of all, the **residuals**: which countries live *longer* or *shorter* than their income predicts (Sri Lanka beats its income by +7 years; Central African Republic falls 19 short). That gap — the 29% income *doesn't* explain — is where the real analysis begins.
 
 **Why this matters for the plan:** this is the applied World Bank context in miniature — a real development question answered with the linear regression you just learned. In the sessions you'll run it live in the notebook; then you **repeat it on your own dataset** (a different indicator, or a Kaggle set) — and *that* becomes a project that's genuinely your own, a real question you answered with your own hands.
 
@@ -604,6 +678,7 @@ print(model.score(X, y))                 # R²
 
 ## All the equations in one place
 *(Full "how to read it" for each is in the body above.)*
+
 - **Line (hypothesis):** $h_\theta(x) = \theta_0 + \theta_1 x$ — "h-theta of x equals theta-zero plus theta-one x."
 - **Cost (badness score, MSE):** $J = \frac{1}{2m}\sum_{i=1}^{m}(h_\theta(x^{(i)}) - y^{(i)})^2$ — "average of the squared errors."
 - **Gradient descent step:** $\theta_j := \theta_j - \alpha\,\frac{\partial J}{\partial\theta_j}$ — "nudge each theta downhill by learning-rate × slope."

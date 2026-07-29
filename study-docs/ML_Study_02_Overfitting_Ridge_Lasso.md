@@ -124,6 +124,8 @@ With many features, $\hat{y} = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \dots + 
 ![Ridge vs Lasso coefficients](ML_Study_Figures/22_l1_vs_l2_bars.png)
 *What this graph shows: the same data fit by both methods (λ = 1). Three features are real, three are pure junk (true coefficient = 0). Both keep the real ones. But look at the junk region: **Lasso sets those coefficients to exactly 0** — the features vanish from the model — while **Ridge only shrinks them** to tiny non-zero values (−0.01, 0.02, −0.01). Zeroing out = feature selection.*
 
+**▶ Run it:** **`hands-on/hello_ridge_lasso.py`** fits plain, Ridge, and Lasso on data with real *and* junk features and prints their coefficients side by side — you watch **Lasso drive the junk to exactly 0** while Ridge only shrinks it. The feature-selection superpower, live.
+
 **The receipts** — the same data, both methods, at λ = 1:
 
 | | x₁ (real) | x₂ (real) | x₃ (real) | x₄ (junk) | x₅ (junk) | x₆ (junk) |

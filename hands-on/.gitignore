@@ -5,7 +5,9 @@ TEACHER_AID_PRIVATE.md
 *.local.md
 
 # Generated artifacts (regenerate with ml01 / ml09)
-data/
+data/*
+!data/world_*.csv
+
 models/
 venv/
 .venv/
