@@ -23,6 +23,8 @@ Here's a tiny sample dataset — four weeks of **advertising spend and the weekl
 
 *How to read the table:* the first two columns (**ad spend, sales**) are the **sample data** — the blue dots. The **ŷ** column is what the **best-fit line predicts** for each spend, and **error** is the leftover miss (the gray dashed lines in the graph). Those errors are exactly what the cost function (§3.3) squares and adds up. *(Notice the errors roughly cancel to ≈ 0 — a good-fit line sits right in the middle of the points.)*
 
+> **Vocab — the two roles: independent vs. dependent variable.** Here **ad spend is the *independent variable*** (the input you have or control — our $x$) and **sales is the *dependent variable*** (the output that *depends on* the input — our $y$). That's literally where "dependent" comes from: the model claims $y$ **depends on** $x$. Same two roles, many names — all synonyms: independent = **feature / predictor / input / $x$**; dependent = **target / label / response / output / $y$**. With several inputs ($x_1, x_2, x_3\ldots$) you have many independent variables but still just **one** dependent variable. **One caution:** "independent" names the *role in the model*, not a proven cause — regression finds *association*, not causation (see §5), and real-world independent variables are often correlated *with each other* (multicollinearity — part of why Ridge/Lasso exist, Study_02).
+
 Plotted as a scatter with the best-fit line drawn through them:
 
 ![Best-fit line and residuals](ML_Study_Figures/01_best_fit_residuals.png)

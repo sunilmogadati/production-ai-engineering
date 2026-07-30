@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 05 — Naive Bayes: Classifying with Probability</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-05-naive-bayes-classifying-with-probability">ML Study 05 — Naive Bayes: Classifying with Probability</h1>
+<p><strong>Covers:</strong> independent vs. dependent events → conditional probability → Bayes' theorem (derived) → turning it into a classifier → the "naive" independence assumption → a full worked example (Play Tennis) → the zero-frequency trap and Laplace smoothing → when to reach for it.
+<strong>Goal:</strong> understand a classifier that doesn't do gradient descent at all — it just <strong>counts</strong>. By the end you can build a Naive Bayes prediction by hand from a frequency table, and know exactly why it's the go-to baseline for text and spam.</p>
+<p><strong>Series context:</strong> this is a <strong>classification</strong> algorithm, a sibling to <strong><a href="ML_Study_03_Logistic_Regression.html">ML Study 03 — Logistic Regression</a></strong>. Both answer <em>yes/no</em> — but where logistic regression <em>learns weights</em> by descending a cost curve, Naive Bayes <strong>fits by counting frequencies in one pass</strong>. No learning rate, no iterations. Runnable companion: <strong><code>hands-on/hello_naive_bayes.py</code></strong> (reproduces this whole doc's arithmetic, then confirms it with scikit-learn).</p>
+<hr />
+<h2 id="part-1-the-problem-predict-a-label-from-clues">Part 1 — The problem: predict a label from clues</h2>
+<blockquote>
+<p>You're handed some <strong>clues</strong> (it's <em>Sunny</em> and <em>Hot</em>) and asked for a <strong>label</strong> (will they play tennis — <em>Yes</em> or <em>No</em>?). You have a history of past days with their clues and what happened. Naive Bayes answers by asking: <em>"Across everything I've seen, which label makes these particular clues most probable?"</em> — and it computes that with nothing more than fractions.</p>
+</blockquote>
+<p>Naive Bayes is a <strong>probabilistic classifier</strong>. Instead of drawing a boundary (logistic regression) or a tree of rules (decision trees), it estimates <strong>P(label | clues)</strong> for each possible label and picks the biggest. Its reputation rests on one killer application: <strong>text</strong> — spam filters, sentiment, document topic tagging — where every word is a clue and there are thousands of them. It's fast, needs little data, and is almost always the <strong>first baseline</strong> a working engineer tries before anything fancier.</p>
+<p>To get there we need three probability ideas, in order: independent vs. dependent events, conditional probability, and Bayes' theorem.</p>
+<hr />
+<h2 id="part-2-two-kinds-of-events-independent-vs-dependent">Part 2 — Two kinds of events: independent vs. dependent</h2>
+<p><strong>Independent events — rolling a die.</strong> The outcomes are <code>{1, 2, 3, 4, 5, 6}</code>, each with probability <code>P(1) = P(2) = … = 1/6</code>. Roll again and the odds are <em>unchanged</em> — getting a 2 this time tells you <strong>nothing</strong> about the next roll. When one event's outcome doesn't affect another's, they are <strong>independent</strong>.</p>
+<p><strong>Dependent events — a bag of marbles.</strong> A bag holds <strong>3 red</strong> and <strong>2 green</strong> marbles (5 total). Draw one, <em>keep it out</em>, then draw again:</p>
+<ul>
+<li>First draw red: <code>P(Red) = 3/5</code>.</li>
+<li>Now only <strong>4</strong> marbles remain. So the second draw's odds <em>changed</em> because of the first: <code>P(Green after a red is gone) = 2/4 = 1/2</code>.</li>
+</ul>
+<p>The second event <strong>depends</strong> on the first — the bag is smaller now. These are <strong>dependent events</strong>.</p>
+<blockquote>
+<p><strong>Vocab bridge:</strong> this is the same <em>independent vs. dependent</em> language from linear regression (<strong><a href="ML_Study_01_Linear_Regression.html">Study 01 §3.1</a></strong>) — but pointing at a different thing. There it meant the <em>input feature</em> (independent, \(x\)) vs. the <em>predicted output</em> (dependent, \(y\)). Here it means whether two <em>events'</em> probabilities affect each other. Same words, different context — worth flagging to students so they don't conflate them.</p>
+</blockquote>
+<h3 id="conditional-probability-given-that">Conditional probability — "given that…"</h3>
+<p>For the marbles, the chance of "red <strong>then</strong> green" is:</p>
+<p>\[P(\text{Red and Green}) = P(\text{Red}) \times P(\text{Green} \mid \text{Red})\]</p>
+<p>That second term, \(P(\text{Green} \mid \text{Red})\), reads <strong>"probability of Green <em>given</em> Red"</strong> — the probability of green <em>once red has already happened</em>. The vertical bar <code>|</code> means <strong>"given"</strong>. This is <strong>conditional probability</strong>, and it's the whole engine of what follows.</p>
+<p>In general, for any two events A and B:</p>
+<p>\[P(A \text{ and } B) = P(A)\times P(B \mid A)\]</p>
+<hr />
+<h2 id="part-3-bayes-theorem-derived-in-three-lines">Part 3 — Bayes' theorem (derived in three lines)</h2>
+<p>Here is the one piece of algebra in this doc. Start from a fact that's obviously true — the probability of "A and B" doesn't care which order you say it:</p>
+<p>\[P(A \text{ and } B) = P(B \text{ and } A)\]</p>
+<p>Now expand <strong>each side</strong> with the conditional-probability rule from Part 2:</p>
+<p>\[P(A)\times P(B \mid A) = P(B)\times P(A \mid B)\]</p>
+<p>Divide both sides by \(P(A)\) and you have <strong>Bayes' theorem</strong>:</p>
+<p>\[\boxed{\;P(B \mid A) = \dfrac{P(B)\times P(A \mid B)}{P(A)}\;}\]</p>
+<p>📖 <strong>Read it aloud:</strong> <em>"probability of B given A equals probability of B, times probability of A given B, divided by probability of A."</em></p>
+<p><strong>Why this is magic:</strong> it lets you <strong>flip a conditional</strong>. Often you <em>can't</em> directly measure the thing you want, <code>P(B | A)</code>, but you <em>can</em> easily count the reverse, <code>P(A | B)</code>, from past data. Bayes' theorem trades the one you have for the one you want. <strong>That flip is the crux of Naive Bayes.</strong></p>
+<hr />
+<h2 id="part-4-from-bayes-theorem-to-a-classifier">Part 4 — From Bayes' theorem to a classifier</h2>
+<p>Rename the pieces for machine learning. Our clues are features \(x_1, x_2, \ldots, x_n\) (the <strong>independent features</strong>), and \(y\) is the label we want (the <strong>dependent/output feature</strong>, e.g. Yes/No). Plug them into Bayes' theorem:</p>
+<p>\[P(y \mid x_1, x_2, \ldots, x_n) = \dfrac{P(y)\;\times\;P(x_1, x_2, \ldots, x_n \mid y)}{P(x_1, x_2, \ldots, x_n)}\]</p>
+<p>Read the three parts:</p>
+<ul>
+<li><strong>\(P(y)\) — the prior.</strong> How common is this label overall, <em>before</em> looking at any clue? (e.g. "people played on 9 of 14 days.")</li>
+<li><strong>\(P(x_1,\ldots,x_n \mid y)\) — the likelihood.</strong> If the label were \(y\), how likely are <em>these</em> clues?</li>
+<li><strong>\(P(x_1,\ldots,x_n)\) — the evidence (denominator).</strong> How common are these clues in general?</li>
+</ul>
+<p><strong>The first simplification — drop the denominator.</strong> We compute this for <em>every</em> label (Yes and No) using the <strong>same</strong> clues, so the denominator \(P(x_1,\ldots,x_n)\) is <strong>identical in every case</strong> — a constant. Since we only care <em>which label is bigger</em>, a shared constant can't change the winner, so we <strong>ignore it</strong>:</p>
+<p>\[P(y \mid x_1,\ldots,x_n) \;\propto\; P(y)\times P(x_1,\ldots,x_n \mid y)\]</p>
+<p>(The <code>∝</code> means "proportional to" — equal except for that constant we dropped. We put it back at the very end by <em>normalizing</em>, Part 7.)</p>
+<hr />
+<h2 id="part-5-the-naive-assumption-this-is-where-the-name-comes-from">Part 5 — The "naive" assumption (this is where the name comes from)</h2>
+<p>The likelihood \(P(x_1, x_2, \ldots, x_n \mid y)\) is still hard — it's the probability of a <em>whole specific combination</em> of clues occurring together, and you'd rarely have enough data to count every combination.</p>
+<p>So Naive Bayes makes one <strong>bold, deliberately-too-simple assumption</strong>: it pretends all the features are <strong>independent of each other</strong> (given the label). That's the "naive" part — in reality <em>Sunny</em> and <em>Hot</em> are correlated, but we pretend they aren't. Under that pretense, the probability of the combination becomes just the <strong>product</strong> of each clue on its own:</p>
+<p>\[P(x_1,\ldots,x_n \mid y) \approx P(x_1 \mid y)\times P(x_2 \mid y)\times \cdots \times P(x_n \mid y)\]</p>
+<p>Putting it together:</p>
+<p>\[\underbrace{P(y \mid x_1,\ldots,x_n)}_{\text{what we want}} \;\propto\; \underbrace{P(y)\times \prod_{j=1}^{n} P(x_j \mid y)}_{\text{the \textbf{score} — we compute this}}\]</p>
+<p>📖 <strong>In words:</strong> <em>"prior times the product of each clue's likelihood."</em> Every term on the right is just a <strong>fraction you count from the data</strong>. That's the whole algorithm.</p>
+<p><strong>What "score for each label" means.</strong> A <strong>label</strong> is one possible answer — here just two, <strong>Yes</strong> and <strong>No</strong>. The <strong>score</strong> is that right-hand number, \(P(y)\times\prod_j P(x_j\mid y)\), worked out <strong>once for each label</strong>. So for the clues (Sunny, Hot) you compute <em>two</em> scores:</p>
+<ul>
+<li><strong>score(Yes)</strong> \(= P(\text{Yes})\times P(\text{Sunny}\mid\text{Yes})\times P(\text{Hot}\mid\text{Yes})\)</li>
+<li><strong>score(No)</strong> \(= P(\text{No})\times P(\text{Sunny}\mid\text{No})\times P(\text{Hot}\mid\text{No})\)</li>
+</ul>
+<p>Then you <strong>pick the label with the bigger score</strong> — that's the prediction. (Part 6 gets score(Yes) ≈ 0.031 and score(No) ≈ 0.085, so <strong>No</strong> wins.)</p>
+<p>Why "score" and not "probability"? Because we <strong>dropped the denominator</strong> in Part 4 (<code>∝</code>, not <code>=</code>), these two numbers are only <em>proportional</em> to the true probabilities — they won't add up to 1 on their own. They're perfectly good for <strong>ranking</strong> the labels (all we need to pick a winner), and Part 7 rescales them back into real percentages by normalizing. Think of a score as an <strong>un-normalized probability</strong> — a comparable number, not yet a true probability.</p>
+<blockquote>
+<p><strong>Why "naive" still works:</strong> the independence assumption is usually <em>false</em>, yet the classifier is often excellent. Reason: we don't need the <em>probabilities</em> to be accurate — we only need the <strong>Yes score to beat the No score in the right direction</strong>. The errors from the naive assumption tend to hit both scores similarly and wash out in the comparison.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-full-worked-example-will-they-play-tennis">Part 6 — Full worked example: will they play tennis?</h2>
+<p>The classic 14-day dataset (Outlook, Temperature, Humidity, Wind → PlayTennis). This is the raw data every count below comes from — <strong>PlayTennis</strong> is the label (a binary classification, Yes/No); the other four columns are the clues:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Day</th>
+<th>Outlook</th>
+<th>Temperature</th>
+<th>Humidity</th>
+<th>Wind</th>
+<th style="text-align: center;"><strong>PlayTennis</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">D1</td>
+<td>Sunny</td>
+<td>Hot</td>
+<td>High</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>No</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D2</td>
+<td>Sunny</td>
+<td>Hot</td>
+<td>High</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>No</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D3</td>
+<td>Overcast</td>
+<td>Hot</td>
+<td>High</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D4</td>
+<td>Rain</td>
+<td>Mild</td>
+<td>High</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D5</td>
+<td>Rain</td>
+<td>Cool</td>
+<td>Normal</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D6</td>
+<td>Rain</td>
+<td>Cool</td>
+<td>Normal</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>No</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D7</td>
+<td>Overcast</td>
+<td>Cool</td>
+<td>Normal</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D8</td>
+<td>Sunny</td>
+<td>Mild</td>
+<td>High</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>No</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D9</td>
+<td>Sunny</td>
+<td>Cool</td>
+<td>Normal</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D10</td>
+<td>Rain</td>
+<td>Mild</td>
+<td>Normal</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D11</td>
+<td>Sunny</td>
+<td>Mild</td>
+<td>Normal</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D12</td>
+<td>Overcast</td>
+<td>Mild</td>
+<td>High</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D13</td>
+<td>Overcast</td>
+<td>Hot</td>
+<td>Normal</td>
+<td>Weak</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">D14</td>
+<td>Rain</td>
+<td>Mild</td>
+<td>High</td>
+<td>Strong</td>
+<td style="text-align: center;"><strong>No</strong></td>
+</tr>
+</tbody>
+</table>
+<p>We'll use just <strong>Outlook</strong> and <strong>Temperature</strong> as clues, exactly as in the lecture (Humidity and Wind are left for you to add — the method is identical). First, <strong>fit by counting</strong> — build a frequency table per feature by tallying the label column above. Totals: <strong>9 Yes, 5 No</strong> out of 14 days.</p>
+<p><em>(How to read the Outlook table below: of the 5 Sunny days, 2 were Yes and 3 were No — so P(Sunny|Yes) = 2/9 counts against the 9 total Yes days, and P(Sunny|No) = 3/5 against the 5 total No days.)</em></p>
+<p><strong>Priors</strong> (before any clue):</p>
+<p>\[P(\text{Yes}) = \tfrac{9}{14}, \qquad P(\text{No}) = \tfrac{5}{14}\]</p>
+<p><strong>Feature 1 — Outlook:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Outlook</th>
+<th style="text-align: center;">Yes</th>
+<th style="text-align: center;">No</th>
+<th style="text-align: center;">P(·|Yes)</th>
+<th style="text-align: center;">P(·|No)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sunny</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">2/9</td>
+<td style="text-align: center;">3/5</td>
+</tr>
+<tr>
+<td>Overcast</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;"><strong>0</strong></td>
+<td style="text-align: center;">4/9</td>
+<td style="text-align: center;"><strong>0/5</strong></td>
+</tr>
+<tr>
+<td>Rain</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">3/9</td>
+<td style="text-align: center;">2/5</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: center;"><strong>9</strong></td>
+<td style="text-align: center;"><strong>5</strong></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Feature 2 — Temperature:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Temp</th>
+<th style="text-align: center;">Yes</th>
+<th style="text-align: center;">No</th>
+<th style="text-align: center;">P(·|Yes)</th>
+<th style="text-align: center;">P(·|No)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hot</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2/9</td>
+<td style="text-align: center;">2/5</td>
+</tr>
+<tr>
+<td>Mild</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">4/9</td>
+<td style="text-align: center;">2/5</td>
+</tr>
+<tr>
+<td>Cool</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">3/9</td>
+<td style="text-align: center;">1/5</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: center;"><strong>9</strong></td>
+<td style="text-align: center;"><strong>5</strong></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="predict-a-new-day-sunny-hot">Predict a new day: (Sunny, Hot)</h3>
+<p>Score each label with <code>prior × likelihoods</code> (denominator dropped):</p>
+<p>\[P(\text{Yes} \mid \text{Sunny, Hot}) \propto P(\text{Yes})\cdot P(\text{Sunny}\mid\text{Yes})\cdot P(\text{Hot}\mid\text{Yes}) = \tfrac{9}{14}\cdot\tfrac{2}{9}\cdot\tfrac{2}{9} = \tfrac{2}{63} \approx \mathbf{0.031}\]</p>
+<p>\[P(\text{No} \mid \text{Sunny, Hot}) \propto P(\text{No})\cdot P(\text{Sunny}\mid\text{No})\cdot P(\text{Hot}\mid\text{No}) = \tfrac{5}{14}\cdot\tfrac{3}{5}\cdot\tfrac{2}{5} = \tfrac{3}{35} \approx \mathbf{0.085}\]</p>
+<p><code>No (0.085)</code> beats <code>Yes (0.031)</code>, so the prediction is <strong>No</strong> — on a sunny, hot day, they don't play.</p>
+<hr />
+<h2 id="part-7-normalization-turning-scores-into-probabilities">Part 7 — Normalization: turning scores into probabilities</h2>
+<p>The two scores (0.031 and 0.085) don't add to 1 — because we threw away the denominator. To recover real, reportable probabilities, <strong>normalize</strong>: divide each by their sum (this is exactly the constant denominator, reconstructed):</p>
+<p>\[P(\text{Yes}) = \frac{0.031}{0.031 + 0.085} = \frac{0.031}{0.116} \approx 0.27 = \mathbf{27\%}\]</p>
+<p>\[P(\text{No}) = \frac{0.085}{0.116} \approx 0.73 = \mathbf{73\%} \quad(\text{or simply } 1 - 0.27)\]</p>
+<p><strong>Decision rule</strong> (same 0.5 threshold as logistic regression, Study 03): 73% ≥ 50% → predict <strong>No</strong>. Same winner as before — normalizing never changes <em>which</em> label wins; it just makes the number honest to report.</p>
+<hr />
+<h2 id="part-8-your-turn-and-the-trap-hiding-in-it-overcast-mild">Part 8 — Your turn (and the trap hiding in it): (Overcast, Mild)</h2>
+<p>The lecture leaves this as an assignment: predict for <strong>(Overcast, Mild)</strong>. Set it up the same way:</p>
+<p>\[P(\text{Yes} \mid \cdots) \propto \tfrac{9}{14}\cdot\underbrace{\tfrac{4}{9}}_{\text{Overcast}\mid\text{Yes}}\cdot\underbrace{\tfrac{4}{9}}_{\text{Mild}\mid\text{Yes}} = \tfrac{9}{14}\cdot\tfrac{16}{81}\approx \mathbf{0.127}\]</p>
+<p>\[P(\text{No} \mid \cdots) \propto \tfrac{5}{14}\cdot\underbrace{\tfrac{0}{5}}_{\text{Overcast}\mid\text{No}}\cdot\underbrace{\tfrac{2}{5}}_{\text{Mild}\mid\text{No}} = \mathbf{0}\]</p>
+<p>Prediction: <strong>Yes</strong> (in fact 100% after normalizing). But look <em>why</em> the No score is exactly <strong>0</strong>.</p>
+<blockquote>
+<h3 id="the-zero-frequency-problem">⚠️ The zero-frequency problem</h3>
+<p>In all 14 days, <strong>Overcast never once came with "No"</strong> — that cell is <code>0</code>. So <code>P(Overcast | No) = 0/5 = 0</code>, and since the scores are a <strong>product</strong>, that single zero <strong>annihilates the entire No score</strong> — even though <em>Mild</em> had decent support for No. One unseen combination silently vetoed a whole label. In a spam filter with thousands of words, this happens constantly: any word never seen in a "spam" email would zero out the spam probability entirely.</p>
+<p><strong>The fix — Laplace (add-one) smoothing.</strong> Add a small count (usually <strong>1</strong>) to <em>every</em> tally so nothing is ever exactly zero:
+\[P(x_j \mid y) = \frac{\text{count}(x_j, y) + 1}{\text{count}(y) + k}\]
+where \(k\) = number of categories for that feature. Now <code>P(Overcast | No) = (0+1)/(5+3) = 1/8</code>, small but non-zero — the label survives to be judged on its other evidence. <strong>scikit-learn does this by default</strong> (<code>alpha=1.0</code>), which is why its numbers differ slightly from the bare-hands arithmetic above. The companion lab shows both.</p>
+</blockquote>
+<hr />
+<h2 id="part-9-judgment-when-to-reach-for-naive-bayes">Part 9 — Judgment: when to reach for Naive Bayes</h2>
+<p><strong>Reach for it when:</strong>
+- <strong>Text / high-dimensional categorical data</strong> — spam, sentiment, topic tagging. This is its home turf; thousands of word-features, and the independence assumption (word order ignored, "bag of words") is good enough.
+- <strong>You need a fast, strong baseline.</strong> It trains in a single counting pass — no iterations, no tuning a learning rate. Always worth running first to set the bar.
+- <strong>Little training data.</strong> It estimates few parameters (just per-feature frequencies), so it holds up when data is scarce and fancier models would overfit.
+- <strong>You need speed at prediction time</strong> — a handful of multiplications per class.</p>
+<p><strong>Be cautious when:</strong>
+- <strong>Features are strongly correlated.</strong> The naive assumption breaks; probabilities get badly miscalibrated (the <em>ranking</em> often survives, but don't trust the 73%-type numbers as true confidence).
+- <strong>You need well-calibrated probabilities</strong>, not just the winning label — reach for logistic regression instead.
+- <strong>Relationships are genuinely interactive</strong> ("this <em>only</em> matters when combined with that") — Naive Bayes is blind to interactions by construction; a tree or gradient-boosted model will beat it.</p>
+<p><strong>The three flavors</strong> (pick by what your features look like):</p>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Use when features are…</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multinomial NB</strong></td>
+<td>counts / frequencies</td>
+<td>word counts in a document (spam)</td>
+</tr>
+<tr>
+<td><strong>Bernoulli NB</strong></td>
+<td>binary present/absent</td>
+<td>did the word appear? yes/no</td>
+</tr>
+<tr>
+<td><strong>Gaussian NB</strong></td>
+<td>continuous numbers</td>
+<td>height, income — assumes a bell curve per class</td>
+</tr>
+</tbody>
+</table>
+<p><em>Our Play-Tennis features are plain categories, so the lab uses scikit-learn's <code>CategoricalNB</code>.</em></p>
+<hr />
+<h2 id="companion-lab">Companion lab</h2>
+<p><a href="https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_naive_bayes.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> &nbsp; <em>(one-time GitHub sign-in; you're a collaborator on the repo)</em></p>
+<p><strong><code>hands-on/hello_naive_bayes.py</code></strong> (and the Colab notebook above) does three things, in order:
+1. <strong>Fits by hand</strong> — builds the exact frequency tables above and reproduces <code>Sunny,Hot → No (27% / 73%)</code> from raw counts, so you can see there's no magic, only fractions.
+2. <strong>Solves the assignment</strong> — computes <code>(Overcast, Mild)</code> and demonstrates the zero-frequency annihilation, then shows Laplace smoothing rescuing the No score.
+3. <strong>Confirms with scikit-learn</strong> — trains <code>CategoricalNB</code> on the same 14 rows and shows it agrees (with smoothing on by default).</p>
+<hr />
+<h2 id="quick-reference-say-it-in-plain-words-then-the-term">Quick Reference — say it in plain words (then the term)</h2>
+<table>
+<thead>
+<tr>
+<th>Plain words</th>
+<th>The term</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Does one event's outcome change the other's odds?"</td>
+<td>independent vs. dependent events</td>
+</tr>
+<tr>
+<td>"Probability of B, <em>given</em> A already happened."</td>
+<td>conditional probability, \(P(B\mid A)\)</td>
+</tr>
+<tr>
+<td>"Flip a conditional you can't measure into one you can count."</td>
+<td>Bayes' theorem</td>
+</tr>
+<tr>
+<td>"How common is this label before seeing clues?"</td>
+<td>prior, \(P(y)\)</td>
+</tr>
+<tr>
+<td>"If the label were y, how likely are these clues?"</td>
+<td>likelihood, \(P(x\mid y)\)</td>
+</tr>
+<tr>
+<td>"Pretend all clues are independent, so just multiply them."</td>
+<td>the <strong>naive</strong> assumption</td>
+</tr>
+<tr>
+<td>"The bottom of Bayes is the same for every label, so drop it."</td>
+<td>dropping the (constant) evidence</td>
+</tr>
+<tr>
+<td>"Turn the raw scores back into percentages that sum to 1."</td>
+<td>normalization</td>
+</tr>
+<tr>
+<td>"Add 1 to every count so nothing is ever zero."</td>
+<td>Laplace / add-one smoothing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="glossary-jargon-plain-english">Glossary (jargon → plain English)</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Plain English</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Naive Bayes</td>
+<td>a classifier that picks the label making your clues most probable, via Bayes' theorem + a pretend-independence shortcut</td>
+</tr>
+<tr>
+<td>Bayes' theorem</td>
+<td>\(P(B\mid A) = P(B)\,P(A\mid B)/P(A)\) — flips a conditional probability</td>
+</tr>
+<tr>
+<td>Prior</td>
+<td>the base rate of a label before seeing any feature</td>
+</tr>
+<tr>
+<td>Likelihood</td>
+<td>probability of a feature value given a label</td>
+</tr>
+<tr>
+<td>Posterior</td>
+<td>\(P(\text{label}\mid\text{clues})\) — what we ultimately want</td>
+</tr>
+<tr>
+<td>Naive (independence) assumption</td>
+<td>pretend features don't affect each other, so the joint likelihood is a product</td>
+</tr>
+<tr>
+<td>Zero-frequency problem</td>
+<td>an unseen feature/label combo makes one count 0, zeroing the whole product</td>
+</tr>
+<tr>
+<td>Laplace smoothing</td>
+<td>add a small constant to every count so no probability is ever exactly 0</td>
+</tr>
+<tr>
+<td>Multinomial / Bernoulli / Gaussian NB</td>
+<td>variants for count / binary / continuous features</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>◄ Previous: <a href="ML_Study_03_Logistic_Regression.html">ML Study 03 — Logistic Regression</a></strong>  ·  <strong>Related → <a href="ML_Study_01_Linear_Regression.html">ML Study 01 — Linear Regression</a></strong> (independent vs. dependent variables)</p>
+<p><em>ML Study 05 — Naive Bayes: independent/dependent events → conditional probability → Bayes' theorem → the naive product → Play-Tennis worked example → the zero-frequency trap. A counting classifier: no gradient descent, one pass over the data. Companion lab: <code>hands-on/hello_naive_bayes.py</code>.</em></p>
+</body>
+</html>

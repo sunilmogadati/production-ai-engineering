@@ -195,8 +195,8 @@ $$F_\beta = \frac{(1+\beta^2)\cdot \text{Precision}\cdot \text{Recall}}{\beta^2\
 ---
 
 ## Companion labs — see it run
+- **`hands-on/hello_logistic.py`** — the 3-line intro: fit a classifier, predict one case. Run it in Colab: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_logistic.ipynb) &nbsp; *(one-time GitHub sign-in; you're a collaborator on the repo)*
 - **`hands-on/hello_logistic_worldbank.py`** — the full story on real World Bank data: predict *"is this a High-Income country?"*, then the **confusion matrix, accuracy, precision, recall, and F1** (Parts 6–9) — plus which countries fool the model.
-- **`hands-on/hello_logistic.py`** — the 3-line intro: fit a classifier, predict one case.
 
 ---
 
