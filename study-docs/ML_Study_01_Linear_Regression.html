@@ -605,12 +605,50 @@
 </blockquote>
 <p><strong>The rules we use</strong> — all small ones, and <strong>the same whether it's a derivative or a partial derivative</strong>:</p>
 <ul>
-<li><strong>Power rule:</strong> the derivative of \(x^2\) is \(2x\) (bring the power down to the front, drop it by one). The derivative of a plain \(x\) is just \(1\).</li>
+<li><strong>Power rule:</strong> the derivative of \(x^2\) is \(2x\) (bring the power down to the front, drop it by one). The derivative of a plain \(x\) is just \(1\) — <strong>not</strong> \(x\). <em>(A "plain \(x\)" is really \(x^1\); the power rule gives \(1\cdot x^{0}=1\cdot 1 = 1\). Intuition: for the line \(y=x\), every step in \(x\) moves \(y\) by exactly the same amount, so the slope is a constant </em><em>1</em><em>. Don't confuse it with the derivative of \(x^2\), which is \(2x\), or the </em><em>integral</em><em> of \(x\), which is \(\tfrac{x^2}{2}\).)</em></li>
 <li><strong>Constant rule:</strong> the derivative of a <strong>constant</strong> — any plain number, <em>or any term with no θ in it</em> — is <strong>0</strong> (flat ground has no slope). And a constant <em>times</em> θ just keeps the constant: \(\frac{d}{d\theta}(c\,\theta) = c\).</li>
 <li><strong>Sum rule:</strong> the derivative of a <em>sum</em> is the <em>sum of the derivatives</em>. So a big \(\sum(\dots)^2\) can be differentiated <strong>one term at a time</strong>, then added up — the \(\sum\) just comes along for the ride.</li>
 <li><strong>Chain rule:</strong> to differentiate <em>something-squared</em>, bring the 2 down and multiply by the derivative of the <strong>inside</strong>: \(\frac{d}{d\theta}(\text{inside})^2 = 2\,(\text{inside})\cdot(\text{inside})'\).</li>
 </ul>
-<p><strong>Now the step that trips everyone up — the derivative of the inside \((\theta_0 + \theta_1 x - y)\).</strong> Because we take the slope for <strong>one knob at a time</strong> (that's the partial derivative), we treat every <em>other</em> symbol as a <strong>fixed number</strong> and lean on the constant rule:
+<p><strong>First, the individual pieces.</strong> A derivative is always taken <em>with respect to</em> one variable — everything else is a fixed constant. Here is every piece of our line, differentiated with respect to each knob (recall \(x\) and \(y\) are <strong>data</strong> — fixed numbers, not knobs):</p>
+<table>
+<thead>
+<tr>
+<th>piece</th>
+<th style="text-align: center;">\(\dfrac{\partial}{\partial \theta_0}\)</th>
+<th style="text-align: center;">\(\dfrac{\partial}{\partial \theta_1}\)</th>
+<th>why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>\(\theta_0\)</td>
+<td style="text-align: center;"><strong>1</strong></td>
+<td style="text-align: center;">0</td>
+<td>plain variable → 1 (same rule as plain \(x\)); has no θ₁ → 0</td>
+</tr>
+<tr>
+<td>\(\theta_1 x\)</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;"><strong>\(x\)</strong></td>
+<td>constant \(x\) times θ₁ → \(x\) (the \(\frac{d}{d\theta}(c\theta)=c\) rule); has no θ₀ → 0</td>
+</tr>
+<tr>
+<td>\(y\)</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0</td>
+<td>observed data — a fixed number → derivative of a constant is 0</td>
+</tr>
+<tr>
+<td>\((\theta_0 + \theta_1 x - y)\)</td>
+<td style="text-align: center;"><strong>1</strong></td>
+<td style="text-align: center;"><strong>\(x\)</strong></td>
+<td>add the rows: \(1+0-0=1\) · and · \(0+x-0=x\)</td>
+</tr>
+</tbody>
+</table>
+<p>That last row is the one people trip on — <em>"how is the derivative of \(\theta_0+\theta_1 x-y\) equal to \(x\)?"</em> It's \(x\) <strong>only with respect to θ₁</strong> (holding θ₀ and \(y\) fixed). With respect to θ₀ it's \(1\).</p>
+<p><strong>Now the full step.</strong> Because we take the slope for <strong>one knob at a time</strong> (that's the partial derivative), we treat every <em>other</em> symbol as a <strong>fixed number</strong> and lean on the constant rule:
 - <strong>with respect to θ₁:</strong> \(\theta_0\) has no θ₁ → <strong>0</strong>; \(-y\) has no θ₁ → <strong>0</strong>; \(\theta_1 x\) is a constant (\(x\)) times θ₁ → <strong>\(x\)</strong>. Add them: \(0 + x - 0 = \boldsymbol{x}\). <em>(So yes — we "ignore" θ₀ and y, because the </em><em>constant rule</em><em> makes their derivatives 0. That leftover \(x\) is why θ₁'s slope is weighted by x.)</em>
 - <strong>with respect to θ₀:</strong> \(\theta_0\) → <strong>1</strong>; \(\theta_1 x\) has no θ₀ → <strong>0</strong>; \(-y\) → <strong>0</strong>. Add them: \(\boldsymbol{1}\). <em>(That's why θ₀'s slope is the plain average error — no x attached.)</em></p>
 <p>So the full chain-rule step for θ₁ is \(\frac{d}{d\theta_1}(\theta_0 + \theta_1 x - y)^2 = \underbrace{2\,(\theta_0+\theta_1 x - y)}_{\text{power rule}}\cdot \underbrace{x}_{\text{inside derivative}}\) — the <strong>2</strong> from the square, the <strong>x</strong> from the inside.</p>
@@ -652,13 +690,17 @@
 </blockquote>
 <p><strong>The math — and here's the ½ paying off.</strong> To get the slope we differentiate the cost, which means differentiating the squared term. The chain rule brings a <strong>2</strong> down front (power rule, \(x^2 \to 2x\)), and that 2 lands right on the \(\frac{1}{2m}\):</p>
 <p>\[\frac{1}{2m}\cdot 2 = \frac{2}{2m} = \frac{1}{m}\]</p>
-<p><strong>That is the whole reason the ½ was in the cost function</strong> — it cancels the 2 that squaring produces, so every gradient comes out as a clean \(\frac{1}{m}\) instead of a messy \(\frac{2}{m}\). With that cancellation done, the two slopes are:</p>
+<p><strong>That is the whole reason the ½ was in the cost function</strong> — it cancels the 2 that squaring produces, so every gradient comes out as a clean \(\frac{1}{m}\) instead of a messy \(\frac{2}{m}\).</p>
+<p><strong>Here is the full step, start to finish.</strong> Write the error as \(e = (\theta_0 + \theta_1 x - y)\), so each term of the cost is just \(e^2\). Differentiating \(e^2\) needs the <strong>chain rule</strong>: <em>derivative of the outside</em> (\(2e\), from the power rule) <em>times derivative of the inside</em> (the \(1\) or \(x\) from the piece table in §3.4's primer).</p>
+<p>\[\frac{\partial J}{\partial \theta_0} = \frac{1}{2m}\sum 2\,e\cdot\underbrace{1}_{\text{inside}'} = \frac{1}{m}\sum e = \frac{1}{m}\sum\big(h_\theta(x)-y\big)\]</p>
+<p>\[\frac{\partial J}{\partial \theta_1} = \frac{1}{2m}\sum 2\,e\cdot\underbrace{x}_{\text{inside}'} = \frac{1}{m}\sum e\cdot x = \frac{1}{m}\sum\big(h_\theta(x)-y\big)\,x\]</p>
+<p>Same recipe both times — the <em>only</em> difference is the inside-derivative: <strong>1</strong> for θ₀, <strong>\(x\)</strong> for θ₁. With that done, the two slopes (written per data point \(i\)) are:</p>
 <p>\[\frac{\partial J}{\partial \theta_0} = \frac{1}{m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{(i)}\Big)\]</p>
 <p>📖 <strong>Read it aloud:</strong> <em>"the partial derivative of J with respect to theta-zero equals one over m, times the sum of, open paren, h-theta of x-i minus y-i, close paren."</em>
 <strong>What it does:</strong> the slope for the <strong>intercept</strong> knob is just the <strong>average error</strong> — how far off the line is, on average.</p>
 <p>\[\frac{\partial J}{\partial \theta_1} = \frac{1}{m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{(i)}\Big)\, x^{(i)}\]</p>
 <p>📖 <strong>Read it aloud:</strong> <em>"the partial derivative of J with respect to theta-one equals one over m, times the sum of, open paren, h-theta of x-i minus y-i, close paren, times x-i."</em>
-<strong>What it does:</strong> the slope for the <strong>slope</strong> knob is the average error <strong>weighted by the input \(x\)</strong> — because \(\theta_1\) is multiplied by \(x\) in the line, so changing \(\theta_1\) affects large-\(x\) points more (that extra \(x^{(i)}\) comes from the chain rule).</p>
+<strong>What it does:</strong> the slope for the <strong>slope</strong> knob is the average error <strong>weighted by the input \(x\)</strong> — because \(\theta_1\) is multiplied by \(x\) in the line, so changing \(\theta_1\) affects large-\(x\) points more (that extra \(x^{(i)}\) comes from the chain rule). Think of it as <strong>leverage</strong>: θ₀ shifts the <em>whole</em> line up/down equally for every point, so its slope is the plain average error; θ₁ <em>tilts</em> the line, and tilting swings a far-out point (large \(x\)) far more than a near one — a point at \(x=10\) moves ten times as much as a point at \(x=1\). That is exactly what the \(\times x\) weighting encodes.</p>
 <p>So the two update rules, applied <strong>together</strong> and repeated until convergence:</p>
 <p>\[\theta_0 := \theta_0 - \alpha \, \frac{1}{m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{(i)}\Big)\]</p>
 <p>\[\theta_1 := \theta_1 - \alpha \, \frac{1}{m}\sum_{i=1}^{m}\Big(h_\theta(x^{(i)}) - y^{(i)}\Big)\, x^{(i)}\]</p>
