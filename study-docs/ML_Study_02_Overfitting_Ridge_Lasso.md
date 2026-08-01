@@ -20,6 +20,8 @@ Then a **new** point arrives (the kind of data the model will actually face in t
 
 That gap — great on training data, bad on new data — is **overfitting.** The model didn't learn the *trend*; it **memorized the training points**, noise and all.
 
+> **"Can a *linear* model overfit, or does it need a curvy graph like this?"** The wavy curve above is the *textbook picture*, but overfitting isn't about **curviness** — it's about **too much flexibility for the data** (too many free knobs chasing noise). A straight line with **one** feature (just θ₀, θ₁) is too stiff to overfit — true. But a **linear model with many features overfits readily**: it stays perfectly "linear" (a flat hyperplane, no curves at all), yet with, say, **50 features and 60 rows** it has enough knobs to fit the noise. When the number of features **approaches or exceeds** the number of rows, a plain linear model overfits badly. **That is exactly why this chapter exists** — Ridge and Lasso regularize *linear* models. So: overfitting comes from the **number of parameters**, not the shape of the graph. *(The bendy curve is just polynomial regression — still linear in its parameters, only fed x², x³… as extra features.)*
+
 ### 1.2 Bias and variance — two words for two failures
 
 These two terms describe *where* a model fails. The trick to never mixing them up:
@@ -44,6 +46,22 @@ These two terms describe *where* a model fails. The trick to never mixing them u
 *What this graph shows: the same points fit three ways. Too complex (left) wiggles through every point including the noise. Just right (middle) traces the trend. Too simple (right) barely bends. Complexity is a dial — and both extremes hurt on new data.*
 
 > **\* An honest footnote you'll want in an interview.** We're calling underfitting "high bias, high variance" here (the practical shorthand: *bad on both*). Many textbooks are stricter and call underfitting **high bias, _low_ variance** — a too-simple model is *stable*, so it doesn't swing much from dataset to dataset. Both framings show up in the wild. If pressed, the precise statement is: **underfitting = high bias; overfitting = high variance; the sweet spot minimizes their sum.** Don't get caught flat-footed on this one.
+
+### 1.3 Is there a *formula* for bias and variance? And how do you measure them?
+
+**Yes — formally.** The expected test error at a point splits into exactly three pieces (the **bias–variance decomposition**):
+
+$$\underbrace{\mathbb{E}\big[(y-\hat f(x))^2\big]}_{\text{expected test error}} = \underbrace{\big(\mathbb{E}[\hat f(x)]-f(x)\big)^2}_{\textbf{Bias}^2} + \underbrace{\mathbb{E}\big[(\hat f(x)-\mathbb{E}[\hat f(x)])^2\big]}_{\textbf{Variance}} + \underbrace{\sigma^2}_{\text{irreducible noise}}$$
+
+- **Bias** = how far the model's *average* prediction sits from the truth $f(x)$ — systematic error from being too simple.
+- **Variance** = how much the prediction *wobbles* when you retrain on a different sample of data — twitchiness.
+- **Irreducible noise** ($\sigma^2$) = randomness in the data itself that no model can remove.
+
+**But in practice you never compute these directly** — the formula needs the true function $f(x)$ and the averaging $\mathbb{E}[\cdot]$ over infinitely many datasets, neither of which you have. So you **measure them by proxy**:
+
+- **Train vs. validation gap** *(the everyday tool)* — high error on *both* train and validation → **high bias**; low train error but a big *gap* down to validation → **high variance**. (That's precisely the three-model read above — the gap *is* your variance meter.)
+- **Resample and watch the spread** — retrain on many bootstrap samples of your data; at a test point, the **spread** of the predictions estimates the **variance**, and the average prediction's distance from the target estimates the **bias**.
+- **Cross-validation** — wildly different scores across the CV folds is a variance signal; uniformly poor scores is a bias signal.
 
 ```mermaid
 flowchart LR

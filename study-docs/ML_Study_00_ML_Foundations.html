@@ -121,14 +121,14 @@
     ML --&gt; U[&quot;Unsupervised&lt;br/&gt;(NO answer key)&quot;]
     ML --&gt; RL[&quot;Reinforcement&lt;br/&gt;(learn by reward/penalty)&lt;br/&gt;e.g. Q-Learning (covered later)&quot;]
     S --&gt; REG[&quot;Regression — answer is a NUMBER&lt;br/&gt;(e.g. predict weight)&lt;br/&gt;Algorithms: Linear Regression,&lt;br/&gt;Ridge, Lasso&quot;]
-    S --&gt; CLF[&quot;Classification — answer is a CATEGORY&lt;br/&gt;(e.g. pass / fail)&lt;br/&gt;Algorithms: Logistic Regression,&lt;br/&gt;Naive Bayes, SVM, KNN&quot;]
-    S --&gt; BOTH[&quot;Tree-based and Ensembles&lt;br/&gt;(do BOTH regression and classification)&lt;br/&gt;Decision Tree, Random Forest, AdaBoost,&lt;br/&gt;Gradient Boosting, XGBoost&quot;]
+    S --&gt; CLF[&quot;Classification — answer is a CATEGORY&lt;br/&gt;(e.g. pass / fail)&lt;br/&gt;Algorithms: Logistic Regression,&lt;br/&gt;Naive Bayes, SVM&quot;]
+    S --&gt; BOTH[&quot;Do BOTH regression and classification&lt;br/&gt;KNN (distance-based)&lt;br/&gt;Decision Tree, Random Forest, AdaBoost,&lt;br/&gt;Gradient Boosting, XGBoost (tree-based)&quot;]
     CLF --&gt; BIN[&quot;Binary&lt;br/&gt;(2 categories)&quot;]
     CLF --&gt; MUL[&quot;Multiclass&lt;br/&gt;(3+ categories)&quot;]
     U --&gt; CLU[&quot;Clustering — find natural groups&lt;br/&gt;(e.g. customer segments)&lt;br/&gt;Algorithms: K-Means, DBSCAN,&lt;br/&gt;Hierarchical&quot;]
     U --&gt; DIM[&quot;Dimensionality Reduction&lt;br/&gt;squeeze many columns into few&lt;br/&gt;Algorithms: PCA, LDA&quot;]</div>
 <blockquote>
-<p><strong>Note on the "do both" group:</strong> decision trees and the ensembles built on them (Random Forest, AdaBoost, Gradient Boosting, XGBoost) can handle <em>either</em> a number (regression) <em>or</em> a category (classification) — that's why they get their own box rather than sitting under just one.</p>
+<p><strong>Note on the "do both" group:</strong> some algorithms handle <em>either</em> a number (regression) <em>or</em> a category (classification) — that's why they get their own box rather than sitting under just one. <strong>KNN</strong> does both by looking at its nearest neighbours: it <em>votes</em> their labels to classify, or <em>averages</em> their values to regress (see <a href="ML_Study_06_KNN.html">ML Study 06</a>). The tree-based family — decision trees and the ensembles built on them (Random Forest, AdaBoost, Gradient Boosting, XGBoost) — does both by construction.</p>
 </blockquote>
 <h3 id="inputs-vs-the-thing-you-predict-independent-vs-dependent-features">Inputs vs the thing you predict (independent vs dependent features)</h3>
 <blockquote>

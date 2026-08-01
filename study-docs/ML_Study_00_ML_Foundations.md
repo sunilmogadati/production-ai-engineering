@@ -78,15 +78,15 @@ flowchart TB
     ML --> U["Unsupervised<br/>(NO answer key)"]
     ML --> RL["Reinforcement<br/>(learn by reward/penalty)<br/>e.g. Q-Learning (covered later)"]
     S --> REG["Regression — answer is a NUMBER<br/>(e.g. predict weight)<br/>Algorithms: Linear Regression,<br/>Ridge, Lasso"]
-    S --> CLF["Classification — answer is a CATEGORY<br/>(e.g. pass / fail)<br/>Algorithms: Logistic Regression,<br/>Naive Bayes, SVM, KNN"]
-    S --> BOTH["Tree-based and Ensembles<br/>(do BOTH regression and classification)<br/>Decision Tree, Random Forest, AdaBoost,<br/>Gradient Boosting, XGBoost"]
+    S --> CLF["Classification — answer is a CATEGORY<br/>(e.g. pass / fail)<br/>Algorithms: Logistic Regression,<br/>Naive Bayes, SVM"]
+    S --> BOTH["Do BOTH regression and classification<br/>KNN (distance-based)<br/>Decision Tree, Random Forest, AdaBoost,<br/>Gradient Boosting, XGBoost (tree-based)"]
     CLF --> BIN["Binary<br/>(2 categories)"]
     CLF --> MUL["Multiclass<br/>(3+ categories)"]
     U --> CLU["Clustering — find natural groups<br/>(e.g. customer segments)<br/>Algorithms: K-Means, DBSCAN,<br/>Hierarchical"]
     U --> DIM["Dimensionality Reduction<br/>squeeze many columns into few<br/>Algorithms: PCA, LDA"]
 ```
 
-> **Note on the "do both" group:** decision trees and the ensembles built on them (Random Forest, AdaBoost, Gradient Boosting, XGBoost) can handle *either* a number (regression) *or* a category (classification) — that's why they get their own box rather than sitting under just one.
+> **Note on the "do both" group:** some algorithms handle *either* a number (regression) *or* a category (classification) — that's why they get their own box rather than sitting under just one. **KNN** does both by looking at its nearest neighbours: it *votes* their labels to classify, or *averages* their values to regress (see [ML Study 06](ML_Study_06_KNN.html)). The tree-based family — decision trees and the ensembles built on them (Random Forest, AdaBoost, Gradient Boosting, XGBoost) — does both by construction.
 
 ### Inputs vs the thing you predict (independent vs dependent features)
 > In any prediction problem you have **the stuff you know** and **the thing you want to guess.** Predicting weight from age: age is *the stuff you know* (input), weight is *the thing you want to guess* (output). Jargon: inputs are **independent features** (you can have many), the output is the **dependent feature** (exactly one). It's called "dependent" because it *depends on* the inputs — change the age, the predicted weight changes.
