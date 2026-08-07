@@ -291,6 +291,7 @@
 </ol>
 <blockquote>
 <p>These aren't hard gates — a model still runs if you skip them — but satisfying them is the difference between a model that <em>works</em> and one that merely <em>runs</em>.</p>
+<p><strong>⚠️ Why multicollinearity matters in practice: it makes your coefficients LIE.</strong> When features are correlated, the model can't tell which one deserves the credit, so it splits it arbitrarily between them — and a coefficient can come out <strong>the wrong sign</strong> or wildly large. Real example: a diabetes model with GDP, health-spend, urbanization, and life-expectancy (all correlated) returned a <strong>strong <em>negative</em> coefficient on health spending</strong> — literally "more health spending → less diabetes," which would be a <em>harmful</em> policy if you believed it. It's not a real effect; it's the model dividing shared signal among correlated features. <strong>The lesson:</strong> <em>before trusting any coefficient's sign or size, check a correlation matrix.</em> If features are tangled, the individual coefficients aren't interpretable (though the model's <em>predictions</em> can still be fine, and <strong>Ridge/Lasso</strong> tame it — Ridge shrinks the tangled coefficients, Lasso drops the redundant ones). Predicting ≠ explaining.</p>
 </blockquote>
 <hr />
 <h2 id="quick-reference-say-it-in-plain-words">Quick Reference — say it in plain words</h2>

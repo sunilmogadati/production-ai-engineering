@@ -58,6 +58,8 @@ $$h_\theta(x) = \theta_0 + \theta_1 x$$
 
 **The math.** $\theta_0$ = **intercept** (value of $h_\theta(x)$ when $x = 0$). $\theta_1$ = **slope/coefficient** (change in $y$ per one-unit increase in $x$).
 
+> **⚠️ With *multiple* features, a raw coefficient is NOT feature importance.** Each coefficient is "change in y per **one unit** of *that* feature" — and a unit means different things per column. If GDP is in dollars (0–100,000) and internet-use is a percent (0–100), GDP's coefficient will look *tiny* (e.g. 0.00004) and internet's *large* (e.g. 0.21) purely because of their **scales**, not their importance. To compare coefficients as importance, **standardize the features first** (StandardScaler — see [KNN §7](ML_Study_06_KNN.html) / the preprocessing lab); *then* the magnitudes are comparable. Reading raw coefficients as importance is a classic beginner trap.
+
 **So what's the actual formula for the slope?** Two different questions hide here — answer both:
 
 **(a) Given the line, read the slope off it — "rise over run":**
@@ -485,6 +487,8 @@ There is **one** descent, not one-per-knob. Each step reads **one slope per knob
 
 ### 3.9 When is linear regression the right tool? (and what to do when the data isn't linear)
 > A sharp question: **should you only use linear regression when the relationship really is a straight line?** Mostly yes — but there's a useful nuance here that's genuinely worth understanding.
+
+> **⚠️ Make this a reflex — look at the shape *before* you fit.** The single most common beginner miss: fitting a straight line to a curved relationship and shrugging at a mediocre R². **Before `.fit()`, scatter-plot y against each feature and ask: straight, or curved?** If a feature spans orders of magnitude (income \$300 → \$100,000; population; prices) it's almost always **curved with diminishing returns → log it first.** Real example: predicting life expectancy from **raw** GDP scores about **R² ≈ 0.52**; from **ln(GDP)** it jumps to **≈ 0.70** — same data, same model, one transform. The tell is in the scatter plot, so *look first.*
 
 **If the relationship is a straight line** (more x → proportionally more y), linear regression is exactly right.
 

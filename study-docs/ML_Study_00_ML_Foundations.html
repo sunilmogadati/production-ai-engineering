@@ -285,6 +285,54 @@
 </code></pre>
 <p>Two things worth noticing. First, the model <strong>learned those thresholds</strong> — <code>2</code> prior purchases, <code>59.5</code> intent — <em>from the data</em>; nobody wrote them in. Finding <em>where to cut</em> is what "learning" means for a tree. Second, it surfaced a real business insight on its own: <strong>loyalty beats today's mood</strong> — a repeat customer gets chased no matter their intent score.</p>
 <p>That readability is exactly why you reach for a tree when a human must <strong>audit or trust</strong> each decision — loan approvals, medical triage. And it's the very thing <strong>random forests</strong> and <strong>XGBoost</strong> trade away: hundreds of trees vote for a better score, but you can no longer read any single one. Accuracy vs. explainability — a trade you'll learn to make on purpose.</p>
+<h3 id="the-deeper-lens-the-big-ideas-behind-every-algorithm">The deeper lens: the big ideas behind <em>every</em> algorithm</h3>
+<p>The map above sorts algorithms by <em>task</em> (number vs. category, labels vs. none). There's a second, more powerful way to see them — by the <strong>one core idea each is built on.</strong> Almost every algorithm in this series is a variation on just a handful of engines:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>The core idea (say it in one line)</th>
+<th>Algorithms that run on it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td><strong>Assume a shape, then optimize a loss</strong> — pick a form (a line, an S-curve, a network) and tune its parameters to minimize error, usually by gradient descent</td>
+<td>Linear &amp; Logistic Regression, Ridge/Lasso, SVM, <strong>Neural Nets / Deep Learning</strong></td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>Model the probability</strong> — describe how the data is generated and use Bayes' theorem / likelihood</td>
+<td>Naive Bayes</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><strong>Measure distance / similarity</strong> — "similar things sit near each other"; compare number-vectors</td>
+<td>KNN, <strong>K-Means</strong></td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td><strong>Recursively split into pure regions</strong> — keep asking the best yes/no question</td>
+<td>Decision Trees (entropy / Gini / MSE)</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td><strong>Combine many models</strong> <em>(a level up — it sits on top of the others)</em></td>
+<td>Bagging → Random Forest · Boosting → AdaBoost, <strong>XGBoost</strong></td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td><strong>Project with linear algebra</strong> — rotate the data onto its most informative axes</td>
+<td>PCA (dimensionality reduction)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Three things to internalise about this lens:</strong>
+- <strong>#5 (ensembles) isn't a peer — it's a <em>meta</em>-idea.</strong> Ideas 1–4 (and 6) are how a <em>single</em> model reasons; ensembles are how you <em>combine</em> models (a Random Forest is a pile of idea-#4 trees). Think <strong>"four base-model ideas + one way to combine them + one to compress them."</strong>
+- <strong>"Turn data into numbers" is universal</strong>, not idea #3's identity — <em>every</em> algorithm needs numeric features (encoding). What's special about #3 is <em>using the distance</em> between those numbers.
+- <strong>These are lenses, not rigid boxes.</strong> Some algorithms straddle two: <strong>logistic regression</strong> is both "optimize a loss" (#1) <em>and</em> "model a probability" (#2); <strong>SVM</strong> is #1 with a #3 (similarity/kernel) flavour. Seeing an algorithm through two lenses is a sign you understand it, not a contradiction.</p>
+<p><strong>Why this is the most useful frame you'll carry:</strong> it's the real answer to <em>"how do I choose an algorithm?"</em> — you're really asking <em>"which idea fits my data and my goal?"</em> Need to explain every decision? → the splitting idea (#4). Similar-items recommendation? → distance (#3). A messy non-linear target with lots of data? → optimize a loss, deep (#1), or combine trees (#5). The whole rest of this series is these six ideas, one at a time.</p>
 <hr />
 <p><strong>Next → <a href="ML_Study_01_Linear_Regression.html">ML Study 01 — Linear Regression</a></strong> — your first algorithm, start to finish (Parts 3–5 of the series).</p>
 </body>

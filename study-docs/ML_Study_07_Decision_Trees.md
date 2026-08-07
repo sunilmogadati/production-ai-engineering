@@ -102,10 +102,41 @@ A **decision tree regressor** predicts a continuous value. Two things change fro
 
 1. **The leaf outputs the *mean*** of the training values that landed in it (not a majority vote). Follow the questions down to a leaf → your prediction is that leaf's average.
 2. **Splits are judged by MSE (or MAE), not entropy/Gini.** For each candidate split it computes the mean-squared error of the children and picks the split that **reduces MSE most** (the regression analog of information gain):
-$$\text{MSE} = \frac{1}{2m}\sum_{i=1}^{m}\big(\hat{y}_i - y_i\big)^2$$
+$$\text{MSE} = \frac{1}{m}\sum_{i=1}^{m}\big(\hat{y}_i - y_i\big)^2, \quad \text{where } \hat{y}_i = \text{the leaf's mean}$$
 As MSE shrinks, the node is getting "purer" (its values are tightly clustered around their mean) → you're near a leaf.
 
-*Example:* a leaf holding the values {24, 26} outputs **25**; a leaf holding {28, 30} outputs **29**. Same tree machinery, "average" instead of "vote."
+### A worked regression example (with data)
+
+Say we predict an **exam score** `y` from **hours studied** `x`. Six training rows, sorted by `x`:
+
+| x (hours) | 1 | 2 | 3 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|
+| **y (score)** | 20 | 24 | 26 | 40 | 44 | 48 |
+
+**Start at the root.** With no split, the tree's best single guess is the **overall mean** of all six scores, $\bar y = 33.7$. How bad is that? Its MSE (average squared miss from 33.7) is **≈ 115** — high, because the scores range from 20 to 48. The tree's job is to split so each side clusters tightly around *its own* mean.
+
+**Three terms first, since the rest is just applying them:**
+- A **threshold** is a cutoff that turns a *number* feature into a yes/no question — e.g. `x ≤ 4.5?`. The tree tries the **midpoints between consecutive sorted values** (sorted x = 1,2,3,6,7,8 → candidate thresholds **1.5, 2.5, 4.5, 6.5, 7.5**). *(Midpoints, because any value between two points gives the same grouping.)*
+- A **split** is what that question does to the rows — it partitions them into two children. `x ≤ 4.5` sends {20,24,26} left and {40,44,48} right.
+- **Weighted MSE** scores a split. Each child leaf predicts its **mean** and has its own MSE (how spread its values are around that mean = the leaf's variance). You combine the two, each **weighted by the fraction of rows it holds**:
+$$\text{weighted MSE} = \frac{n_{\text{left}}}{n}\,\text{MSE}_{\text{left}} + \frac{n_{\text{right}}}{n}\,\text{MSE}_{\text{right}}$$
+
+**How the split is chosen — greedy exhaustive search.** For *every* feature × *every* candidate threshold, the tree actually forms the split, computes its weighted MSE, and keeps the **lowest** one (the biggest error drop). Two candidates here:
+
+- **`x ≤ 2.5`** → left {20, 24} mean 22 (MSE 4), right {26, 40, 44, 48} mean 39.5 (MSE 68.8). Weighted = (2/6)(4) + (4/6)(68.8) ≈ **47** — the right group is still spread out.
+- **`x ≤ 4.5`** → left {20, 24, 26} mean **23.3** (MSE 6.2), right {40, 44, 48} mean **44** (MSE 10.7). Weighted = (3/6)(6.2) + (3/6)(10.7) ≈ **8.4** — both groups tight.
+
+`x ≤ 4.5` wins by far (8.4 ≪ 47) — it drops MSE from ~115 all the way to ~8.4. *(This is exactly information gain's logic, swapped for numbers: entropy measured how **mixed the classes** were; weighted MSE measures how **spread the values** are — pick the split that minimizes it.)* So the tree splits there, and each leaf **outputs its own mean**:
+
+- `x ≤ 4.5` → predict **23.3**
+- `x > 4.5` → predict **44**
+
+**Predict a new student** who studied **7 hours**: 7 > 4.5 → land in the right leaf → predicted score **44** (that leaf's average). A student who studied 2 hours → left leaf → **23.3**.
+
+![A decision-tree regressor is a step function of leaf-means](ML_Study_Figures/43_decision_tree_regression.png)
+*What this graph shows: the six training rows (blue), the chosen split at x = 4.5 (dashed), and each leaf's prediction — a flat line at that leaf's **mean** (23.3 on the left, 44 on the right). The prediction is a **staircase**, not a smooth line: every input in a leaf gets that leaf's average. A new x = 7 lands in the right leaf → 44.*
+
+So: **classifier votes the majority label; regressor averages the leaf's values.** And the split it picks: classifier maximizes information gain (entropy/Gini); regressor minimizes MSE. Same tree machinery, two swapped-out rules. (Deeper trees add more splits → more, narrower steps → a finer staircase.)
 
 ---
 

@@ -183,6 +183,26 @@ Two things worth noticing. First, the model **learned those thresholds** — `2`
 
 That readability is exactly why you reach for a tree when a human must **audit or trust** each decision — loan approvals, medical triage. And it's the very thing **random forests** and **XGBoost** trade away: hundreds of trees vote for a better score, but you can no longer read any single one. Accuracy vs. explainability — a trade you'll learn to make on purpose.
 
+### The deeper lens: the big ideas behind *every* algorithm
+
+The map above sorts algorithms by *task* (number vs. category, labels vs. none). There's a second, more powerful way to see them — by the **one core idea each is built on.** Almost every algorithm in this series is a variation on just a handful of engines:
+
+| # | The core idea (say it in one line) | Algorithms that run on it |
+|---|---|---|
+| **1** | **Assume a shape, then optimize a loss** — pick a form (a line, an S-curve, a network) and tune its parameters to minimize error, usually by gradient descent | Linear & Logistic Regression, Ridge/Lasso, SVM, **Neural Nets / Deep Learning** |
+| **2** | **Model the probability** — describe how the data is generated and use Bayes' theorem / likelihood | Naive Bayes |
+| **3** | **Measure distance / similarity** — "similar things sit near each other"; compare number-vectors | KNN, **K-Means** |
+| **4** | **Recursively split into pure regions** — keep asking the best yes/no question | Decision Trees (entropy / Gini / MSE) |
+| **5** | **Combine many models** *(a level up — it sits on top of the others)* | Bagging → Random Forest · Boosting → AdaBoost, **XGBoost** |
+| **6** | **Project with linear algebra** — rotate the data onto its most informative axes | PCA (dimensionality reduction) |
+
+**Three things to internalise about this lens:**
+- **#5 (ensembles) isn't a peer — it's a *meta*-idea.** Ideas 1–4 (and 6) are how a *single* model reasons; ensembles are how you *combine* models (a Random Forest is a pile of idea-#4 trees). Think **"four base-model ideas + one way to combine them + one to compress them."**
+- **"Turn data into numbers" is universal**, not idea #3's identity — *every* algorithm needs numeric features (encoding). What's special about #3 is *using the distance* between those numbers.
+- **These are lenses, not rigid boxes.** Some algorithms straddle two: **logistic regression** is both "optimize a loss" (#1) *and* "model a probability" (#2); **SVM** is #1 with a #3 (similarity/kernel) flavour. Seeing an algorithm through two lenses is a sign you understand it, not a contradiction.
+
+**Why this is the most useful frame you'll carry:** it's the real answer to *"how do I choose an algorithm?"* — you're really asking *"which idea fits my data and my goal?"* Need to explain every decision? → the splitting idea (#4). Similar-items recommendation? → distance (#3). A messy non-linear target with lots of data? → optimize a loss, deep (#1), or combine trees (#5). The whole rest of this series is these six ideas, one at a time.
+
 ---
 
 **Next → [ML Study 01 — Linear Regression](ML_Study_01_Linear_Regression.html)** — your first algorithm, start to finish (Parts 3–5 of the series).

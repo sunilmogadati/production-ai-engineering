@@ -211,6 +211,8 @@ Linear regression works best when the data plays by a few rules. Worth a checkli
 
 > These aren't hard gates — a model still runs if you skip them — but satisfying them is the difference between a model that *works* and one that merely *runs*.
 
+> **⚠️ Why multicollinearity matters in practice: it makes your coefficients LIE.** When features are correlated, the model can't tell which one deserves the credit, so it splits it arbitrarily between them — and a coefficient can come out **the wrong sign** or wildly large. Real example: a diabetes model with GDP, health-spend, urbanization, and life-expectancy (all correlated) returned a **strong *negative* coefficient on health spending** — literally "more health spending → less diabetes," which would be a *harmful* policy if you believed it. It's not a real effect; it's the model dividing shared signal among correlated features. **The lesson:** *before trusting any coefficient's sign or size, check a correlation matrix.* If features are tangled, the individual coefficients aren't interpretable (though the model's *predictions* can still be fine, and **Ridge/Lasso** tame it — Ridge shrinks the tangled coefficients, Lasso drops the redundant ones). Predicting ≠ explaining.
+
 ---
 
 ## Quick Reference — say it in plain words
