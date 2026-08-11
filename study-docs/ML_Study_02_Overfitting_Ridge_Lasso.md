@@ -29,6 +29,10 @@ These two terms describe *where* a model fails. The trick to never mixing them u
 > - **Bias** is about the **training** data. High bias = the model does badly even on the data it learned from (it's too simple to capture the pattern).
 > - **Variance** is about the **test** data. High variance = the model does well on training but badly on new data (it's too twitchy — it changes wildly with the exact points it saw).
 
+**The one-line definitions people always ask for** (memorize these two):
+- **Bias = how well the model fits the data it *trained on*.** Fits training well → **low** bias; can't even fit training → **high** bias. *(Careful — this trips people up: fitting training well is **low** bias, not high. Bias is training **error**, so less error = less bias.)*
+- **Variance = how much the model *changes* when you train or test it on a different portion of the data.** Stable across different samples → **low** variance; swings wildly from one sample to the next → **high** variance. (That "swinging" is why an overfit model does great on the rows it saw and poorly on new ones.)
+
 **Three outcomes, and only one is good:**
 
 | Outcome | Training | Test | Bias | Variance | What happened |

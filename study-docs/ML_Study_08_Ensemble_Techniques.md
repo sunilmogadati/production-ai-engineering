@@ -93,6 +93,8 @@ AdaBoost is the clearest way to *see* how boosting "fixes the previous model's m
 
 **What a stump is.** A **stump** is a decision tree cut down to a **single split** — one question, one level, **two** leaves (both branches, just no deeper). In code it's literally `max_depth=1`. Unlike a full tree (Study 07), which keeps splitting level after level until the leaves are pure (and overfits), a stump stops after the *first* split on purpose. That makes it a **weak learner** — barely better than a coin flip alone. Boosting's power is chaining *hundreds* of these.
 
+> **Is the tree depth adjustable? Yes — it's a hyperparameter.** The stump (`max_depth=1`) is the *default*, but you can hand AdaBoost deeper base trees (`AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=3), …)`). You keep them **shallow on purpose**, though: boosting needs *weak* learners, and a deep base tree becomes a *strong* learner that overfits the reweighted data, breaking the "each one patches the last's mistakes" logic. This is the exact opposite of **Random Forest** (Part 3), which uses **deep** trees and *averages* them. The one-liner: **bagging averages deep trees; boosting chains shallow ones** — depth is the lever that makes a tree "weak" vs. "strong." *(Gradient Boosting / XGBoost are boosting too, but typically use slightly deeper tuned trees, ~depth 3–6, rather than pure stumps.)*
+
 **What gets weighted: the training rows.** AdaBoost assigns a **weight to every training row** — a number saying *"how much should the next stump care about getting this row right."* This is genuinely new: linear/logistic regression, KNN, Naive Bayes, and a plain tree all treat every training row **equally**. Row-weighting is the thing that will let each stump focus on the hard cases.
 
 ### The loop (worked on a 7-row example)
@@ -155,6 +157,8 @@ So the next stump **f₂ trains on a dataset stuffed with copies of the rows f�
 ## Part 7 — Gradient Boosting & XGBoost (the Kaggle winners)
 
 Same boosting idea — sequential, error-correcting — but instead of *reweighting rows*, **Gradient Boosting** fits each new tree to the **residual errors** (what's left over) of the running prediction, nudging it downhill (gradient descent, Study 01, applied to the ensemble). **XGBoost** (Extreme Gradient Boosting) is a fast, regularized, industrial-strength version — for years the single most common winner of tabular-data competitions and a workhorse in industry. For the capstone and most tabular problems, **XGBoost or a Random Forest is the model to beat.**
+
+> **Want the mechanics?** [Study 11 — XGBoost: Under the Hood](ML_Study_11_XGBoost.html) opens the black box: the **similarity score**, **gain**, **leaf output**, the **additive model + sigmoid**, and **λ** regularization — with the full worked classifier and regressor examples.
 
 ---
 

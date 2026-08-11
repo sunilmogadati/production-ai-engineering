@@ -32,6 +32,8 @@ Walk it: find the two nearest points → merge (a short link). Find the next-nea
 
 **Choosing K — cut the dendrogram.** You don't pick K first; you read it off the tree. The rule: **find the tallest vertical line that no horizontal (merge) line crosses, and cut across it.** The number of vertical lines your cut passes through = the number of clusters. (Cutting through the tallest un-crossed gap means you're splitting at the biggest jump in distance — the most natural place to stop merging.)
 
+**But which points are in *which* cluster?** The same cut answers that too — it does double duty. Each vertical line the cut crosses is the top of a **sub-tree**, and that cluster is **every leaf-point hanging below it.** So the cut gives *both* the count *and* the membership: cutting at height *h* keeps every merge that happened **below** *h* and undoes every merge **above** it — points joined at a distance less than the cut stay together, groups that only merge above it stay apart. In the figure, cutting at ≈3 crosses 3 lines and the three sub-trees below them are the actual clusters: **{P1, P2}**, **{P3, P4, P5}**, and **{P6, P7}**. *(In code you don't eyeball it: `AgglomerativeClustering(n_clusters=3)` — or SciPy's `fcluster` — returns a label for every point, which is the membership.)*
+
 **The catch — it's slow.** *"Which takes more time, K-Means or hierarchical?"* is a classic interview question, and the answer is **hierarchical.** Building the full merge-tree is expensive (roughly cubic in the number of points), and with many points/features you can't even draw a readable dendrogram. **So: small data → hierarchical is fine (and you get the tree for free); large data → K-Means** (faster, and usually performs better at scale).
 
 ---
@@ -65,23 +67,27 @@ Average s(i) over **all** points = the **overall silhouette score**; higher is b
 
 ## Part 4 — DBSCAN: clustering by density
 
-**DBSCAN** = *Density-Based Spatial Clustering of Applications with Noise.* Instead of centroids, it grows clusters wherever points are **densely packed**, and it can find **any shape** and **flag outliers as noise** — the two things K-Means can't do. It has **two hyperparameters**:
+**DBSCAN** = *Density-Based Spatial Clustering of Applications with Noise.* Instead of centroids, it grows clusters wherever points are **densely packed**, and it can find **any shape** and **flag outliers as noise** — the two things K-Means can't do. The four terms (ε, MinPts, core/border/noise) all lean on each other, so here's the clean way to hold them: **there are just 2 knobs you set, and then every point gets 1 of 3 labels.**
 
-- **ε (epsilon)** — a **radius**: draw a circle of radius ε around a point.
-- **MinPts** — the **minimum number of points** that must fall inside that ε-circle for the point to be "dense."
+**The 2 knobs (hyperparameters):**
+- **ε (epsilon) — a radius.** Around any point, draw a circle of radius ε; whoever falls inside are that point's **"neighbors."** (ε is a *distance*.)
+- **MinPts — a head-count threshold.** How many points must be inside the ε-circle for that spot to count as **"crowded."** *(Convention: MinPts includes the point itself — so MinPts = 4 means the point + at least 3 neighbors.)*
 
-Every point is then one of three types:
+**The 3 labels — classify each point by asking two questions, in order:**
+1. **Are there ≥ MinPts points inside my ε-circle?** → **Core point** (I'm in a dense area; I anchor a cluster).
+2. If not — **is at least one *core* point inside my ε-circle?** → **Border point** (I'm on the *edge* — next to a crowd, not crowded myself).
+3. If neither → **Noise point** (an **outlier** — I belong to no cluster).
 
-| Point type | Definition | In a cluster? |
-|---|---|---|
-| **Core point** | has **≥ MinPts** points within its ε-radius (a dense neighborhood) | yes — the heart of a cluster |
-| **Border point** | *fewer* than MinPts neighbors, **but** lies within ε of a **core** point | yes — the edge of a cluster |
-| **Noise point** | neither — no core point nearby | **no — dropped as an outlier** |
+> **The party analogy (makes it click):** **ε** = how close you must stand to count as *with* someone; **MinPts** = how many people around you means you're *in the crowd*. **Core** = someone in the thick of the crowd; **Border** = someone at the edge, next to a crowd-person but not surrounded; **Noise** = someone off alone in the corner.
+
+**A concrete pass (MinPts = 4):** Point A has 5 points inside its ε-circle → **core**. Point B has only 2 — but one of them is A, a core → **border**. Point C has nothing nearby → **noise**, dropped.
 
 ![DBSCAN: core, border, and noise points](ML_Study_Figures/50_dbscan_points.png)
 *What this graph shows (MinPts = 4): **red core points** each have ≥ 4 neighbors inside their ε-circle; overlapping cores chain together into one cluster, pulling in the **yellow border points** on the edge (near a core but not dense themselves). The **blue noise point** sits alone — no core nearby — so DBSCAN **leaves it out entirely** as an outlier.*
 
 A cluster = a chain of **core points within ε of each other**, plus their **border points**. **Noise points are simply excluded** — which is exactly what you want when outliers shouldn't be forced into a group (fraud, sensor glitches, a lone remote village).
+
+> **So why bother distinguishing core from border — both are "in" the cluster?** Because only **cores can *grow* the cluster.** DBSCAN expands a cluster by reaching out from a core point to everything within ε; if any of those are *also* core, it keeps chaining outward through them. A **border point gets absorbed but is a dead end** — DBSCAN does *not* reach out from it (it isn't dense enough to have the "authority" to extend the cluster). **The cluster stops at its borders.** This is the whole point of DBSCAN: it stops clusters from **leaking across sparse bridges.** Two dense blobs joined by a thin line of *border* points stay **separate** (the cluster can't cross a non-dense bridge); if those bridge points were dense enough to be *cores*, the blobs would **merge**. Dense middle (cores) → thin edge (borders) → outliers (noise). *(Edge case: a border within ε of two clusters just joins whichever reaches it first — it can't connect them.)*
 
 **Why it beats K-Means on shape:**
 

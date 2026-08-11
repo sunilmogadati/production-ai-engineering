@@ -63,6 +63,9 @@
 <li><strong>Variance</strong> is about the <strong>test</strong> data. High variance = the model does well on training but badly on new data (it's too twitchy — it changes wildly with the exact points it saw).</li>
 </ul>
 </blockquote>
+<p><strong>The one-line definitions people always ask for</strong> (memorize these two):
+- <strong>Bias = how well the model fits the data it <em>trained on</em>.</strong> Fits training well → <strong>low</strong> bias; can't even fit training → <strong>high</strong> bias. <em>(Careful — this trips people up: fitting training well is </em><em>low</em><em> bias, not high. Bias is training </em><em>error</em><em>, so less error = less bias.)</em>
+- <strong>Variance = how much the model <em>changes</em> when you train or test it on a different portion of the data.</strong> Stable across different samples → <strong>low</strong> variance; swings wildly from one sample to the next → <strong>high</strong> variance. (That "swinging" is why an overfit model does great on the rows it saw and poorly on new ones.)</p>
 <p><strong>Three outcomes, and only one is good:</strong></p>
 <table>
 <thead>
