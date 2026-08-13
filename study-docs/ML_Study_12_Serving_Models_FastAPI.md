@@ -23,22 +23,52 @@ A trained model sitting in a notebook variable is useless to everyone except you
 
 ## Part 2 — Saving a model *is* just writing a file
 
-"Save the model" sounds mysterious; it's one line. `ml09_train_and_save.py` trains a logistic regression, then:
+"Save the model" sounds mysterious; it's one line. This is the actual save code from `ml09_train_and_save.py` — train, evaluate, then **write two files**:
 
 ```python
-import joblib
-joblib.dump(model, "models/lead_model.joblib")   # the trained model → a file
+import json, joblib
+from datetime import datetime, timezone
+from pathlib import Path
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+
+FEATURES = ["intent_signal", "budget", "prior_purchases", "ad_tv", "ad_social", "ad_email"]
+MODEL_PATH = Path("models/lead_model.joblib")   # the model itself
+META_PATH  = Path("models/lead_model.json")     # the metadata sidecar
+
+# 1) train
+train, test = train_test_split(df, test_size=0.2, random_state=42, stratify=df["converted"])
+model = LogisticRegression(max_iter=2000)
+model.fit(train[FEATURES].values, train["converted"])
+accuracy = model.score(test[FEATURES].values, test["converted"])   # honest held-out accuracy
+
+# 2) SAVE the model to a file  ← this is the whole "persist the model" step
+MODEL_PATH.parent.mkdir(exist_ok=True)
+joblib.dump(model, MODEL_PATH)                  # serialize the fitted model → bytes on disk
+
+# 3) SAVE the metadata sidecar next to it
+metadata = {
+    "model_version": "1.0",
+    "model_type": "LogisticRegression",
+    "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    "test_accuracy": round(accuracy, 4),
+    "features": FEATURES,          # the feature contract (Part 4)
+    "training_rows": len(train),
+}
+META_PATH.write_text(json.dumps(metadata, indent=2))
 ```
 
-**joblib** (or `pickle`) serializes the fitted model — its learned weights/splits — to bytes on disk. But a model file alone isn't enough. `ml09` writes a **metadata sidecar** next to it:
+**`joblib.dump(model, path)`** is the line that saves the model — **joblib** (or `pickle`) serializes the fitted model's learned weights/coefficients to bytes on disk. That file *is* the model, portable to any machine.
+
+The second file is the **metadata sidecar** — the model's **ID card**:
 
 ```json
 { "model_version": "1.0", "model_type": "LogisticRegression",
   "test_accuracy": 0.82, "features": ["intent_signal","budget","prior_purchases","ad_tv","ad_social","ad_email"],
-  "trained_at": "2026-08-10T..." }
+  "trained_at": "2026-08-10T...", "training_rows": 1600 }
 ```
 
-That sidecar is the model's **ID card**: which version, how accurate, when trained, and — critically — **the exact feature list and order** (Part 4). Serve time reads it to know what it's running and to build inputs correctly.
+Which version, how accurate, when trained, and — critically — **the exact feature list and order** (Part 4). Serve time reads it to know what it's running and to build inputs correctly.
 
 ---
 
@@ -141,6 +171,34 @@ Run `uvicorn serve_step1:app --reload` and open **`/docs`** — Swagger gives yo
 - **`GET /`** — serve the React dashboard (`StaticFiles`) so a human can click around
 
 *Load-once-at-startup matters: unpickling a model is comparatively slow, so you pay it a single time when the server boots, not on every request. Each request is then just `build_features → predict → respond` — fast.*
+
+---
+
+## Part 7½ — The model in a load-balanced deployment
+
+Real traffic doesn't hit one server — a **load balancer** spreads requests across **many identical replicas**. So the natural question: *does every server have its own copy of the model file?*
+
+**Yes — and that's the correct design.** Each replica loads its **own copy of the model into its own memory at startup** (the load-once from Part 7, per replica). The model is a small read-only file, so copying it everywhere is cheap and safe.
+
+![Load-balanced serving — every replica loads its own copy at startup](ML_Study_Figures/66_load_balanced.png)
+*What this shows: one **versioned source** of the model (baked into the container image, or pulled from a registry / object store) fans out to N API replicas. The load balancer routes each request to any replica; that replica already has the model in memory and answers locally. No per-request network hop to fetch the model.*
+
+**Why a local copy per replica, not one shared model?**
+- **It's read-only at serve time.** Nobody writes to the model file during inference — so replicating it across servers has **no sync, no locking, no consistency problem** (unlike a database, which is why the database *is* shared but the model *isn't*).
+- **No single point of failure / no network hop.** A shared/networked model file would add latency to every prediction and a component that can take all replicas down at once. A local in-memory copy keeps each replica self-sufficient and fast.
+- **It's small.** A joblib model is kilobytes-to-megabytes; duplicating it across 3 or 300 replicas costs almost nothing.
+
+**How the file actually gets onto every server** — three common patterns:
+
+| Pattern | How each replica gets the model | Trade-off |
+|---|---|---|
+| **Baked into the image** (simplest) | `COPY models/ /app/models/` in the Dockerfile → every replica runs the same image | Immutable & version-locked to the image; retraining = rebuild + redeploy |
+| **Object store / shared storage** (S3, GCS, blob) | replica downloads the file at startup into local memory | Update the model without rebuilding the image; needs a versioned pointer |
+| **Model registry** (MLflow, SageMaker, Vertex) | replica pulls the referenced "production" version at startup | Adds governance — which version is live, rollbacks, lineage |
+
+> **The one rule that matters: version consistency.** All replicas must serve the **same model version at the same time** — otherwise the *same request* could get *different answers* depending on which server it lands on. Baking into the image guarantees this (all replicas = the same image). With object store / registry, you need a coordinated rollout (update the version pointer, then roll replicas) so you never mix versions mid-flight. This is where the **metadata sidecar's `model_version`** earns its keep — `/api/meta` lets you check *which* version a given replica is actually running.
+
+*(A fourth pattern for large models — a dedicated **model server** like Triton/TorchServe that the thin API replicas call over the network — centralizes the model instead of copying it. Overkill for a small tabular model; standard for big deep-learning models.)*
 
 ---
 

@@ -465,7 +465,7 @@ That's called **batch gradient descent** — *"batch"* meaning **the whole batch
 
 There is **one** descent, not one-per-knob. Each step reads **one slope per knob** — the two partial derivatives from §3.7 — and moves θ₀ **and** θ₁ *together* in that single step. So the single ball rolling down the bowl **is** the (θ₀, θ₁) pair being tuned at once: its side-to-side drift is θ₀ changing, its front-to-back drift is θ₁ changing. The extra dimension isn't a second descent — **it's the second knob.**
 
-**More features → more knobs → more dimensions.** Two features means three knobs (a bowl in 4D you can't draw); *n* features means *n*+1 knobs. You can't picture it past two, but nothing changes: **one descent, every knob nudged together, rolling to the single lowest point — the global minimum.** (This is the "coming down a mountain" picture Krish uses — literally right.)
+**More features → more knobs → more dimensions.** Two features means three knobs (a bowl in 4D you can't draw); *n* features means *n*+1 knobs. You can't picture it past two, but nothing changes: **one descent, every knob nudged together, rolling to the single lowest point — the global minimum.** (This is the "coming down a mountain" picture — literally right.)
 
 ![3D cost bowl](ML_Study_Figures/12_3d_bowl.png)
 *What this graph shows: the honest picture of tuning **both** knobs of a one-feature line. The two floor axes are the parameters θ₀ and θ₁; the height is the badness score — together they make a 3D bowl. The single red path is gradient descent: each step moves θ₀ **and** θ₁ at once, rolling to the bottom (the best-fit line). One path, not one-per-knob — the extra dimension is the second knob, not a second descent.*

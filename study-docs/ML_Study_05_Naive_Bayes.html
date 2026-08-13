@@ -237,7 +237,7 @@
 </tr>
 </tbody>
 </table>
-<p>We'll use just <strong>Outlook</strong> and <strong>Temperature</strong> as clues, exactly as in the lecture (Humidity and Wind are left for you to add — the method is identical). First, <strong>fit by counting</strong> — build a frequency table per feature by tallying the label column above. Totals: <strong>9 Yes, 5 No</strong> out of 14 days.</p>
+<p>We'll use just <strong>Outlook</strong> and <strong>Temperature</strong> as clues (Humidity and Wind are left as an exercise — the method is identical). First, <strong>fit by counting</strong> — build a frequency table per feature by tallying the label column above. Totals: <strong>9 Yes, 5 No</strong> out of 14 days.</p>
 <p><em>(How to read the Outlook table below: of the 5 Sunny days, 2 were Yes and 3 were No — so P(Sunny|Yes) = 2/9 counts against the 9 total Yes days, and P(Sunny|No) = 3/5 against the 5 total No days.)</em></p>
 <p><strong>Priors</strong> (before any clue):</p>
 <p>\[P(\text{Yes}) = \tfrac{9}{14}, \qquad P(\text{No}) = \tfrac{5}{14}\]</p>
@@ -338,7 +338,7 @@
 <p><strong>Decision rule</strong> (same 0.5 threshold as logistic regression, Study 03): 73% ≥ 50% → predict <strong>No</strong>. Same winner as before — normalizing never changes <em>which</em> label wins; it just makes the number honest to report.</p>
 <hr />
 <h2 id="part-8-your-turn-and-the-trap-hiding-in-it-overcast-mild">Part 8 — Your turn (and the trap hiding in it): (Overcast, Mild)</h2>
-<p>The lecture leaves this as an assignment: predict for <strong>(Overcast, Mild)</strong>. Set it up the same way:</p>
+<p>As an exercise, predict for <strong>(Overcast, Mild)</strong>. Set it up the same way:</p>
 <p>\[P(\text{Yes} \mid \cdots) \propto \tfrac{9}{14}\cdot\underbrace{\tfrac{4}{9}}_{\text{Overcast}\mid\text{Yes}}\cdot\underbrace{\tfrac{4}{9}}_{\text{Mild}\mid\text{Yes}} = \tfrac{9}{14}\cdot\tfrac{16}{81}\approx \mathbf{0.127}\]</p>
 <p>\[P(\text{No} \mid \cdots) \propto \tfrac{5}{14}\cdot\underbrace{\tfrac{0}{5}}_{\text{Overcast}\mid\text{No}}\cdot\underbrace{\tfrac{2}{5}}_{\text{Mild}\mid\text{No}} = \mathbf{0}\]</p>
 <p>Prediction: <strong>Yes</strong> (in fact 100% after normalizing). But look <em>why</em> the No score is exactly <strong>0</strong>.</p>

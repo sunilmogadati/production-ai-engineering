@@ -132,7 +132,7 @@ The classic 14-day dataset (Outlook, Temperature, Humidity, Wind → PlayTennis)
 | D13 | Overcast | Hot | Normal | Weak | **Yes** |
 | D14 | Rain | Mild | High | Strong | **No** |
 
-We'll use just **Outlook** and **Temperature** as clues, exactly as in the lecture (Humidity and Wind are left for you to add — the method is identical). First, **fit by counting** — build a frequency table per feature by tallying the label column above. Totals: **9 Yes, 5 No** out of 14 days.
+We'll use just **Outlook** and **Temperature** as clues (Humidity and Wind are left as an exercise — the method is identical). First, **fit by counting** — build a frequency table per feature by tallying the label column above. Totals: **9 Yes, 5 No** out of 14 days.
 
 *(How to read the Outlook table below: of the 5 Sunny days, 2 were Yes and 3 were No — so P(Sunny|Yes) = 2/9 counts against the 9 total Yes days, and P(Sunny|No) = 3/5 against the 5 total No days.)*
 
@@ -184,7 +184,7 @@ $$P(\text{No}) = \frac{0.085}{0.116} \approx 0.73 = \mathbf{73\%} \quad(\text{or
 
 ## Part 8 — Your turn (and the trap hiding in it): (Overcast, Mild)
 
-The lecture leaves this as an assignment: predict for **(Overcast, Mild)**. Set it up the same way:
+As an exercise, predict for **(Overcast, Mild)**. Set it up the same way:
 
 $$P(\text{Yes} \mid \cdots) \propto \tfrac{9}{14}\cdot\underbrace{\tfrac{4}{9}}_{\text{Overcast}\mid\text{Yes}}\cdot\underbrace{\tfrac{4}{9}}_{\text{Mild}\mid\text{Yes}} = \tfrac{9}{14}\cdot\tfrac{16}{81}\approx \mathbf{0.127}$$
 
