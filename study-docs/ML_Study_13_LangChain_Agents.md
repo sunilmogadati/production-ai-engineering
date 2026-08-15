@@ -1,6 +1,6 @@
 # ML Study 13 — LangChain & Agents: From an LLM Call to a Tool-Using Agent
 
-**Covers:** what LangChain is (and the v1 ecosystem) → `uv` setup → talking to a model (`init_chat_model`, `.invoke`) → streaming & batch → **messages** (System/Human/AI/Tool) → **structured output with Pydantic** → **tools** and the tool-execution loop → **agents** (`create_agent`) and why the loop *is* the agent → where it goes next (LangGraph, MCP, human-in-the-loop).
+**Covers:** what LangChain is (and the v1 ecosystem) → `uv` setup → talking to a model (`init_chat_model`, `.invoke`) → streaming & batch → **messages** (System/Human/AI/Tool) → **structured output with Pydantic** → **tools** and the tool-execution loop → **agents** (`create_agent`) and why the loop *is* the agent → **middleware** (hooks, summarization, guardrails) → where it goes next (LangGraph, MCP, human-in-the-loop).
 **Goal:** go from "call an LLM once" to "an LLM that decides to use tools and acts" — the definition of an **agent** — and see how it connects to the FastAPI + Pydantic serving you already built.
 
 **Series context:** the **LLM-app + agent rungs** (R4 + R6). In [Study 12](ML_Study_12_Serving_Models_FastAPI.html) a *classical* model is served over FastAPI, using **Pydantic** to validate requests. Here the model *is* an LLM, and Pydantic does a second job — shaping the LLM's output. Companion notebooks: the `updatedlangchain` set (`1-intro` → `5-structuredoutput`).
@@ -225,6 +225,66 @@ Under the hood, `create_agent` builds a **state graph** (this is **LangGraph**):
 *What this shows: start → **model**. If the model needs no tool, it goes to **end** (answer). If it emits a tool call, it goes to **tools**, runs them, and loops the result back to the model. It repeats until the model is done. `create_agent` runs this loop so you don't hand-write it — but it's the exact loop from Part 7.*
 
 > **Tie to your world:** this loop is the shape of CSI's *observe → plan → act → evaluate → learn*, and of the capstone triage agent. An agent is not magic — it's the tool loop with a graph around it.
+
+---
+
+## Part 8½ — Middleware: controlling what happens inside the agent
+
+A bare agent runs `request → model → tools → result`. **Middleware** lets you **tightly control what happens inside that loop** — inserting your own logic at each stage. It's the difference between an agent and a *production* agent. Middleware is useful for:
+
+- **Observability** — logging, analytics, debugging of the agent's behavior.
+- **Transformation** — reshaping prompts, tool selection, or output formatting.
+- **Reliability** — retries, fallbacks, early-termination logic.
+- **Safety** — rate limits, **guardrails**, and **PII detection**.
+
+**The airport-security analogy:** a passenger doesn't walk straight onto the plane. They pass through **checkpoints** — security check → immigration → boarding pass → flight. Each checkpoint is a piece of middleware between "passenger" (request) and "flight" (result). You can add as many as you need.
+
+Technically, middleware exposes **hooks** — trigger points you can attach logic to:
+
+![Plain agent vs an agent with middleware hooks](ML_Study_Figures/91_middleware.png)
+*What this shows: the plain agent (left) is just request→model→tools→result. With middleware (right), the agent exposes hooks — **before_agent, before_model, wrap_model_call, wrap_tool_call, after_model, after_agent** — where you can insert logging, summarization, guardrails, or PII checks. Same agent, now controllable at every stage.*
+
+### Built-in middleware (you rarely write your own)
+
+LangChain ships **provider-agnostic** middleware for common needs — just drop them into `create_agent(..., middleware=[...])`:
+
+| Middleware | What it does |
+|---|---|
+| **Summarization** | auto-summarize conversation history as it approaches token limits |
+| **Human-in-the-loop** | pause for human approval before a tool call (mandatory in healthcare/finance) |
+| **Model call limit** | cap the number of model calls — prevents runaway cost |
+| **Tool call limit** | cap tool executions |
+| **Model fallback** | switch to a backup model if the primary fails |
+| **PII detection** | detect & handle personally-identifiable information |
+| **LLM tool selector** | use an LLM to pick relevant tools before the main call |
+| **Tool / model retry** | retry on transient failures |
+
+### Example: Summarization middleware (the memory fix)
+
+A long conversation eventually blows past the model's context window. **Summarization middleware** watches the running history and, when it hits a threshold, **compresses older messages into a summary while keeping the recent ones**:
+
+```python
+from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
+from langchain.checkpoint.memory import InMemorySaver
+
+agent = create_agent(
+    model="claude-opus-4-8",                  # (video uses gpt-4o-mini)
+    checkpointer=InMemorySaver(),             # remembers the conversation across turns
+    middleware=[
+        SummarizationMiddleware(
+            model="claude-opus-4-8",
+            trigger=("messages", 10),         # when history reaches 10 messages…
+            keep=("messages", 4),             # …summarize, keeping the last 4
+        ),
+    ],
+)
+config = {"configurable": {"thread_id": "test-1"}}   # a conversation id for memory
+```
+
+Run a stream of questions and watch the message count climb — `2, 4, 6, 8, 10` — then, at the trigger, the middleware replaces the old messages with a summary (*"Here is a summary of the conversation to date…"*) and the count drops back down. The **LLM does the summarizing**, automatically, without you touching the loop. (You can also trigger on **tokens** — e.g. `trigger=("tokens", 550), keep=("tokens", 200)`.)
+
+> **Why this matters:** `checkpointer` (here `InMemorySaver`) is what gives an agent **memory** across turns; `thread_id` names the conversation. Summarization middleware then keeps that memory from overflowing — a real production concern, solved by dropping one line into the agent.
 
 ---
 

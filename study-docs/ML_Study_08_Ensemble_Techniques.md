@@ -139,6 +139,32 @@ So the next stump **f₂ trains on a dataset stuffed with copies of the rows f�
 
 > **"Does the dataset shrink? Do we dedup the duplicates?"** No to both. The resampled set is the **same size** as the original (7 draws → 7 rows), just with different *contents*: the wrong row appears **multiple times** and some easy rows fall out — so you might have only ~5 *distinct* rows but still **7 total rows**. **You keep every duplicate.** The duplicates *are* the mechanism — a row that appears 3× contributes 3× to f₂'s split/error math, which is exactly what makes f₂ concentrate on it. Deduping back to the distinct rows would erase that emphasis and break the algorithm.
 
+### Worked numbers — a 14-row round (start → reweight → resample)
+
+Start with **14 rows**, each weight `1/14 ≈ 0.071`. Say stump f₁ **gets 3 rows wrong** (error = 3/14 ≈ 0.21):
+
+- **Amount of say:** $\alpha = \tfrac{1}{2}\ln\!\frac{1-\text{err}}{\text{err}} = \tfrac{1}{2}\ln\frac{0.79}{0.21} \approx 0.65$
+- **Wrong rows** — multiply weight by $e^{\alpha}\approx 1.92$ → $0.071 \to 0.137$
+- **Correct rows** — multiply by $e^{-\alpha}\approx 0.52$ → $0.071 \to 0.037$
+- **Normalize** (÷ total ≈ 0.821):
+
+| rows | weight *before* (round 1) | weight *after* (round 2) |
+|---|---|---|
+| each of the **3 misclassified** | 0.071 | **0.167** (≈ 2.3× heavier) |
+| each of the **11 correct** | 0.071 | 0.046 (lighter) |
+| **misclassified group total** | 0.21 | **0.50** |
+
+**Clean result to remember:** after reweighting, the rows f₁ got wrong now hold **half of all the weight** — an AdaBoost property (the misclassified set always lands at total weight 0.5). Each hard row went from 7% to 17%; each easy row dropped to ~5%.
+
+**Now resample 14 rows with replacement** by these weights. Each wrong row's expected copies = $14 \times 0.167 \approx 2.3$ → **each appears ~2–3 times**, and the 3 hard rows together fill **~7 of the 14 slots** (half the data!). Easy rows ($14 \times 0.046 \approx 0.6$ expected each) mostly appear once or **drop out**. One possible round-2 set of 14:
+
+```
+[ W1  W1  W2  W3  W3  W2  W1 | C4  C7  C2  C9  C11  C5  C8 ]
+   \___ 3 hard rows, duplicated ___/    \___ some easy rows, once ___/
+```
+
+Still **14 rows** — the bad ones are just duplicated, exactly as you'd expect. f₂ then trains on *this* set, so it's forced to get the hard rows right.
+
 **Step 8 — What feature does f₂ split on?** It's chosen **fresh**. f₂ is an independent one-split tree that picks the best feature **by information gain on this *reweighted / resampled* data** — not on the original data. Because the data now emphasizes the previously-wrong rows, the best-splitting feature usually **changes** (maybe Outlook or Humidity now), though it could also pick **Temperature again at a different threshold** — there's no rule either way. Each stump uses exactly **one** feature; across hundreds of stumps the ensemble uses many. And if some feature is never the best on any round, it simply **never gets picked** — that's fine (automatic feature selection; useless features end with zero importance). *(Two equivalent implementations: the **resampling** shown here, or — what scikit-learn actually does — a **weighted information gain** on the same rows where high-weight rows count more. Same effect: the hard rows drive the split.)*
 
 **Step 9 — Repeat** for f₃, f₄, … each concentrating on the current hard cases.

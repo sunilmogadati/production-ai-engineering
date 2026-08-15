@@ -160,6 +160,46 @@
 <blockquote>
 <p><strong>"Does the dataset shrink? Do we dedup the duplicates?"</strong> No to both. The resampled set is the <strong>same size</strong> as the original (7 draws → 7 rows), just with different <em>contents</em>: the wrong row appears <strong>multiple times</strong> and some easy rows fall out — so you might have only ~5 <em>distinct</em> rows but still <strong>7 total rows</strong>. <strong>You keep every duplicate.</strong> The duplicates <em>are</em> the mechanism — a row that appears 3× contributes 3× to f₂'s split/error math, which is exactly what makes f₂ concentrate on it. Deduping back to the distinct rows would erase that emphasis and break the algorithm.</p>
 </blockquote>
+<h3 id="worked-numbers-a-14-row-round-start-reweight-resample">Worked numbers — a 14-row round (start → reweight → resample)</h3>
+<p>Start with <strong>14 rows</strong>, each weight <code>1/14 ≈ 0.071</code>. Say stump f₁ <strong>gets 3 rows wrong</strong> (error = 3/14 ≈ 0.21):</p>
+<ul>
+<li><strong>Amount of say:</strong> \(\alpha = \tfrac{1}{2}\ln\!\frac{1-\text{err}}{\text{err}} = \tfrac{1}{2}\ln\frac{0.79}{0.21} \approx 0.65\)</li>
+<li><strong>Wrong rows</strong> — multiply weight by \(e^{\alpha}\approx 1.92\) → \(0.071 \to 0.137\)</li>
+<li><strong>Correct rows</strong> — multiply by \(e^{-\alpha}\approx 0.52\) → \(0.071 \to 0.037\)</li>
+<li><strong>Normalize</strong> (÷ total ≈ 0.821):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>rows</th>
+<th>weight <em>before</em> (round 1)</th>
+<th>weight <em>after</em> (round 2)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>each of the <strong>3 misclassified</strong></td>
+<td>0.071</td>
+<td><strong>0.167</strong> (≈ 2.3× heavier)</td>
+</tr>
+<tr>
+<td>each of the <strong>11 correct</strong></td>
+<td>0.071</td>
+<td>0.046 (lighter)</td>
+</tr>
+<tr>
+<td><strong>misclassified group total</strong></td>
+<td>0.21</td>
+<td><strong>0.50</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Clean result to remember:</strong> after reweighting, the rows f₁ got wrong now hold <strong>half of all the weight</strong> — an AdaBoost property (the misclassified set always lands at total weight 0.5). Each hard row went from 7% to 17%; each easy row dropped to ~5%.</p>
+<p><strong>Now resample 14 rows with replacement</strong> by these weights. Each wrong row's expected copies = \(14 \times 0.167 \approx 2.3\) → <strong>each appears ~2–3 times</strong>, and the 3 hard rows together fill <strong>~7 of the 14 slots</strong> (half the data!). Easy rows (\(14 \times 0.046 \approx 0.6\) expected each) mostly appear once or <strong>drop out</strong>. One possible round-2 set of 14:</p>
+<pre><code>[ W1  W1  W2  W3  W3  W2  W1 | C4  C7  C2  C9  C11  C5  C8 ]
+   \___ 3 hard rows, duplicated ___/    \___ some easy rows, once ___/
+</code></pre>
+<p>Still <strong>14 rows</strong> — the bad ones are just duplicated, exactly as you'd expect. f₂ then trains on <em>this</em> set, so it's forced to get the hard rows right.</p>
 <p><strong>Step 8 — What feature does f₂ split on?</strong> It's chosen <strong>fresh</strong>. f₂ is an independent one-split tree that picks the best feature <strong>by information gain on this <em>reweighted / resampled</em> data</strong> — not on the original data. Because the data now emphasizes the previously-wrong rows, the best-splitting feature usually <strong>changes</strong> (maybe Outlook or Humidity now), though it could also pick <strong>Temperature again at a different threshold</strong> — there's no rule either way. Each stump uses exactly <strong>one</strong> feature; across hundreds of stumps the ensemble uses many. And if some feature is never the best on any round, it simply <strong>never gets picked</strong> — that's fine (automatic feature selection; useless features end with zero importance). <em>(Two equivalent implementations: the </em><em>resampling</em><em> shown here, or — what scikit-learn actually does — a </em><em>weighted information gain</em><em> on the same rows where high-weight rows count more. Same effect: the hard rows drive the split.)</em></p>
 <p><strong>Step 9 — Repeat</strong> for f₃, f₄, … each concentrating on the current hard cases.</p>
 <p><strong>Prediction on a new point:</strong> run it through <em>all</em> the stumps and take a <strong>vote weighted by each stump's performance α</strong> — better stumps count more.</p>
