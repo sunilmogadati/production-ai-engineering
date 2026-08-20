@@ -39,7 +39,7 @@
 </head>
 <body>
 <h1 id="ml-study-04-time-series-forecasting-the-future">ML Study 04 — Time Series: Forecasting the Future</h1>
-<p><strong>Covers:</strong> what makes time-ordered data different → the one cardinal rule (train on the past, test on the future) → a trend model is just linear regression on time → the extrapolation trap → what no model can forecast.
+<p><strong>Covers:</strong> what makes time-ordered data different → the one cardinal rule (train on the past, test on the future) → a trend model is just linear regression on time → the extrapolation trap → what no model can forecast → forecasting's twin, spotting anomalies (with a real World Bank data error we caught).
 <strong>Goal:</strong> understand <em>why</em> forecasting is its own discipline — and internalise the humbling lesson that <strong>fitting the past well is not the same as predicting the future well.</strong></p>
 <p><strong>Series context:</strong> builds directly on <strong><a href="ML_Study_01_Linear_Regression.html">ML Study 01 — Linear Regression</a></strong> — a trend model <em>is</em> linear regression with <strong>time</strong> as the feature, and we reuse the <strong>log trick</strong> from §3.9. Runnable companion: <strong><code>hands-on/hello_timeseries.py</code></strong> on real World Bank data.</p>
 <hr />
@@ -117,10 +117,23 @@
 <p>Look at the circles on the graph. In <strong>2009</strong> (financial crisis) and <strong>2020</strong> (COVID) GDP <em>fell</em> — 2019→2020 dropped <strong>−3.7%</strong> after decades of rising. <strong>Every</strong> trend model predicted 2020 would go up. None saw it coming, because a model learns only from the past, and the past didn't contain next year's pandemic.</p>
 </blockquote>
 <p>A trend model can only <em>extend the trend</em>. Crashes, wars, pandemics, policy shocks — these are, by definition, breaks from the past. This is not a flaw you can fix with a fancier model; it's the honest limit of learning from history. A good forecaster reports the trend <strong>and</strong> the humility.</p>
-<p><strong>Where it goes next (the real tools):</strong>
+<p><strong>Where it goes next (the real tools) — simplest to fanciest:</strong>
+- <strong>Moving average / exponential smoothing (Holt-Winters)</strong> — the classical middle tier between naive and ARIMA: average recent values, weighting newer ones more. Cheap, strong baselines for trend + seasonality.
 - <strong>ARIMA</strong> — models the momentum and mean-reversion in a series.
 - <strong>Prophet</strong> — Facebook's tool for trend + seasonality (great for daily/monthly business data with weekly/yearly cycles).
 - <strong>RNN / LSTM</strong> — the <em>AI route</em>: neural networks built for sequences (this is the deep-learning stretch track). More powerful, but they obey the same rules above — chronological split, beat the baseline, and no model forecasts a shock.</p>
+<hr />
+<h2 id="part-6-forecastings-twin-spotting-anomalies">Part 6 — Forecasting's twin: spotting anomalies</h2>
+<blockquote>
+<p>A forecast predicts the next value. Turn it around: once you have a prediction, the <strong>residual</strong> — actual minus predicted — tells you <em>how surprised you are</em>. A small residual means the series behaved as expected; a <strong>large residual means something is off.</strong> That's anomaly detection — the same machinery pointed at a different question. Forecasting asks <em>"what comes next?"</em>; anomaly detection asks <em>"is this point surprising?"</em></p>
+</blockquote>
+<p>You already know the simplest version. The <strong>naive forecast</strong> says next = last, so its residual is just the <strong>year-over-year change.</strong> A value that jumps far from last year is a <em>volatility anomaly</em> — no fancy model, and <strong>no hand-set "valid range" needed.</strong></p>
+<p><strong>This is not hypothetical — it caught a real error in the World Bank data.</strong> Building the capstone, a data-quality check flagged <strong>Central African Republic, 2022: life expectancy = 18.8 years</strong> — and the whole series sawtoothed: 51.9 → 45.2 → 52.3 → <strong>31.5</strong> → 50.6 → <strong>40.3</strong> → <strong>18.8</strong>. The model had been silently training on it.</p>
+<p><strong>Shock or data error? — the sharp distinction:</strong>
+- A <strong>shock</strong> (2020 COVID, Part 5) is a <em>real</em> break from the past — a single-year dip that then recovers. Smooth and directional. No model forecasts it, but it genuinely happened.
+- A <strong>data error</strong> <em>violates the series' own smoothness</em> — it oscillates up-down-up (52→31→50→40→18). Life expectancy at birth is a slow, modelled quantity; it <strong>cannot</strong> sawtooth ±15 years. That signature is a broken data point, not real mortality.</p>
+<p>We confirmed it against an <strong>independent source</strong> (the WHO), which shows CAR at a smooth ~52 throughout. So: <strong>shocks are real and unforecastable; data errors are catchable — because they break the series' own pattern</strong>, which is exactly what a residual measures. The full toolkit (robust z-score, distribution drift, isolation forests, Great Expectations) lives in the <strong>Data Quality &amp; Anomaly Detection</strong> companion.</p>
+<p><strong>🎯 Say it clearly — "How would you find a bad value in a feature you have no intuition about?"</strong> <em>"Don't rely on a hand-set range — use the series against itself. A forecast's residual (even a naive one: this year vs last year) flags points that break the pattern. Add a robust z-score across the column for far-from-the-bulk values. Both are domain-agnostic — they'd flag an anomaly in GDP or fertility just as well as in life expectancy."</em></p>
 <hr />
 <h2 id="quick-reference-say-it-in-plain-words">Quick Reference — say it in plain words</h2>
 <table>
@@ -157,7 +170,15 @@
 </tr>
 <tr>
 <td><strong>Real forecasting tools?</strong></td>
-<td>"ARIMA, Prophet, and RNN/LSTM (the AI route) — but they obey the same rules."</td>
+<td>"Moving average / exponential smoothing, ARIMA, Prophet, and RNN/LSTM (the AI route) — but they obey the same rules."</td>
+</tr>
+<tr>
+<td><strong>How is forecasting related to anomaly detection?</strong></td>
+<td>"Same machinery, opposite question. A forecast predicts the next value; its residual (how wrong it was) flags anomalies. A big residual = a surprising point."</td>
+</tr>
+<tr>
+<td><strong>Shock vs data error?</strong></td>
+<td>"A shock is a real one-year break that recovers (COVID). A data error breaks the series' own smoothness — it sawtooths. Volatility/residual checks catch the error; nothing forecasts the shock."</td>
 </tr>
 </tbody>
 </table>
