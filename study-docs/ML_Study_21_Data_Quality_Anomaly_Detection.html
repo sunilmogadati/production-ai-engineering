@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 21 — Data Quality &amp; Anomaly Detection</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-21-data-quality-anomaly-detection">ML Study 21 — Data Quality &amp; Anomaly Detection</h1>
+<p><strong>Covers:</strong> why data quality is the real job → the method ladder (schema → statistical → distributional → time-series → multivariate → cross-source) → the false-positive trap (why one method can't fit every feature) → filter vs. halt (the tripwire) → the production tools.
+<strong>Goal:</strong> learn to catch bad data <strong>without relying on domain intuition</strong> — and to know when a "detected anomaly" is a real error versus a legitimate value your method mis-flagged.</p>
+<p><strong>Series context:</strong> the twin of <strong><a href="ML_Study_04_Time_Series.html">ML Study 04 — Time Series</a></strong> (a forecast's residual <em>is</em> an anomaly detector). Every example here is real — caught while building the World Bank capstone.</p>
+<hr />
+<h2 id="part-1-the-real-job-garbage-in-garbage-out">Part 1 — The real job: garbage in, garbage out</h2>
+<blockquote>
+<p>Every model you've built assumes the data is trustworthy. It usually isn't. <strong>Public, authoritative sources contain real errors</strong> — and a model trained on them fails silently, which is the worst kind of failure: no crash, just quietly wrong answers.</p>
+</blockquote>
+<p><strong>The case that started it.</strong> Building the capstone, a data-quality check halted training on one value: <strong>Central African Republic, 2022, life expectancy = 18.818 years.</strong> Impossible — a newborn dying before 19. We traced it: the World Bank's own API returns it (our pipeline was faithful), and the whole series <em>sawtoothed</em> — 51.9 → 45.2 → 52.3 → <strong>31.5</strong> → 50.6 → <strong>40.3</strong> → <strong>18.8</strong>. An independent source (the WHO) showed CAR at a smooth ~52 throughout. <strong>Verdict: a real World Bank data error</strong>, and the model had been training on it.</p>
+<p>The lesson isn't "the World Bank is bad." It's that <strong>validation is not optional</strong> — you defend against the source, you don't trust it.</p>
+<hr />
+<h2 id="part-2-the-method-ladder-cheapest-most-general">Part 2 — The method ladder (cheapest → most general)</h2>
+<p>You climb this ladder until the bad data is caught. Each rung needs <em>less</em> domain knowledge than the one before.</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>Method</th>
+<th>Catches</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. <strong>Schema / contract</strong></td>
+<td>types, allowed values, not-null, <strong>hand-set ranges</strong></td>
+<td>wrong type, <code>NULL</code>, out-of-bounds</td>
+<td>you to know the bounds</td>
+</tr>
+<tr>
+<td>2. <strong>Statistical (univariate)</strong></td>
+<td><strong>robust z-score</strong> (median + MAD), IQR / Tukey fences</td>
+<td>values far from the column's bulk</td>
+<td><em>nothing</em> — pure stats</td>
+</tr>
+<tr>
+<td>3. <strong>Time-series (self-history)</strong></td>
+<td><strong>year-over-year volatility</strong> vs the series' own history</td>
+<td>a value that jumps implausibly</td>
+<td>ordering (time)</td>
+</tr>
+<tr>
+<td>4. <strong>Distributional drift</strong></td>
+<td>PSI, KL-divergence, KS-test vs a reference batch</td>
+<td>"this new pull looks different"</td>
+<td>a reference</td>
+</tr>
+<tr>
+<td>5. <strong>Multivariate</strong></td>
+<td>Isolation Forest, LOF, Mahalanobis, autoencoder error</td>
+<td>rows jointly implausible across features</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6. <strong>Cross-source reconciliation</strong></td>
+<td>compare to an independent source</td>
+<td>source-specific errors</td>
+<td>a second source</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The two that need no intuition (rungs 2–3) are the workhorses.</strong> Robust z-score flags "far from the bulk"; year-over-year volatility flags "broke its own pattern." Run on the real data with <strong>zero hand-set ranges</strong>, they caught every corrupted CAR/SSD cell — <em>and</em> surfaced Botswana 2022, a jump no human had flagged.</p>
+<blockquote>
+<p><strong>Robust z, in one line:</strong> <code>z = 0.6745 · (x − median) / MAD</code>, where <code>MAD = median(|x − median|)</code>. Uses the median (not the mean) so a few outliers don't poison the yardstick they're measured against.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-the-false-positive-trap-method-choice-per-feature">Part 3 — The false-positive trap (method choice per feature)</h2>
+<blockquote>
+<p>Here's the catch that makes this a <em>skill</em>, not a checkbox. When we ran robust-z on <strong>every</strong> column, it flagged <strong>Botswana and Gabon's GDP-per-capita</strong> as anomalies. They're not errors — those are just <strong>genuinely richer countries.</strong></p>
+</blockquote>
+<p>GDP-per-capita across Sub-Saharan Africa is heavily <strong>right-skewed</strong> (most countries poor, a few much richer). Robust-z assumes a roughly <strong>unimodal</strong> spread, so it treats a legitimately high-income country as an outlier. A <strong>false positive</strong> — and a costly one: it tripped the pipeline's safety halt on good data.</p>
+<p><strong>The rule:</strong> <em>the method must fit the feature's distribution.</em>
+- <strong>Bounded / unimodal</strong> features (life expectancy, fertility rate) → robust-z is right.
+- <strong>Skewed <em>level</em> variables</strong> (GDP, income, population) → robust-z false-positives. Use a <strong>log transform first</strong>, or rely on <strong>year-over-year change</strong> (a country's own GDP shouldn't leap 10× — but its <em>level</em> being high is fine), or exclude it from population outlier detection.</p>
+<p>We also caught <strong>Seychelles' life expectancy of 77</strong> by robust-z — again real, just a high-income outlier in a low-income group. <strong>A detector finds <em>candidates</em>; a human or a second source confirms.</strong> Never auto-delete on a flag alone.</p>
+<p><strong>🎯 Say it clearly — "Robust-z flagged your richest country. Is it an anomaly?"</strong> <em>"Probably not — it's a false positive. Robust-z assumes a unimodal spread, and income is skewed, so a genuinely rich entity looks like an outlier. For skewed level variables, log-transform first or use year-over-year change instead. Statistical flags are candidates to review, not verdicts."</em></p>
+<hr />
+<h2 id="part-4-what-to-do-with-a-flag-filter-vs-halt-the-tripwire">Part 4 — What to do with a flag: filter vs. halt (the tripwire)</h2>
+<p>Finding bad data is half the job; the other half is <strong>responding proportionally.</strong></p>
+<ul>
+<li><strong>A few bad rows</strong> (isolated source noise) → <strong>filter</strong> them out (treat like missing values) and train on the clean remainder.</li>
+<li><strong>Many bad rows</strong> (a systemic break — the source changed schema, a join broke) → <strong>halt</strong> the pipeline. Don't quietly train on a broken pull.</li>
+</ul>
+<p>The switch between them is a <strong>tripwire</strong>: <em>halt only if the flagged fraction exceeds a threshold</em> (e.g. 5%). In the capstone, the gate flagged <strong>7 of 357 country-years (2%)</strong> → filtered them and proceeded. Training on the clean 350 rows, the model's error <strong>dropped from RMSE 3.27 to 2.72</strong> — cleaning the data <em>improved the model</em>. That's the payoff: not just safety, but accuracy.</p>
+<p><strong>Where the gate lives:</strong> as early as possible — validate on ingest / before the mart is built, so bad data never propagates downstream. "Shift left."</p>
+<hr />
+<h2 id="part-5-the-production-tools-dont-hand-roll-it">Part 5 — The production tools (don't hand-roll it)</h2>
+<p>You built the detectors by hand to <em>understand</em> them. In production, use a framework:</p>
+<ul>
+<li><strong>Great Expectations</strong> — declarative "expectations" (<code>expect_column_values_to_be_between</code>, <code>...to_not_be_null</code>), with data docs and a validation report. The industry default.</li>
+<li><strong>Pandera</strong> — lightweight schema + statistical checks for pandas/Polars, great inside Python pipelines.</li>
+<li><strong>dbt tests</strong> — <code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>, plus custom SQL tests, run as part of the transform.</li>
+<li><strong>Evidently AI</strong> — drift and data-quality monitoring over time, dashboards included (rung 4).</li>
+</ul>
+<p>All of them encode the same ladder — you just declare the checks instead of writing the loop.</p>
+<hr />
+<h2 id="quick-reference-say-it-in-plain-words">Quick Reference — say it in plain words</h2>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Plain-English answer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Why validate authoritative data?</strong></td>
+<td>"Because even the World Bank ships real errors. A model trained on them fails silently — the worst failure."</td>
+</tr>
+<tr>
+<td><strong>How to catch a bad value with no intuition?</strong></td>
+<td>"Robust z-score (far from the column's bulk) and year-over-year volatility (broke its own pattern). Both are domain-agnostic."</td>
+</tr>
+<tr>
+<td><strong>Why not robust-z on everything?</strong></td>
+<td>"It assumes a unimodal spread. On skewed level variables like GDP it false-positives on genuinely rich/poor entities. Log-transform or use relative change instead."</td>
+</tr>
+<tr>
+<td><strong>A detector flagged a row — delete it?</strong></td>
+<td>"No. A flag is a candidate, not a verdict. Confirm with a human or an independent source first."</td>
+</tr>
+<tr>
+<td><strong>Filter or halt?</strong></td>
+<td>"Filter isolated bad rows; halt if the flagged fraction is large (a tripwire). Proportional response."</td>
+</tr>
+<tr>
+<td><strong>Production tools?</strong></td>
+<td>"Great Expectations, Pandera, dbt tests, Evidently — declare the checks instead of coding the loop."</td>
+</tr>
+<tr>
+<td><strong>Did cleaning help the model?</strong></td>
+<td>"Yes — dropping 7 corrupted rows cut the error from 3.27 to 2.72. Clean data <em>is</em> model performance."</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>ML Study 21 — Data Quality &amp; Anomaly Detection. The other half of <a href="ML_Study_04_Time_Series.html">ML Study 04</a>: forecasting predicts the next point; anomaly detection asks whether this one is real.</em></p>
+</body>
+</html>
