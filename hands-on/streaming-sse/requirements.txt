@@ -1,0 +1,2 @@
+fastapi[standard]>=0.115
+anthropic>=0.40          ; optional — only needed for the real-Claude path (ANTHROPIC_API_KEY)
