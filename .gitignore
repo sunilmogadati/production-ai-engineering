@@ -20,6 +20,11 @@ credentials*
 Quintrix-AI-Cohort1/
 **/cohort1-raw/
 
+# Third-party learning material (Pluralsight course code + slide PDFs, etc.).
+# Co-located with our FastAPI content for convenience, but NEVER committed —
+# it's someone else's copyright. See reference/README.md.
+/reference/
+
 # ============================================================
 #  Heavy / generated / local
 # ============================================================

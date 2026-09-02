@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13e — Deep Agents: Planning, Sub-Agents, and a File System</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13e-deep-agents-planning-sub-agents-and-a-file-system">ML Study 13e — Deep Agents: Planning, Sub-Agents, and a File System</h1>
+<p><strong>Covers:</strong> the progression <strong>LLM → shallow agent → deep agent</strong> → why a <strong>shallow (ReAct) agent</strong> hits a ceiling (no explicit planning, can't decompose complex queries, limited context retention) → the <strong>four pillars</strong> of a deep agent (<strong>planning tool</strong>, <strong>sub-agents</strong>, <strong>file system / persistent memory</strong>, <strong>system prompt</strong>) → building one with the <strong><code>deepagents</code></strong> library (built on LangGraph): a Tavily <code>web_search</code> tool, <code>create_agent</code> (shallow) vs <code>create_deep_agent</code> (deep), the <strong>middleware graph</strong> it wires in automatically (patch-tool-calls → summarization → model → todo-list), and the <strong>virtual file system</strong> where large tool results are auto-saved.
+<strong>Goal:</strong> understand what makes an agent "deep" — and the judgment for when that depth is worth it versus when a shallow loop (or no agent at all) is the right call.</p>
+<p><strong>Series context:</strong> the <strong>orchestration rung</strong>, and the capstone of the agent arc. <a href="ML_Study_13_LangChain_Agents.html">Study 13</a> gave the LLM tools; <a href="ML_Study_13a_LangGraph.html">13a</a> gave it a controllable graph/loop; <a href="ML_Study_13b_MCP.html">13b</a> standardized tool access; <a href="ML_Study_13c_RAG.html">13c</a>/<a href="ML_Study_13d_Vectorless_RAG.html">13d</a> made retrieval a capability. A <strong>deep agent</strong> composes all of it: it <em>plans</em>, <em>decomposes</em>, <em>delegates</em> to sub-agents, and <em>persists</em> state — the same jump from <em>reacting</em> to <em>orchestrating</em> that separates a capable individual from someone who runs a program. Built on LangGraph; the canonical examples are <strong>Claude Code, Deep Research, and Manus</strong>. Built from a hands-on Agentic-AI walkthrough. Companion notebook: <code>1-basics-deep-agent.ipynb</code>.</p>
+<blockquote>
+<p>The frame for the whole chapter: a shallow agent <strong>reacts</strong> — query in, tool out, done. A deep agent <strong>holds the whole</strong> — it makes a plan, splits it into tracked sub-tasks, hands each to a specialist, and keeps a shared memory so nothing is lost. That's not a bigger prompt; it's a different architecture.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-the-progression-from-llm-to-shallow-agent">Part 1 — The progression: from LLM to shallow agent</h2>
+<p>Recall the simplest agent (Study 13). The LLM is the <strong>brain</strong>: it takes input and decides whether to answer directly or call a <strong>tool</strong> (a search API, a weather API, Tavily). The tool returns a result, and the agent produces output.</p>
+<div class="mermaid">flowchart LR
+    I[&quot;Input query&quot;] --&gt; LLM[&quot;LLM (brain)&lt;br/&gt;answer, or call a tool?&quot;]
+    LLM --&gt;|needs data| T[&quot;Tools&lt;br/&gt;(search / weather / API)&quot;]
+    T --&gt; O[&quot;Output&quot;]
+    LLM --&gt;|can answer| O</div>
+<p>The <strong>ReAct agent</strong> (Study 13/13a) improves on this: the LLM is wired to <em>many</em> tools, and after each tool result the <strong>context loops back</strong> to the LLM, which decides whether to call another tool. <em>Reason → Act → observe → Reason again</em>, any number of times, until the query is solved. Ask <em>"what is 2+2, then multiply by 5"</em> and it can chain the steps.</p>
+<div class="mermaid">flowchart LR
+    I[&quot;Input&quot;] --&gt; LLM[&quot;LLM + system prompt&quot;]
+    LLM &lt;--&gt;|&quot;loop: reason -&gt; act -&gt; observe&quot;| T[&quot;Tools (many)&quot;]
+    LLM --&gt; O[&quot;Final output&quot;]</div>
+<p>Both of these are <strong>shallow agents</strong> — and the ReAct loop, powerful as it is, is still just <em>LLM + tools in a loop</em>. That ceiling shows up on real work:</p>
+<ul>
+<li><strong>No explicit planning.</strong> A query arrives, the LLM reacts. There's no step where it <em>lays out a plan</em> before acting.</li>
+<li><strong>Complex queries can't be decomposed.</strong> Ask <em>"find today's AI news, relate it to economics, and to the latest in physics"</em> and there's no mechanism to break that into sub-problems, assign each to a worker, and combine the results.</li>
+<li><strong>Limited context retention.</strong> One flow, one pass. There's no durable place to accumulate and share what's been learned across many steps.</li>
+</ul>
+<blockquote>
+<p><strong>Judgment — shallow vs. deep is the same distinction as fighting fires vs. running a program, and it's the heart of delivery.</strong> The shallow loop is the engineer who reacts to whatever's in front of them, one ticket at a time — genuinely useful, and exactly right for simple work. But hand it something big and ambiguous and it has nowhere to put a <em>plan</em>, no way to <em>split and delegate</em>, no <em>shared memory</em> to hold the whole. Those three gaps — planning, decomposition/delegation, and persistence — are precisely what separates someone who executes tasks from someone who can carry a complex program. A deep agent is that jump, encoded.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-four-pillars-of-a-deep-agent">Part 2 — The four pillars of a deep agent</h2>
+<p>A deep agent works completely differently. Around the LLM it adds <strong>four core components</strong> — and together they turn "react to a query" into "run a project."</p>
+<div class="mermaid">flowchart TB
+    subgraph DA[&quot;Deep Agent&quot;]
+        LLM[&quot;LLM&quot;]
+    end
+    P[&quot;1. Planning Tool&lt;br/&gt;(a to-do list)&quot;] --- DA
+    S[&quot;2. Sub-Agents&lt;br/&gt;(decompose + delegate)&quot;] --- DA
+    F[&quot;3. File System&lt;br/&gt;(persistent shared memory)&quot;] --- DA
+    SP[&quot;4. System Prompt&lt;br/&gt;(how the agent behaves)&quot;] --- DA</div>
+<p><strong>1. Planning tool — a to-do list.</strong> When a query arrives, the agent doesn't jump straight to a tool. It first <strong>makes a plan</strong>: an explicit to-do list of the steps required. Give it <em>"book a 3-night, 4-day Paris trip on a ₹100k budget"</em> and it writes: day 1 — fly + hotel; day 2 — Eiffel Tower; day 3 — museums; day 4 — return; plus what to book, what not to, and the per-day cost. The plan is <em>written down and tracked</em>, not held implicitly in one forward pass.</p>
+<p><strong>2. Sub-agents — decompose and delegate.</strong> Someone has to <em>execute</em> each to-do item, so the deep agent spawns <strong>specialized sub-agents</strong>, one per task. For a <em>"research and write a blog"</em> job: sub-agent 1 researches on the internet, sub-agent 2 pulls from research papers (arXiv), sub-agent 3 writes, sub-agent 4 checks copyright — and they can work in parallel. Each sub-agent gets a <strong>bounded piece</strong> and its own isolated context, so no single context has to hold everything.</p>
+<p><strong>3. File system — persistent shared memory.</strong> A <strong>file system</strong> (real or virtual) serves as persistent memory that <em>all</em> sub-agents can read and write. One sub-agent's research is saved where the writer sub-agent can use it. This is what lets work accumulate and be shared across steps and agents — and it's how the agent manages <em>large</em> context without stuffing everything into the prompt.</p>
+<p><strong>4. System prompt — the operating discipline.</strong> A detailed <strong>system prompt</strong> defines how the agent behaves — its role, standards, tone, what it must and must not do. The canonical example is <strong>Claude Code's</strong> system prompt (public, and famously long and detailed): <em>"You are Claude Code… an interactive CLI tool that helps users with software engineering tasks… Assist with defensive security tasks only. Refuse to create, modify, or improve code that may be used maliciously…"</em> That prompt is what makes a general model behave like a disciplined engineer.</p>
+<blockquote>
+<p><strong>Judgment — the four pillars are a delivery playbook wearing an AI costume.</strong> Look at what they actually are: <strong>make the plan explicit and trackable</strong> (the to-do list), <strong>decompose and delegate to specialists with clear ownership</strong> (sub-agents with isolated context), <strong>keep a shared source of truth so nothing lives only in one head</strong> (the file system), and <strong>set the standards up front</strong> (the system prompt). That is how you run any complex program — human or agentic. It's also the concrete form of a principle from every turnaround: <em>turn ambiguity into something clear, repeatable, and not dependent on one hero.</em> The planning tool makes the work legible; the file system makes it survive; the sub-agents make it scale past one context. The technology is new; the discipline is not.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-building-one-deepagents-on-langgraph">Part 3 — Building one: <code>deepagents</code> on LangGraph</h2>
+<p>The <strong><code>deepagents</code></strong> library is a standalone package for building agents that tackle complex, multi-step tasks. It's <strong>built on LangGraph</strong> (Study 13a) — so it inherits state, stateful workflows, and the graph model — and it ships the four pillars pre-wired.</p>
+<p><strong>Setup</strong> (keys in <code>.env</code>, loaded — never in source):</p>
+<pre><code class="language-python"># requirements.txt: deepagents langchain langchain-openai langchain-groq
+#                   tavily-python python-dotenv ipykernel
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ[&quot;OPENAI_API_KEY&quot;] = os.getenv(&quot;OPENAI_API_KEY&quot;)
+os.environ[&quot;GROQ_API_KEY&quot;]   = os.getenv(&quot;GROQ_API_KEY&quot;)
+os.environ[&quot;GOOGLE_API_KEY&quot;] = os.getenv(&quot;GOOGLE_API_KEY&quot;)
+os.environ[&quot;TAVILY_API_KEY&quot;] = os.getenv(&quot;TAVILY_API_KEY&quot;)
+</code></pre>
+<p><strong>A tool</strong> — real-time web search via Tavily (the sub-agents' window to the internet):</p>
+<pre><code class="language-python">from typing import Literal
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key=os.getenv(&quot;TAVILY_API_KEY&quot;))
+
+def web_search(query: str,
+               max_results: int = 5,
+               topic: Literal[&quot;general&quot;, &quot;news&quot;, &quot;finance&quot;] = &quot;general&quot;,
+               include_raw_content: bool = False):
+    &quot;&quot;&quot;Run a web search.&quot;&quot;&quot;
+    return tavily_client.search(
+        query,
+        max_results=max_results,
+        include_raw_content=include_raw_content,
+        topic=topic,          # keep the argument ORDER the client expects
+    )
+</code></pre>
+<p><strong>A model</strong> — any provider; here Groq via LangChain's universal initializer:</p>
+<pre><code class="language-python">from langchain.chat_models import init_chat_model
+model = init_chat_model(&quot;groq:qwen/qwen3-32b&quot;)
+</code></pre>
+<p><strong>Shallow vs. deep — the same shape, one word different:</strong></p>
+<pre><code class="language-python"># Shallow agent (Study 13): LLM + tools, plain loop
+from langchain.agents import create_agent
+simple_agent = create_agent(model=model, tools=[web_search])
+
+# Deep agent: adds planning, sub-agents, file system, system prompt
+from deepagents import create_deep_agent
+deep_agent = create_deep_agent(
+    tools=[web_search],
+    system_prompt=&quot;Act as a researcher.&quot;,
+    model=model,
+)
+</code></pre>
+<p>That's the entire API difference: <code>create_agent</code> → <code>create_deep_agent</code>. But look at the <strong>graph each produces</strong> — this is where "deep" lives.</p>
+<div class="mermaid">flowchart TB
+    subgraph SH[&quot;Shallow: create_agent&quot;]
+        s1[&quot;__start__&quot;] --&gt; s2[&quot;model&quot;]
+        s2 -.-&gt; s3[&quot;tools&quot;]
+        s2 -.-&gt; s4[&quot;__end__&quot;]
+        s3 -.-&gt; s2
+    end
+    subgraph DE[&quot;Deep: create_deep_agent (middleware auto-wired)&quot;]
+        d1[&quot;PatchToolCallsMiddleware.before_agent&quot;] --&gt; d2[&quot;SummarizationMiddleware.before_model&quot;]
+        d2 --&gt; d3[&quot;model&quot;]
+        d3 --&gt; d4[&quot;TodoListMiddleware.after_model&quot;]
+        d4 -.-&gt; d5[&quot;tools&quot;]
+        d4 -.-&gt; d6[&quot;__end__&quot;]
+        d5 -.-&gt; d2
+    end</div>
+<p>The deep agent auto-attaches <strong>middleware hooks</strong> (the same middleware idea from the LangChain module):
+- <strong><code>TodoListMiddleware</code> (after model)</strong> — automatically creates and tracks the <strong>to-do list</strong>, splitting the task into sub-tasks and tracking execution. This <em>is</em> pillar 1, wired in for free.
+- <strong><code>SummarizationMiddleware</code> (before model)</strong> — as the conversation grows, it <strong>summarizes</strong> to keep context manageable. This is part of pillar 3 (context management).
+- <strong><code>PatchToolCallsMiddleware</code> (before agent)</strong> — repairs/normalizes tool calls before they run.</p>
+<p><strong>Invoke it:</strong></p>
+<pre><code class="language-python">result = deep_agent.invoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;What is deepagent?&quot;}]})
+print(result[&quot;messages&quot;][-1].content)      # the researched, cited answer
+
+# The result ALSO carries a virtual file system:
+result[&quot;files&quot;]
+# e.g. {'/large_tool_results/3fetmqatt': {'content': [...], 'created_at': ..., 'modified_at': ...}}
+</code></pre>
+<p>That <code>files</code> key is pillar 3 in action: when a tool result is <strong>too large for context</strong>, the deep agent <em>automatically writes it to its virtual file system</em> and keeps a reference, instead of blowing the context window. You'll literally see a <code>ToolMessage</code> like <em>"Tool result too large, the result of this tool call was saved in the filesystem at this path: /large_tool_results/…"</em>. The agent is managing its own memory.</p>
+<blockquote>
+<p><strong>Judgment — the auto-wired middleware is the tell: "deep" is a set of disciplines, not a smarter model.</strong> Notice that nothing about the <em>model</em> changed between the shallow and deep agent — same LLM, same tools. What changed is the <strong>harness</strong>: automatic planning (to-do tracking), automatic context management (summarize + spill-to-file), tool-call repair. That's the whole lesson of production AI restated: <strong>the intelligence is table stakes; the reliability comes from the scaffolding around it.</strong> A deep agent is disciplined <em>structure</em> wrapped around a model — which is exactly what a senior engineer is, wrapped around raw capability.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-when-to-go-deep-and-when-not-to">Part 4 — When to go deep (and when not to)</h2>
+<p>Deep agents are powerful and <em>expensive</em> — more LLM calls, more latency, more moving parts. The skill is knowing when the depth earns its cost.</p>
+<p><strong>Reach for a deep agent when the task needs:</strong>
+- <strong>Complex, multi-step work that requires planning and decomposition</strong> — not "answer this," but "research, synthesize, and produce."
+- <strong>Large context managed through a file system</strong> — work that would overflow a single context window.
+- <strong>Delegation to specialized sub-agents for context isolation</strong> — distinct sub-jobs, each best handled with its own focused context.
+- <strong>Persistent memory across conversations and threads</strong> — state that must survive.</p>
+<p><strong>Stay shallow (or use no agent) when:</strong>
+- The task is a single step or a short tool-loop — a shallow <code>create_agent</code> (or a plain LLM call) is simpler, cheaper, faster, and easier to debug. The library's own guidance: <em>for simpler use cases, use <code>create_agent</code> or a custom LangGraph workflow.</em></p>
+<blockquote>
+<p><strong>Judgment — "use the deepest thing available" is a junior instinct; matching depth to the task is the senior one.</strong> This is the same discipline as <a href="ML_Study_13d_Vectorless_RAG.html">13d</a>'s "the right pick depends on the doc, not the hype." A deep agent on a trivial query is slower, pricier, and <em>harder to reason about</em> than a single call — you've added planning, sub-agents, and a file system to answer "what's 2+2." Every layer of autonomy you add is a layer you must also observe, bound, and be able to debug at 2 a.m. So add depth deliberately, where the task genuinely requires plan-decompose-delegate-persist — and no sooner. The measure of an engineer isn't how much machinery they can deploy; it's how little they can get away with and still be right.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-where-the-whole-arc-lands">Part 5 — Where the whole arc lands</h2>
+<p>Step back across the series. You went from a single LLM call, to giving it tools (13), to a controllable loop (13a), to standardized tools (13b), to retrieval by similarity (13c) and by reasoning (13d), to — here — an agent that <strong>plans, decomposes, delegates, and remembers</strong>. The trajectory has one shape: <strong>more capability, held together by more discipline.</strong></p>
+<p>The through-line worth keeping:
+- <strong>The model is never the hard part.</strong> From "chunking destroys context" to "similarity ≠ relevance" to "deep = the scaffolding, not the model," every chapter located the difficulty in the <em>structure around</em> the model — the seams, the retrieval strategy, the planning, the memory.
+- <strong>The winning move is always to turn something ambiguous into something clear, repeatable, and not dependent on one hero.</strong> A RAG pipeline, a reasoning tree, a deep agent's to-do list and file system — they're all the same instinct: make the work legible and durable.
+- <strong>Judgment is the constant.</strong> Which retrieval? Which agent depth? What to automate and what to keep a human on? The tools changed every chapter; the discipline of matching the tool to the real problem never did.</p>
+<p>That discipline is what outlasts any library in this series. Learn the tools; keep the judgment.</p>
+<hr />
+<p><strong>Next → Guardrails</strong> — bounding what an agent (deep or shallow) is allowed to do, and making its behavior safe and predictable in production. Reference library for the patterns underneath all of this: <code>systems-in-production/playbooks/ai/</code>.</p>
+<hr />
+<blockquote>
+<p><strong>Security note (applies whenever you follow along):</strong> the walkthrough's <code>.env</code> is shown on screen with <strong>live</strong> OpenAI, Groq, Google, and Tavily keys. Using a <code>.env</code> is the <em>right</em> pattern — but keep it in <code>.gitignore</code>, never paste real keys into a notebook or screen-share, and rotate any key that becomes visible. A key shown in a video or committed to git is a key to treat as compromised.</p>
+</blockquote>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13a — LangGraph: Building the Agent Loop by Hand (State, Nodes, ReAct, Memory, Streaming, Human-in-the-Loop)</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13a-langgraph-building-the-agent-loop-by-hand-state-nodes-react-memory-streaming-human-in-the-loop">ML Study 13a — LangGraph: Building the Agent Loop by Hand (State, Nodes, ReAct, Memory, Streaming, Human-in-the-Loop)</h1>
+<p><strong>Covers:</strong> why drop below <code>create_agent</code> → the <strong>graph model</strong> (<code>State</code> = <code>TypedDict</code> + <code>add_messages</code> reducer, nodes, edges, <code>StateGraph</code>, <code>.compile()</code>) → a <strong>basic chatbot</strong> graph → adding tools with <code>ToolNode</code> + <code>tools_condition</code> → the <strong>ReAct loop</strong> built by hand → <strong>memory</strong> across turns (<code>MemorySaver</code> + <code>thread_id</code>) → <strong>streaming</strong> (<code>values</code> vs <code>updates</code> vs token-level <code>astream_events</code>) → <strong>human-in-the-loop</strong> (<code>interrupt</code> / <code>Command</code>).
+<strong>Goal:</strong> open up the box that <a href="ML_Study_13_LangChain_Agents.html">Study 13</a>'s <code>create_agent</code> builds for you. You already have an agent that works; here you build the <em>same</em> agent from primitives, so when a production requirement (approval gates, custom branching, streamed tokens, persisted memory) doesn't fit the high-level helper, you can drop one level and control it.</p>
+<p><strong>Series context:</strong> the <strong>agent-orchestration rung</strong> (R6, one level down). Study 13 gave you <code>create_agent(model, tools)</code> — the fast path. This is what that helper compiles to: a <strong>LangGraph state graph</strong>. Built from the second half of Krishna Naik's Agentic-AI walkthrough (the LangGraph section). Companion notebooks: <code>1-basicchatbot.ipynb</code>, <code>humanintheloop.ipynb</code>. Next: <a href="ML_Study_13b_MCP.html">Study 13b — MCP</a>.</p>
+<hr />
+<h2 id="part-1-why-go-below-create_agent">Part 1 — Why go below <code>create_agent</code>?</h2>
+<p><strong>The problem.</strong> In Study 13, <code>create_agent(model, tools, system_prompt)</code> gave you a working agent in one line. That's the right default. But the moment a real requirement lands, you need the seams:</p>
+<ul>
+<li><em>"Pause and get a human's approval before this tool runs."</em> (healthcare, finance, anything irreversible)</li>
+<li><em>"Stream the answer token-by-token to the UI, not one blob at the end."</em></li>
+<li><em>"Remember the last three turns of this specific user's conversation."</em></li>
+<li><em>"After the search tool, branch to a different node depending on what it found."</em></li>
+</ul>
+<p><code>create_agent</code> does all of this — because underneath it is <strong>LangGraph</strong>, and LangGraph exposes every one of those seams. Learning the primitives isn't busywork: it's how you read the <a href="ML_Study_13_LangChain_Agents.html">Study 13 ecosystem figure</a> line "LangGraph = low-level control: orchestration, memory, human-in-the-loop" as <em>code you can write</em>, not a marketing bullet.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> <code>create_agent</code> is the microwave dinner; LangGraph is the kitchen. Study 13 fed you fast. This is where you learn to cook when the menu doesn't have what the client ordered.</p>
+</blockquote>
+<p><strong>The CS pattern.</strong> LangGraph models your agent as a <strong>directed graph of a shared state</strong> — the same idea as a finite state machine or a dataflow graph. You define <em>what the state is</em>, <em>the nodes that transform it</em>, and <em>the edges that route between them</em>. Then you compile and run it. Everything else in this doc is a variation on that one structure.</p>
+<hr />
+<h2 id="part-2-the-three-components-state-nodes-edges">Part 2 — The three components: State, Nodes, Edges</h2>
+<p>A LangGraph program is exactly three things:</p>
+<div class="mermaid">flowchart LR
+    START([START]) --&gt; N[&quot;node: chatbot&lt;br/&gt;(reads State, returns an update)&quot;]
+    N --&gt; END([END])
+    subgraph STATE[&quot;shared State (flows through every node)&quot;]
+        S[&quot;messages: list  (append-only)&quot;]
+    end</div>
+<ol>
+<li><strong>State</strong> — a shared dictionary that flows through the whole graph. <em>Every node can read it and write to it.</em> This is the "memory of the run" — how a value produced in one node becomes visible to the next.</li>
+<li><strong>Nodes</strong> — plain Python functions. Each takes the current state and returns an <em>update</em> to it. A node is "the work" (call the LLM, run a tool, summarize).</li>
+<li><strong>Edges</strong> — the wiring. They say "after this node, go to that node." Every graph starts at the special <code>START</code> node and finishes at <code>END</code>.</li>
+</ol>
+<blockquote>
+<p><strong>The one-line frame:</strong> <em>"This entire graph we call a </em><em>state graph</em><em> — because it maintains the state at every node."</em> The state is the whole point. It's why the pattern is named after it.</p>
+</blockquote>
+<h3 id="the-state-is-a-typeddict-with-a-twist-called-a-reducer">The State is a <code>TypedDict</code> — with a twist called a <em>reducer</em></h3>
+<p>Here's the state for a chatbot. Read the annotation carefully — it's the one genuinely non-obvious line in all of LangGraph:</p>
+<pre><code class="language-python">from typing import Annotated
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # messages is a list. The `add_messages` annotation says HOW to update this
+    # key: APPEND new messages, don't OVERWRITE the list.
+    messages: Annotated[list, add_messages]
+</code></pre>
+<p>Why the <code>Annotated[list, add_messages]</code> and not just <code>list</code>? Because of what a conversation <em>is</em>. Turn 1: you say "hi," the bot replies "hello." Turn 2: you ask "what's your name?" You do <strong>not</strong> want turn 2 to <em>replace</em> turn 1's messages — you want it <em>appended</em>, so the full history survives.</p>
+<p><code>add_messages</code> is a <strong>reducer</strong>: a function that says how to merge a node's output into the existing state key. The default behavior for a state key is "overwrite." The <code>add_messages</code> reducer changes it to "append." That single annotation is the difference between a bot with memory-of-this-run and a bot that forgets every previous message.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> a <strong>reducer</strong> answers "when a node returns a new value for this key, do I <em>replace</em> or <em>combine</em>?" <code>add_messages</code> = combine (append). Without it, your chatbot's history overwrites itself every turn.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-a-basic-chatbot-graph-start-chatbot-end">Part 3 — A basic chatbot graph (START → chatbot → END)</h2>
+<p>Now assemble the three parts. This is the "hello world" of LangGraph — one node that calls the LLM.</p>
+<pre><code class="language-python">import os
+from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
+
+load_dotenv()
+# One interface, any provider (Study 13, Part 3). Groq here; swap the string for OpenAI/Anthropic.
+llm = init_chat_model(&quot;groq:llama-3.1-8b-instant&quot;)
+
+# --- the node: a function State -&gt; update ---
+def chatbot(state: State):
+    # Read the running history, ask the LLM, return the reply.
+    # Because `messages` uses the add_messages reducer, this reply is APPENDED.
+    return {&quot;messages&quot;: [llm.invoke(state[&quot;messages&quot;])]}
+</code></pre>
+<p>Read the node signature like a sentence: <em>takes the state, returns a <code>{"messages": [...]}</code> update.</em> The reducer does the appending — the node just hands back the new message.</p>
+<pre><code class="language-python">from langgraph.graph import StateGraph, START, END
+
+graph_builder = StateGraph(State)          # the graph is typed by our State
+
+graph_builder.add_node(&quot;chatbot&quot;, chatbot) # name -&gt; function
+graph_builder.add_edge(START, &quot;chatbot&quot;)   # entry: START goes to chatbot
+graph_builder.add_edge(&quot;chatbot&quot;, END)     # exit:  chatbot goes to END
+
+graph = graph_builder.compile()            # MUST compile before you can run it
+</code></pre>
+<p>Two things worth naming:</p>
+<ul>
+<li><strong><code>add_node("chatbot", chatbot)</code></strong> — the first arg is the <em>name</em> (a string you'll reference in edges); the second is the <em>function</em>. Don't confuse them: edges route by name, not by the function object.</li>
+<li><strong><code>.compile()</code> is mandatory.</strong> An uncompiled graph is a blueprint; compiling turns it into something runnable. <em>"Unless the graph is compiled, you cannot execute it."</em></li>
+</ul>
+<h3 id="see-it-and-run-it">See it and run it</h3>
+<pre><code class="language-python"># Visualize — LangGraph renders itself as a Mermaid diagram
+from IPython.display import Image, display
+try:
+    display(Image(graph.get_graph().draw_mermaid_png()))
+except Exception:
+    pass   # rendering needs extra deps; the graph still runs without it
+
+# Run it
+result = graph.invoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Hi, who are you?&quot;}]})
+print(result[&quot;messages&quot;][-1].content)
+</code></pre>
+<p><code>graph.get_graph().draw_mermaid_png()</code> is a small gift: the graph draws its own topology. When your graph grows to a dozen nodes, this is how you verify the wiring matches your intent.</p>
+<hr />
+<h2 id="part-4-adding-tools-the-react-loop-built-by-hand">Part 4 — Adding tools: the ReAct loop, built by hand</h2>
+<p>The basic chatbot can only talk. To let it <em>act</em> (search, calculate, call an API) you add tools — and this is where you rebuild, by hand, exactly what <code>create_agent</code> did for you in Study 13.</p>
+<h3 id="step-1-bind-the-tools-to-the-model">Step 1 — bind the tools to the model</h3>
+<pre><code class="language-python">from langchain_tavily import TavilySearch
+
+tool = TavilySearch(max_results=2)
+tools = [tool]
+
+# bind_tools tells the LLM which tools exist and their schemas.
+# The LLM can now RESPOND WITH a tool call instead of a final answer.
+llm_with_tools = llm.bind_tools(tools)
+
+def tool_calling_llm(state: State):
+    return {&quot;messages&quot;: [llm_with_tools.invoke(state[&quot;messages&quot;])]}
+</code></pre>
+<p><code>bind_tools</code> is the same move from Study 13, Part 7: the model now knows the tools' schemas and can <em>decide</em> to emit a tool call. Binding doesn't run anything — it just makes the tool call a possible output.</p>
+<h3 id="step-2-add-a-node-that-runs-the-tools-and-a-router-that-decides">Step 2 — add a node that <em>runs</em> the tools, and a router that <em>decides</em></h3>
+<p>LangGraph ships two prebuilt helpers so you don't hand-write these:</p>
+<pre><code class="language-python">from langgraph.prebuilt import ToolNode, tools_condition
+
+graph_builder = StateGraph(State)
+graph_builder.add_node(&quot;tool_calling_llm&quot;, tool_calling_llm)
+graph_builder.add_node(&quot;tools&quot;, ToolNode(tools))   # executes whatever tool the LLM asked for
+
+graph_builder.add_edge(START, &quot;tool_calling_llm&quot;)
+
+# THE conditional edge: after the LLM node, look at its output.
+#   - did it emit a tool call? -&gt; go to &quot;tools&quot;
+#   - did it give a final answer? -&gt; go to END
+graph_builder.add_conditional_edges(&quot;tool_calling_llm&quot;, tools_condition)
+
+# after tools run, loop BACK to the LLM so it can read the results and continue
+graph_builder.add_edge(&quot;tools&quot;, &quot;tool_calling_llm&quot;)
+
+graph = graph_builder.compile()
+</code></pre>
+<p>Two new primitives, both doing exactly what their names say:</p>
+<ul>
+<li><strong><code>ToolNode(tools)</code></strong> — a node that reads the LLM's tool call from state, executes the matching function, and appends the result as a <strong>Tool</strong> message. It replaces the hand-written "look at <code>.tool_calls</code>, dispatch, feed the result back" loop from Study 13.</li>
+<li><strong><code>tools_condition</code></strong> — a prebuilt <strong>router function</strong> for a <em>conditional edge</em>. A normal <code>add_edge</code> always goes to the same place; <code>add_conditional_edges</code> calls a function that <em>decides</em> the next node from the current state. <code>tools_condition</code> encodes the one decision that matters: "tool call → <code>tools</code>, otherwise → <code>END</code>."</li>
+</ul>
+<h3 id="the-shape-this-makes-this-is-react">The shape this makes — this is ReAct</h3>
+<div class="mermaid">flowchart TD
+    START([START]) --&gt; LLM[&quot;tool_calling_llm&lt;br/&gt;(the BRAIN / decision-maker)&quot;]
+    LLM --&gt;|tools_condition:&lt;br/&gt;tool call?| TOOLS[&quot;tools (ToolNode)&lt;br/&gt;ACT&quot;]
+    LLM --&gt;|tools_condition:&lt;br/&gt;final answer?| END([END])
+    TOOLS --&gt;|append result| LLM</div>
+<p>Trace one lap of the loop and you'll recognize it:</p>
+<ol>
+<li><strong>Reason</strong> — the LLM node looks at the conversation and decides: answer, or call a tool?</li>
+<li><strong>Act</strong> — if it chose a tool, <code>ToolNode</code> runs it.</li>
+<li><strong>Observe</strong> — the tool's result is appended to state and fed <em>back</em> to the LLM.</li>
+<li>…the LLM reasons again with the new observation, and either loops or finishes.</li>
+</ol>
+<p>That ACT → Observe → Reason cycle <strong>is</strong> the <strong>ReAct</strong> (Reason + Act) architecture. The LLM is the <em>brain</em> — it doesn't compute the answer to "what's the weather in New York," it <em>decides</em> to call the weather tool, reads the result, and speaks. The edges are the nervous system.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> an <strong>agent is a loop, and here is the loop.</strong> <code>create_agent</code> in Study 13 compiled to exactly this graph. You just built the engine you were driving.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-memory-remembering-across-turns">Part 5 — Memory: remembering across turns</h2>
+<p>The graph above remembers within <em>one</em> <code>.invoke</code> (that's what the state is for). But call <code>.invoke</code> again and it starts blank — the state doesn't survive between runs. Production agents need to remember the <em>conversation</em>, across many calls. That's a <strong>checkpointer</strong>.</p>
+<pre><code class="language-python">from langgraph.checkpoint.memory import MemorySaver
+
+memory = MemorySaver()                     # saves state after every node
+graph = graph_builder.compile(checkpointer=memory)
+
+# a thread_id names WHICH conversation this is
+config = {&quot;configurable&quot;: {&quot;thread_id&quot;: &quot;user-42&quot;}}
+
+graph.invoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;My name is Sunil.&quot;}]}, config)
+graph.invoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;What's my name?&quot;}]}, config)
+# -&gt; &quot;Your name is Sunil.&quot; — because both calls share thread_id &quot;user-42&quot;
+</code></pre>
+<p>Two ideas, cleanly separated — don't merge them:</p>
+<ul>
+<li><strong>The checkpointer (<code>MemorySaver</code>)</strong> is the <em>storage</em>: it snapshots the state after each node so a later call can resume it. <code>MemorySaver</code> keeps it in RAM (great for dev/tests); production swaps in a database-backed saver (Postgres, Redis) with the <em>same interface</em>.</li>
+<li><strong>The <code>thread_id</code></strong> is the <em>key</em>: it says which saved conversation you're continuing. Two users get two <code>thread_id</code>s and never see each other's history; the same user across two API calls uses one <code>thread_id</code> and gets continuity.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> don't confuse <strong>state</strong> (memory <em>within</em> one run — that's the reducer's job) with <strong>the checkpointer</strong> (memory <em>across</em> runs, keyed by <code>thread_id</code>). Study 13's middleware summarization sat on top of exactly this.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-streaming-watching-the-graph-think">Part 6 — Streaming: watching the graph think</h2>
+<p><code>.invoke</code> returns only the final state — the user stares at a spinner until it's all done. <code>.stream</code> emits progress as each node finishes, so a UI can render it live. LangGraph gives you two granularities plus a token-level firehose.</p>
+<pre><code class="language-python"># stream_mode=&quot;values&quot; — after each node, get the FULL current state
+for event in graph.stream({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Search recent AI news&quot;}]},
+                          config, stream_mode=&quot;values&quot;):
+    event[&quot;messages&quot;][-1].pretty_print()
+
+# stream_mode=&quot;updates&quot; — get only the DELTA each node produced (what changed)
+for event in graph.stream(inputs, config, stream_mode=&quot;updates&quot;):
+    print(event)
+</code></pre>
+<p>Pick by what the consumer needs:</p>
+<table>
+<thead>
+<tr>
+<th>mode</th>
+<th>you get</th>
+<th>use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"values"</code></td>
+<td>the <strong>whole state</strong> after each node</td>
+<td>you want to re-render the full conversation each step</td>
+</tr>
+<tr>
+<td><code>"updates"</code></td>
+<td>only <strong>what that node changed</strong></td>
+<td>you want a log/trace of "node X produced Y"</td>
+</tr>
+</tbody>
+</table>
+<p>For a true typing-effect UI, you need <em>tokens</em>, not nodes. That's <code>astream_events</code>:</p>
+<pre><code class="language-python">async for event in graph.astream_events(inputs, config, version=&quot;v2&quot;):
+    if event[&quot;event&quot;] == &quot;on_chat_model_stream&quot;:
+        print(event[&quot;data&quot;][&quot;chunk&quot;].content, end=&quot;&quot;, flush=True)  # token by token
+</code></pre>
+<p><code>astream_events</code> reaches <em>inside</em> the LLM node and surfaces each generated chunk (<code>on_chat_model_stream</code>) — the same character-by-character effect you see in ChatGPT. Reach for it only when you need token-level UX; <code>"values"</code>/<code>"updates"</code> are enough for most orchestration logging.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> <code>values</code> = "show me everything so far," <code>updates</code> = "show me what just changed," <code>astream_events</code> = "show me every token as it's born." Three zoom levels on the same run.</p>
+</blockquote>
+<hr />
+<h2 id="part-7-human-in-the-loop-pausing-for-a-person">Part 7 — Human-in-the-loop: pausing for a person</h2>
+<p>This is the capability that makes LangGraph non-negotiable for regulated domains. <em>Some tool calls should not fire without a human saying yes</em> — issuing a refund, sending a clinical order, deleting records. LangGraph lets a graph <strong>pause mid-run</strong>, hand control to a person, and <strong>resume</strong> with their input.</p>
+<p>The native primitives are <code>interrupt</code> (pause here) and <code>Command</code> (resume with this value):</p>
+<pre><code class="language-python">from langchain_core.tools import tool
+from langgraph.types import Command, interrupt
+
+@tool
+def human_assistance(query: str) -&gt; str:
+    &quot;&quot;&quot;Request help from a human.&quot;&quot;&quot;
+    # interrupt PAUSES the whole graph and surfaces `query` to the caller.
+    # Execution stops here until someone resumes with a value.
+    human_response = interrupt({&quot;query&quot;: query})
+    return human_response[&quot;data&quot;]
+</code></pre>
+<p>The flow, and the two-call shape it forces on the caller:</p>
+<div class="mermaid">flowchart TD
+    A[&quot;agent decides it needs a human&quot;] --&gt; B[&quot;human_assistance tool calls interrupt(...)&quot;]
+    B --&gt; C{{&quot;graph PAUSES&lt;br/&gt;state is checkpointed&quot;}}
+    C --&gt; D[&quot;human reviews the query&lt;br/&gt;(approve / edit / reject)&quot;]
+    D --&gt; E[&quot;caller resumes: graph.invoke(Command(resume=answer), config)&quot;]
+    E --&gt; F[&quot;tool returns the human&#x27;s answer&lt;br/&gt;agent continues the loop&quot;]</div>
+<pre><code class="language-python"># 1) First call runs until the interrupt, then STOPS.
+#    stream_mode=&quot;values&quot; so you can see the interrupt surface.
+for ev in graph.stream({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Get expert help on X&quot;}]},
+                       config, stream_mode=&quot;values&quot;):
+    ev[&quot;messages&quot;][-1].pretty_print()
+
+# ... show ev's interrupt payload to a human, collect their answer ...
+
+# 2) Second call RESUMES the same thread with the human's answer.
+human_answer = &quot;Approved — use approach B.&quot;
+for ev in graph.stream(Command(resume={&quot;data&quot;: human_answer}), config, stream_mode=&quot;values&quot;):
+    ev[&quot;messages&quot;][-1].pretty_print()
+</code></pre>
+<p>Two production gotchas worth burning in:</p>
+<ul>
+<li><strong>Resume needs the same <code>config</code> (<code>thread_id</code>).</strong> The pause is only resumable because the checkpointer (Part 5) saved the state. Human-in-the-loop <em>requires</em> a checkpointer — no memory, no pause to come back to.</li>
+<li><strong>Disable parallel tool calls</strong> when interrupting. If the model fires several tool calls at once and one interrupts, resuming can <em>re-run the already-completed ones</em>. Force one-at-a-time (<code>llm.bind_tools(tools, parallel_tool_calls=False)</code>) so resume is clean.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> Study 13's middleware gave you human-in-the-loop as a <em>hook</em>; this is the <em>primitive</em> underneath it — <code>interrupt</code> freezes the graph, <code>Command(resume=...)</code> thaws it. High-stakes actions get a person in the loop by construction, not by convention.</p>
+</blockquote>
+<hr />
+<h2 id="part-8-where-this-connects">Part 8 — Where this connects</h2>
+<p>You now have, as code you can modify, everything <code>create_agent</code> was hiding:</p>
+<ul>
+<li><strong>State + reducer</strong> → memory within a run</li>
+<li><strong>Nodes + conditional edges</strong> → the ReAct loop, branch-able</li>
+<li><strong><code>ToolNode</code> + <code>tools_condition</code></strong> → the act/observe half of the loop</li>
+<li><strong><code>MemorySaver</code> + <code>thread_id</code></strong> → memory across runs</li>
+<li><strong><code>stream</code> / <code>astream_events</code></strong> → live UX</li>
+<li><strong><code>interrupt</code> / <code>Command</code></strong> → governed, human-gated actions</li>
+</ul>
+<p>The through-line back to your platform: this graph is what sits <em>behind a FastAPI endpoint</em> (<a href="ML_Study_12_Serving_Models_FastAPI.html">Study 12</a>) — you <code>graph.invoke(...)</code> in the handler exactly as you called a classical model's <code>.predict(...)</code>. Same serving discipline, richer engine. The one thing still missing is <strong>where the tools come from</strong> when they live in another team's service or a third-party server — that's the <strong>Model Context Protocol</strong>, and it's next in <a href="ML_Study_13b_MCP.html">Study 13b</a>.</p>
+<blockquote>
+<p><strong>The through-line:</strong> LLM call → tools → agent (Study 13) → <strong>build the agent loop from primitives so you can govern it</strong> (here) → standardize how tools are supplied (13b, MCP). Each rung adds control without changing the spine.</p>
+</blockquote>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StateGraph(State)</code></td>
+<td>the graph, typed by your State schema</td>
+</tr>
+<tr>
+<td><code>State</code> (<code>TypedDict</code>)</td>
+<td>the shared dict that flows through every node</td>
+</tr>
+<tr>
+<td><code>Annotated[list, add_messages]</code></td>
+<td>a <strong>reducer</strong> — merge new messages by <strong>appending</strong>, not overwriting</td>
+</tr>
+<tr>
+<td>reducer</td>
+<td>function deciding replace-vs-combine when a node writes a state key</td>
+</tr>
+<tr>
+<td>node</td>
+<td>a function <code>State -&gt; update</code>; the unit of work</td>
+</tr>
+<tr>
+<td><code>add_node("name", fn)</code></td>
+<td>register a node (name for edges, function for work)</td>
+</tr>
+<tr>
+<td>edge</td>
+<td>fixed wiring: after node A, go to node B</td>
+</tr>
+<tr>
+<td><code>add_conditional_edges(node, router)</code></td>
+<td>dynamic wiring: a function chooses the next node</td>
+</tr>
+<tr>
+<td><code>START</code> / <code>END</code></td>
+<td>the graph's fixed entry and exit</td>
+</tr>
+<tr>
+<td><code>.compile()</code></td>
+<td>turn the blueprint into a runnable graph (mandatory)</td>
+</tr>
+<tr>
+<td><code>bind_tools(tools)</code></td>
+<td>let the LLM emit tool calls (schemas attached)</td>
+</tr>
+<tr>
+<td><code>ToolNode(tools)</code></td>
+<td>node that executes the LLM's chosen tool, appends the result</td>
+</tr>
+<tr>
+<td><code>tools_condition</code></td>
+<td>prebuilt router: tool call → tools, else → END</td>
+</tr>
+<tr>
+<td>ReAct</td>
+<td>Reason + Act loop — the shape tools + conditional edge make</td>
+</tr>
+<tr>
+<td><code>MemorySaver</code> (checkpointer)</td>
+<td>snapshots state after each node so runs can resume</td>
+</tr>
+<tr>
+<td><code>thread_id</code></td>
+<td>key naming <em>which</em> conversation to continue</td>
+</tr>
+<tr>
+<td><code>stream(..., stream_mode="values"/"updates")</code></td>
+<td>full state / deltas per node</td>
+</tr>
+<tr>
+<td><code>astream_events</code></td>
+<td>token-level stream (<code>on_chat_model_stream</code>)</td>
+</tr>
+<tr>
+<td><code>interrupt(payload)</code></td>
+<td>pause the graph, surface payload to a human</td>
+</tr>
+<tr>
+<td><code>Command(resume=value)</code></td>
+<td>resume a paused graph with the human's input</td>
+</tr>
+</tbody>
+</table>
+<p><em>ML Study 13a — LangGraph is what <code>create_agent</code> compiles to: a </em><em>State</em><em> (a <code>TypedDict</code> whose <code>messages</code> key uses the <code>add_messages</code> </em><em>reducer</em><em> to append), </em><em>nodes</em><em> (functions <code>State→update</code>), and </em><em>edges</em><em> (<code>add_edge</code> fixed, <code>add_conditional_edges</code> dynamic via <code>tools_condition</code>); <code>ToolNode</code> + a conditional edge back to the LLM node </em><em>is</em><em> the ReAct loop; <code>MemorySaver</code> + <code>thread_id</code> add memory across runs; <code>stream</code>/<code>astream_events</code> add live UX; <code>interrupt</code>/<code>Command</code> add human-gated actions. Next: MCP (13b).</em></p>
+</body>
+</html>

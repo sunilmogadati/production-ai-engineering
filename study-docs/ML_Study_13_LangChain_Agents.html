@@ -311,10 +311,10 @@ config = {&quot;configurable&quot;: {&quot;thread_id&quot;: &quot;test-1&quot;}}
 </blockquote>
 <hr />
 <h2 id="part-9-where-this-goes-next">Part 9 — Where this goes next</h2>
-<p>This covered LangChain fundamentals. The rest of the arc:</p>
+<p>This covered LangChain fundamentals. The rest of the arc — <strong>the next two docs build both of these as code</strong>:</p>
 <ul>
-<li><strong>LangGraph</strong> — when you need real control: branching, <strong>memory</strong> across turns, <strong>human-in-the-loop</strong> approval (mandatory in healthcare/finance), multi-step state.</li>
-<li><strong>MCP (Model Context Protocol)</strong> — a standard way to expose tools/data to the model (Anthropic-native).</li>
+<li><strong>LangGraph</strong> (<a href="ML_Study_13a_LangGraph.html">Study 13a</a>) — when you need real control: branching, <strong>memory</strong> across turns, <strong>human-in-the-loop</strong> approval (mandatory in healthcare/finance), multi-step state. That doc opens up the box <code>create_agent</code> builds and rebuilds the ReAct loop from primitives.</li>
+<li><strong>MCP (Model Context Protocol)</strong> (<a href="ML_Study_13b_MCP.html">Study 13b</a>) — a standard way to expose tools/data to the model, so a tool written once (by you or a third party) plugs into any agent.</li>
 <li><strong>Multi-agent</strong> — several agents (planner → executor → reviewer) collaborating.</li>
 <li><strong>Deployment</strong> — the agent behind a FastAPI endpoint (Study 12) → containerized → cloud. Same serving discipline as any model.</li>
 <li><strong>Observability &amp; eval (LangSmith)</strong> — because an agent that acts must be watched and measured.</li>

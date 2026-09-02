@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13g — LLM Evaluation: Don&#x27;t Ship on Vibes</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13g-llm-evaluation-dont-ship-on-vibes">ML Study 13g — LLM Evaluation: Don't Ship on Vibes</h1>
+<p><strong>Covers:</strong> <em>why</em> you evaluate LLM apps (you cannot improve what you cannot measure) → the <strong>three-step workflow</strong> (build a test dataset → run your app on it → score with evaluators) → <strong>LLM-as-judge</strong> and its deterministic counterpart → the <strong>four RAG evaluation metrics</strong> (correctness, answer relevance, groundedness, retrieval relevance) and which need a reference answer → a full <strong>chatbot</strong> evaluation (dataset, correctness judge, concision check, <code>client.evaluate</code>) → a full <strong>RAG</strong> evaluation (structured-output graders with <code>TypedDict</code>, the four evaluators, one run) → doing this with <strong>LangSmith</strong> (and the tool-agnostic principles underneath it).
+<strong>Goal:</strong> learn how to know whether an AI system is actually <em>good</em> — not just plausible — and to make its improvement a measured, repeatable process instead of a hunch.</p>
+<p><strong>Series context:</strong> the <strong>measurement rung</strong>, and the loop-closer for the whole series. You built RAG (<a href="ML_Study_13c_RAG.html">13c</a>/<a href="ML_Study_13d_Vectorless_RAG.html">13d</a>), agents (<a href="ML_Study_13e_Deep_Agents.html">13e</a>), and guardrails (<a href="ML_Study_13f_Guardrails.html">13f</a>). Evaluation is how you find out if any of it <em>works</em> — and it makes the earlier principles concrete: "similarity ≠ relevance" becomes a <strong>retrieval-relevance</strong> metric; "grounding is not reasoning" becomes a <strong>groundedness</strong> metric. Built from a hands-on Agentic-AI walkthrough (the LLM-evaluation section). Companion notebook: <code>1-rag_evaluation.ipynb</code>.</p>
+<blockquote>
+<p>The one-line frame, borrowed from the tool this lesson uses: <strong>don't ship on "vibes" alone.</strong> A demo that looks right in three hand-picked queries tells you almost nothing. Evaluation is the difference between "it seemed fine when I tried it" and "it scores 0.86 on correctness across 50 cases, up from 0.71 last version."</p>
+</blockquote>
+<hr />
+<h2 id="part-1-why-evaluate-and-the-three-step-workflow">Part 1 — Why evaluate, and the three-step workflow</h2>
+<p>Everything in this series so far <em>builds</em>. This chapter <em>checks</em>. And it's the step most people skip, because a working demo feels like done — until it fails on the query you didn't try. You cannot improve what you cannot measure, and you cannot trust what you have not tested.</p>
+<p>Every LLM evaluation, whether for a chatbot or a full RAG pipeline, is the same three steps:</p>
+<div class="mermaid">flowchart LR
+    D[&quot;1. Build a test dataset&lt;br/&gt;questions + expected answers&quot;] --&gt; R[&quot;2. Run your app&lt;br/&gt;on every question&quot;]
+    R --&gt; M[&quot;3. Score with evaluators&lt;br/&gt;correctness, relevance, ...&quot;]
+    M --&gt; I[&quot;compare versions,&lt;br/&gt;catch regressions, improve&quot;]</div>
+<ol>
+<li><strong>Build a test dataset</strong> — a set of example inputs (questions), and for some metrics, the <em>reference</em> (ground-truth) answers you expect.</li>
+<li><strong>Run your application</strong> on every example to produce its actual outputs.</li>
+<li><strong>Score the outputs</strong> with <em>evaluators</em> — functions that grade each output on some dimension.</li>
+</ol>
+<p>The evaluators come in the same two flavors you saw in <a href="ML_Study_13f_Guardrails.html">guardrails (13f)</a>:
+- <strong>Deterministic</strong> — a rule. Fast, free, exact. (e.g., "is the answer shorter than 2× the reference?")
+- <strong>LLM-as-judge</strong> — a model grades the output against criteria. Understands meaning; costs a call. (e.g., "is this answer factually correct relative to the ground truth?")</p>
+<blockquote>
+<p><strong>Judgment — "don't ship on vibes" is your engineering conscience, encoded.</strong> The instinct to eyeball a few outputs and call it good is exactly how unreliable systems reach production. Evaluation replaces the hunch with a number you can <em>move</em> — and, more importantly, a number you can <em>regress against</em> when you change the prompt, the model, or the chunking. The senior move isn't running the eval once; it's making it the gate every change has to pass. You can't claim "this is better" without it — you can only <em>feel</em> it, and feelings don't survive contact with real users.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-four-rag-evaluation-metrics">Part 2 — The four RAG evaluation metrics</h2>
+<p>RAG has a canonical evaluation picture. A question flows through search → relevant documents → the LLM → an answer, which you can also compare to a reference answer. Each arrow is a different thing that can go wrong, and each gets its own metric:</p>
+<div class="mermaid">flowchart LR
+    Q[&quot;Question&quot;] --&gt; S[&quot;Search / Vector DB&quot;]
+    S --&gt; RD[&quot;Relevant documents&quot;]
+    RD --&gt; LLM[&quot;LLM (context window)&quot;]
+    LLM --&gt; A[&quot;Answer&quot;]
+    A -.compare.-&gt; REF[&quot;Reference answer&quot;]
+
+    RR[&quot;RETRIEVAL RELEVANCE&lt;br/&gt;are the docs relevant&lt;br/&gt;to the question?&quot;] -.-&gt; RD
+    AR[&quot;ANSWER RELEVANCE&lt;br/&gt;does the answer&lt;br/&gt;address the question?&quot;] -.-&gt; A
+    G[&quot;GROUNDEDNESS&lt;br/&gt;is the answer justified&lt;br/&gt;by the docs?&quot;] -.-&gt; A
+    C[&quot;CORRECTNESS&lt;br/&gt;does the answer match&lt;br/&gt;the ground truth?&quot;] -.-&gt; REF</div>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Compares</th>
+<th>Question it answers</th>
+<th>Needs a reference?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Correctness</strong></td>
+<td>answer ↔ <strong>reference</strong></td>
+<td>Is the answer factually right?</td>
+<td><strong>Yes</strong> (ground-truth dataset)</td>
+</tr>
+<tr>
+<td><strong>Answer relevance</strong></td>
+<td>answer ↔ <strong>question</strong></td>
+<td>Did it actually address the question?</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Groundedness</strong></td>
+<td>answer ↔ <strong>retrieved docs</strong></td>
+<td>Is it justified by the docs (not hallucinated)?</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Retrieval relevance</strong></td>
+<td>retrieved docs ↔ <strong>question</strong></td>
+<td>Did search fetch the right documents?</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Judgment — these four metrics are the earlier chapters made measurable, and separating them is the whole point.</strong> In <a href="ML_Study_13c_RAG.html">13c</a> I argued you must "evaluate retrieval and generation separately, because they fail separately." Here's that argument as a scorecard. <strong>Retrieval relevance</strong> is "similarity ≠ relevance" (<a href="ML_Study_13c_RAG.html">13c</a>/<a href="ML_Study_13d_Vectorless_RAG.html">13d</a>) turned into a number — did search fetch the right thing? <strong>Groundedness</strong> is "grounding is not reasoning" (<a href="ML_Study_13d_Vectorless_RAG.html">13d</a>) turned into a number — did the model stick to the facts or invent? A single "is the final answer good?" score would blur all four and tell you <em>nothing</em> about where to fix. When a RAG system scores badly, this table tells you <em>which arrow broke</em> — retrieval, or generation, or grounding. That's the difference between debugging and guessing.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-doing-it-with-langsmith-one-implementation">Part 3 — Doing it with LangSmith (one implementation)</h2>
+<p>The walkthrough uses <strong>LangSmith</strong> — a hosted observability-and-evaluation platform ("a unified observability &amp; evals platform… whether building with LangChain or not"). It gives you <strong>datasets &amp; experiments</strong>, <strong>evaluators</strong>, tracing, and a UI to compare runs. Its testing surface: AI-judge evaluation, gold-standard evaluation, functional tests, human annotation; plus dataset construction, regression testing, and online evaluation.</p>
+<p>Setup is a few environment variables (keys in <code>.env</code>, never hardcoded):</p>
+<pre><code class="language-python">import os
+from dotenv import load_dotenv
+load_dotenv()
+
+os.environ[&quot;LANGSMITH_API_KEY&quot;] = os.getenv(&quot;LANGSMITH_API_KEY&quot;)   # from your LangSmith account
+os.environ[&quot;OPENAI_API_KEY&quot;]    = os.getenv(&quot;OPENAI_API_KEY&quot;)
+os.environ[&quot;LANGSMITH_TRACING&quot;] = &quot;true&quot;                            # send traces to LangSmith
+</code></pre>
+<blockquote>
+<p><strong>Judgment — LangSmith is one tool for these ideas, not the ideas themselves — and it's a hosted SaaS, so weigh that.</strong> The <em>concepts</em> here — a test dataset, LLM-as-judge, the four RAG metrics, regression testing — are universal. You can run them in plain Python (as the chatbot <code>correctness</code> below does with a raw OpenAI call), or with <code>ragas</code>/<code>deepeval</code>, or with LangSmith's <code>client.evaluate</code>. What LangSmith adds is the <strong>platform</strong>: a hosted store for datasets/experiments, a UI to compare versions, tracing, and online (production) evaluation — real value, at the cost of an account, an API key, and a vendor dependency (note the "exceeded your per-month trace usage limits" banner in the demo — it's freemium). For a <em>course</em>, teach the principle and use whatever's simplest; for a <em>team shipping to production</em>, an observability+eval platform (LangSmith or an alternative) is usually worth it. Choose it as an observability decision, not because a tutorial did.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-worked-example-evaluating-a-chatbot">Part 4 — Worked example: evaluating a chatbot</h2>
+<p>Start simple: a plain chatbot, two evaluators.</p>
+<p><strong>Build the dataset</strong> — questions with expected answers:</p>
+<pre><code class="language-python">from langsmith import Client
+client = Client()
+
+dataset_name = &quot;Simple Chatbot Evaluation&quot;
+dataset = client.create_dataset(dataset_name)
+client.create_examples(
+    dataset_id=dataset.id,
+    examples=[
+        {&quot;inputs&quot;: {&quot;question&quot;: &quot;What is LangChain?&quot;},
+         &quot;outputs&quot;: {&quot;answer&quot;: &quot;A framework for building LLM applications&quot;}},
+        {&quot;inputs&quot;: {&quot;question&quot;: &quot;What is LangSmith?&quot;},
+         &quot;outputs&quot;: {&quot;answer&quot;: &quot;A platform for observing and evaluating LLM applications&quot;}},
+        {&quot;inputs&quot;: {&quot;question&quot;: &quot;What is OpenAI?&quot;},
+         &quot;outputs&quot;: {&quot;answer&quot;: &quot;A company that creates Large Language Models&quot;}},
+        # ...more examples...
+    ],
+)
+</code></pre>
+<p><strong>Define the evaluators</strong> — one LLM-as-judge, one deterministic:</p>
+<pre><code class="language-python">import openai
+from langsmith import wrappers
+
+openai_client = wrappers.wrap_openai(openai.OpenAI())   # wrap = trace every call in LangSmith
+eval_instructions = &quot;You are an expert professor specialized in grading students' answers to questions.&quot;
+
+# LLM-as-judge: is the response factually correct vs the reference?
+def correctness(inputs: dict, outputs: dict, reference_outputs: dict) -&gt; bool:
+    user_content = f&quot;&quot;&quot;You are grading the following question:
+{inputs['question']}
+Here is the real answer:
+{reference_outputs['answer']}
+You are grading the following predicted answer:
+{outputs['response']}
+Respond with CORRECT or INCORRECT:
+Grade:&quot;&quot;&quot;
+    response = openai_client.chat.completions.create(
+        model=&quot;gpt-4o-mini&quot;, temperature=0,             # temp 0 = consistent grading
+        messages=[{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: eval_instructions},
+                  {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: user_content}],
+    ).choices[0].message.content
+    return response == &quot;CORRECT&quot;
+
+# Deterministic: is the answer not more than 2x the reference length? (no LLM, free)
+def concision(outputs: dict, reference_outputs: dict) -&gt; bool:
+    return int(len(outputs[&quot;response&quot;]) &lt; 2 * len(reference_outputs[&quot;answer&quot;]))
+</code></pre>
+<p><strong>Define the target</strong> (the app under test) and <strong>run</strong>:</p>
+<pre><code class="language-python">default_instructions = &quot;Respond to the user's question in a short, concise manner (one short sentence).&quot;
+
+def my_app(question, model=&quot;gpt-4o-mini&quot;, instructions=default_instructions):
+    return openai_client.chat.completions.create(
+        model=model, temperature=0,
+        messages=[{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: instructions},
+                  {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: question}],
+    ).choices[0].message.content
+
+def ls_target(inputs: dict) -&gt; dict:                     # adapt app -&gt; eval's expected shape
+    return {&quot;response&quot;: my_app(inputs[&quot;question&quot;])}
+
+experiment_results = client.evaluate(
+    ls_target,                                           # your AI system
+    data=dataset_name,
+    evaluators=[correctness, concision],
+    experiment_prefix=&quot;openai-4o-mini-chatbot&quot;,
+)
+</code></pre>
+<p><code>client.evaluate</code> runs your app on every dataset example, applies both evaluators to each output, and (with LangSmith) posts a comparable experiment you can inspect. Notice the pairing again: <strong><code>correctness</code> is an LLM-judge</strong> (needs to understand meaning) and <strong><code>concision</code> is a rule</strong> (a length check needs no model) — the cheap check where a rule suffices, the smart check where it doesn't.</p>
+<p><strong>The payoff — compare models and <em>decide</em>.</strong> The reason you built all this scaffolding isn't to grade one run; it's to <strong>choose</strong>. Change one thing — here, the model — re-run the identical evaluation, and compare:</p>
+<pre><code class="language-python">def my_app(question, model=&quot;gpt-4-turbo&quot;, instructions=default_instructions):   # swap the model
+    ...
+
+experiment_results = client.evaluate(
+    ls_target, data=dataset_name,
+    evaluators=[correctness, concision],
+    experiment_prefix=&quot;openai-4-turbo-chatbot&quot;,     # a different experiment name
+)
+</code></pre>
+<p>Now two experiments sit side by side on the same dataset. In the walkthrough, <strong>gpt-4o-mini and gpt-4-turbo tied on correctness (~0.6), but 4o-mini won on concision</strong> — so the decision was 4o-mini: <em>same accuracy, tighter answers, and cheaper.</em> That is the entire point of evaluation: it turns "which model should we use?" from a vibe and a price-list into a <strong>measured comparison on your own data.</strong> Same machinery answers "did my prompt change help?" and "did the new chunking regress groundedness?" — you change one thing and let the numbers, not your gut, tell you.</p>
+<blockquote>
+<p><strong>Judgment — measured comparison is how you replace opinion with evidence, and it's the difference between an engineer and an advocate.</strong> Everyone has a favorite model. The person who can say "4o-mini and 4-turbo tie on correctness here, but mini is tighter and a fraction of the cost, so we ship mini" has <em>evidence</em> — and evidence is what survives a review, a budget question, or a regression six weeks later. Without the eval, "which model?" is a debate settled by whoever is most confident in the room; with it, it's settled by the dataset. Build the comparison, and you stop arguing and start knowing.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-worked-example-evaluating-rag-the-four-metrics">Part 5 — Worked example: evaluating RAG (the four metrics)</h2>
+<p>Now the full RAG scorecard. The upgrade from Part 4 is <strong>structured output</strong>: instead of parsing a raw "CORRECT/INCORRECT" string, each grader returns a typed object with an <code>explanation</code> <em>and</em> a boolean — forcing the judge to reason before it rules.</p>
+<p>Each evaluator follows the same shape: a <code>TypedDict</code> schema, an instruction prompt, a grader LLM bound to that schema, and a function that builds the comparison and returns the boolean.</p>
+<pre><code class="language-python">from typing_extensions import Annotated, TypedDict
+from langchain_openai import ChatOpenAI
+
+# ---- 1. CORRECTNESS: answer vs reference answer ----
+class CorrectnessGrade(TypedDict):
+    # NOTE the three-arg Annotated form: the `...` (Ellipsis) placeholder is REQUIRED.
+    # Writing Annotated[str, &quot;...&quot;] (two args) throws an &quot;invalid schema&quot; error under strict=True.
+    explanation: Annotated[str,  ..., &quot;Explain your reasoning for the score&quot;]
+    correct:     Annotated[bool, ..., &quot;True if the answer is correct, False otherwise&quot;]
+
+correctness_instructions = &quot;&quot;&quot;You are a teacher grading a quiz.
+You will be given a QUESTION, the GROUND TRUTH (correct) ANSWER, and the STUDENT ANSWER.
+Grade criteria:
+(1) Grade ONLY on factual accuracy relative to the ground truth answer.
+(2) Ensure the student answer contains no conflicting statements.
+(3) It is OK if the student answer contains more information, as long as it is factually accurate.
+Explain your reasoning step by step. Avoid simply stating the correct answer at the outset.&quot;&quot;&quot;
+
+# with_structured_output forces the model to return the typed schema, not free text
+grader_llm = ChatOpenAI(model=&quot;gpt-4o-mini&quot;, temperature=0).with_structured_output(
+    CorrectnessGrade, method=&quot;json_schema&quot;, strict=True)
+
+def correctness(inputs: dict, outputs: dict, reference_outputs: dict) -&gt; bool:
+    answers = (f&quot;QUESTION: {inputs['question']}\n&quot;
+               f&quot;GROUND TRUTH ANSWER: {reference_outputs['answer']}\n&quot;
+               f&quot;STUDENT ANSWER: {outputs['answer']}&quot;)
+    grade = grader_llm.invoke([{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: correctness_instructions},
+                               {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: answers}])
+    return grade[&quot;correct&quot;]
+
+# ---- 2. ANSWER RELEVANCE: answer vs question (no reference needed) ----
+class RelevanceGrade(TypedDict):
+    explanation: Annotated[str,  ..., &quot;Explain your reasoning for the score&quot;]
+    relevant:    Annotated[bool, ..., &quot;Whether the answer addresses the question&quot;]
+
+def relevance(inputs: dict, outputs: dict) -&gt; bool:
+    answer = f&quot;QUESTION: {inputs['question']}\nSTUDENT ANSWER: {outputs['answer']}&quot;
+    grade  = relevance_llm.invoke([{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: relevance_instructions},
+                                   {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: answer}])
+    return grade[&quot;relevant&quot;]
+
+# ---- 3. GROUNDEDNESS: answer vs retrieved docs (no reference needed) ----
+def groundedness(inputs: dict, outputs: dict) -&gt; bool:
+    doc_string = &quot;\n\n&quot;.join(doc.page_content for doc in outputs[&quot;documents&quot;])
+    answer = f&quot;FACTS: {doc_string}\nSTUDENT ANSWER: {outputs['answer']}&quot;
+    grade  = grounded_llm.invoke([{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: grounded_instructions},
+                                  {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: answer}])
+    return grade[&quot;grounded&quot;]
+
+# ---- 4. RETRIEVAL RELEVANCE: retrieved docs vs question ----
+def retrieval_relevance(inputs: dict, outputs: dict) -&gt; bool:
+    doc_string = &quot;\n\n&quot;.join(doc.page_content for doc in outputs[&quot;documents&quot;])
+    answer = f&quot;FACTS: {doc_string}\nQUESTION: {inputs['question']}&quot;
+    grade  = retrieval_relevance_llm.invoke([{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: retrieval_relevance_instructions},
+                                             {&quot;role&quot;: &quot;user&quot;,   &quot;content&quot;: answer}])
+    return grade[&quot;relevant&quot;]
+</code></pre>
+<p>Then run <strong>all four at once</strong> against your RAG bot. (The <code>rag_bot</code> itself — a web-loader + vector store + LLM built exactly as in <a href="ML_Study_13c_RAG.html">13c</a> — is decorated <code>@traceable</code> so every call shows up in LangSmith, and it returns <em>both</em> the <code>answer</code> and the retrieved <code>documents</code>, because groundedness and retrieval-relevance need the docs, not just the answer.)</p>
+<pre><code class="language-python">def target(inputs: dict) -&gt; dict:
+    return rag_bot(inputs[&quot;question&quot;])       # @traceable rag_bot -&gt; {&quot;answer&quot;: ..., &quot;documents&quot;: [...]}
+
+experiment_results = client.evaluate(
+    target,
+    data=dataset_name,
+    evaluators=[correctness, groundedness, relevance, retrieval_relevance],
+    experiment_prefix=&quot;rag-doc-relevance&quot;,
+    metadata={&quot;version&quot;: &quot;LCEL context, gpt-4-0125-preview&quot;},   # tag the run so you can compare later
+)
+</code></pre>
+<p>The <code>metadata</code> tag matters more than it looks: it's what makes this a <strong>regression test</strong>. Change your chunking or model, re-run, and you can compare "rag-doc-relevance v2" against v1 across all four metrics — and see, concretely, whether your "improvement" actually improved anything or quietly broke groundedness while lifting relevance.</p>
+<blockquote>
+<p><strong>Judgment — force the judge to explain before it grades, and remember: who grades the grader?</strong> Two non-obvious disciplines are baked into this code. First, <strong>structured output with an <code>explanation</code> field before the boolean</strong> — this isn't decoration; making the model <em>reason step-by-step before ruling</em> measurably reduces snap-judgment bias (the prompts literally say "avoid simply stating the answer at the outset"). Second, and deeper: <strong>your evaluator is itself an LLM, with its own failure modes.</strong> An LLM-as-judge can be wrong, inconsistent, or biased toward verbose answers. So you run it at <code>temperature=0</code> for consistency, you constrain it with <code>strict</code> schemas, and — for anything high-stakes — you <em>validate the judge against human labels</em> before you trust its scores. Evaluation is not a magic oracle; it's another system that itself needs evaluating. The engineer who forgets that just moved the trust problem one level up and stopped looking.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-where-this-lands-the-loop-closes">Part 6 — Where this lands: the loop closes</h2>
+<p>With evaluation, the series completes a full cycle. You don't just <em>build</em> an AI system anymore — you <strong>build it, measure it, and improve it against numbers</strong>:</p>
+<div class="mermaid">flowchart LR
+    B[&quot;BUILD&lt;br/&gt;RAG · agents · guardrails&quot;] --&gt; M[&quot;MEASURE&lt;br/&gt;datasets + evaluators&quot;]
+    M --&gt; I[&quot;IMPROVE&lt;br/&gt;change one thing&quot;]
+    I --&gt; M
+    M --&gt; S[&quot;SHIP&lt;br/&gt;with evidence, not vibes&quot;]</div>
+<p>That loop — build, measure, improve, and only then ship — is what "production" actually means. Everything earlier in the series gave you capability; evaluation gives you the <strong>confidence to change things without breaking them</strong>, which is the thing that lets a system get <em>better</em> over time instead of drifting.</p>
+<p>The through-line, one last time:
+- <strong>The model is never the hard part.</strong> Even judging quality turns out to be a <em>systems</em> problem — datasets, separated metrics, regression tracking, validating the judge — not a matter of a smarter model.
+- <strong>Turn the unmeasurable into the measured.</strong> "Is it good?" is a vibe. "Correctness 0.86, groundedness 0.91, up from last version" is a system you can steer. That's the same instinct — make the ambiguous clear and repeatable — that ran through every chapter.
+- <strong>Judgment is the constant.</strong> Deterministic or LLM-judge? Which metric caught the failure? Do I trust this grader? The tools changed every chapter; the discipline of asking the right question — and <em>measuring</em> the answer — never did.</p>
+<p>Build the tools. Measure everything. Keep the judgment. That's the job — in the AI era and every era before it.</p>
+<hr />
+<p><strong>Next → this is the final chapter of the agentic-AI series.</strong> For deeper reliability, observability, and eval patterns in production, see the playbooks in <code>systems-in-production/playbooks/ai/</code>.</p>
+<hr />
+<blockquote>
+<p><strong>Security note:</strong> the walkthrough's <code>.env</code> is shown on screen with <strong>live</strong> OpenAI, Google, Groq, and LangSmith keys. Keep keys in <code>.env</code> (git-ignored), never hardcode them or expose them on a screen-share, and rotate any key that becomes visible. A key in a video or a commit is a compromised key.</p>
+</blockquote>
+</body>
+</html>

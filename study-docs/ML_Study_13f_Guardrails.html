@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13f — Guardrails: Making an Agent Safe to Put in Production</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13f-guardrails-making-an-agent-safe-to-put-in-production">ML Study 13f — Guardrails: Making an Agent Safe to Put in Production</h1>
+<p><strong>Covers:</strong> what guardrails are (safety mechanisms that control what goes <em>into</em> and <em>comes out of</em> an agent) and why every production agent needs them → the <strong>two approaches</strong> — <strong>deterministic</strong> (rule/keyword, zero LLM cost, no semantics) vs <strong>model-based</strong> (an LLM judges, understands meaning, costs per call) → guardrails as <strong>LangChain middleware</strong> (hooks that intercept <em>before</em> / <em>after</em> / <em>around</em> the agent) → <strong>built-in PII middleware</strong> (detect email/credit-card/API-key; redact/mask/hash/block) → <strong>built-in human-in-the-loop</strong> (pause before sensitive tools, approve/reject) → <strong>custom before-agent</strong> (input filter, zero-cost block) and <strong>after-agent</strong> (output safety judge) hooks → <strong>layered/combined</strong> guardrails (defense in depth) → a real <strong>healthcare-chatbot</strong> stack.
+<strong>Goal:</strong> understand how to <em>bound</em> an agent — and the judgment for choosing which guardrail, where, and how many. This is the layer that turns "impressive demo" into "safe to ship."</p>
+<p><strong>Series context:</strong> the <strong>safety rung</strong>, and the capstone of the agent arc. <a href="ML_Study_13_LangChain_Agents.html">Study 13</a>→<a href="ML_Study_13a_LangGraph.html">13a</a>→<a href="ML_Study_13b_MCP.html">13b</a> built agents that use tools; <a href="ML_Study_13e_Deep_Agents.html">13e</a> gave them autonomy to plan and act. <strong>The more an agent can do, the more it can do <em>wrong</em>.</strong> Guardrails are what make that autonomy safe. Built from a hands-on Agentic-AI walkthrough (the Guardrails crash-course section). Uses the LangChain middleware system from earlier modules. Companion notebook: <code>langchain_guardrails_crash_course.ipynb</code>.</p>
+<blockquote>
+<p>The one-line frame: an agent without guardrails is a capable stranger you've handed your keys, your inbox, and your database to. Guardrails are the difference between <em>"the model is smart"</em> and <em>"I can let it run."</em> That difference is the whole job.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-what-guardrails-are-and-why-every-production-agent-needs-them">Part 1 — What guardrails are, and why every production agent needs them</h2>
+<p><strong>Guardrails are safety mechanisms that control what goes into and comes out of an AI agent.</strong> They sit <em>around</em> the agent pipeline and ensure it:
+- only <strong>processes safe, appropriate inputs</strong>,
+- only <strong>performs approved actions</strong>, and
+- only <strong>returns validated, compliant outputs</strong>.</p>
+<p>Picture the agent you've built across this series: input → LLM → (maybe a tool: RAG, an API, an MCP server) → context back → output.</p>
+<div class="mermaid">flowchart LR
+    IN[&quot;User input&quot;] --&gt;|input guardrail| LLM[&quot;LLM / Agent&quot;]
+    LLM &lt;--&gt;|&quot;around: tool guardrail&quot;| T[&quot;Tools&lt;br/&gt;(RAG · APIs · MCP)&quot;]
+    LLM --&gt;|output guardrail| OUT[&quot;Output to user&quot;]</div>
+<p>Now ask what happens without a guardrail. A user types <em>"How do I hack into a server?"</em> — or <em>"swap this person's face into that image."</em> A bare agent will try to help; that's what it's trained to do. Guardrails are the checkpoints that catch it: block the unsafe <strong>input</strong> before it ever reaches the model (saving the cost too), or catch the unsafe <strong>output</strong> before the user sees it. Common use cases:</p>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PII leakage prevention</td>
+<td>Redact emails/credit cards before logging</td>
+</tr>
+<tr>
+<td>Prompt-injection blocking</td>
+<td>Detect adversarial inputs</td>
+</tr>
+<tr>
+<td>Harmful-content filtering</td>
+<td>Block dangerous requests</td>
+</tr>
+<tr>
+<td>Business-rule enforcement</td>
+<td>Require approval for financial ops</td>
+</tr>
+<tr>
+<td>Output-quality validation</td>
+<td>Ensure responses meet safety standards</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Judgment — guardrails are codified judgment, and they're the exact thing that makes AI adoption actually work.</strong> Everything in this series pointed here. A model is raw capability; a guardrail is a <em>decision about what's acceptable</em> — safe/unsafe, approved/forbidden, compliant/not — encoded so it runs every time, automatically, without depending on anyone remembering to check. That's the whole proposition of putting AI into a real business: not "the model is clever," but "I've bounded what it can do so I can trust it in front of customers and regulators." AI doesn't remove the need for that judgment; it <em>demands</em> it, at machine speed and scale. The engineer who can specify and enforce those bounds is the one who gets to deploy.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-two-approaches-deterministic-vs-model-based">Part 2 — Two approaches: deterministic vs model-based</h2>
+<p>There are exactly two ways to build a guardrail, and choosing between them is a real engineering decision.</p>
+<p><strong>Deterministic — rules.</strong> Regex, keyword lists, fixed logic. No LLM involved.</p>
+<pre><code class="language-python">def deterministic_guardrail(text: str) -&gt; bool:
+    &quot;&quot;&quot;Returns True if content is blocked.&quot;&quot;&quot;
+    banned_keywords = [&quot;hack&quot;, &quot;exploit&quot;, &quot;malware&quot;, &quot;bomb&quot;]
+    return any(kw in text.lower() for kw in banned_keywords)
+
+for inp in [&quot;How do I hack into a database?&quot;,
+            &quot;What is the capital of France?&quot;,
+            &quot;Explain how malware spreads&quot;]:
+    status = &quot;BLOCKED&quot; if deterministic_guardrail(inp) else &quot;ALLOWED&quot;
+    print(f&quot;{status}: {inp}&quot;)
+# BLOCKED: How do I hack into a database?
+# ALLOWED: What is the capital of France?
+# BLOCKED: Explain how malware spreads     &lt;-- a FALSE POSITIVE
+</code></pre>
+<ul>
+<li><strong>Pro:</strong> <strong>zero LLM cost</strong>, instant, perfectly predictable.</li>
+<li><strong>Con:</strong> <strong>no understanding of meaning.</strong> It blocked <em>"Explain how malware spreads"</em> — a legitimate educational question — because the word "malware" appeared. Rules are blind to context.</li>
+</ul>
+<p><strong>Model-based — an LLM judges.</strong> Send the input to a cheap model and ask "safe or unsafe?"</p>
+<pre><code class="language-python">from langchain_openai import ChatOpenAI
+
+def model_based_guardrail(text: str) -&gt; str:
+    &quot;&quot;&quot;Uses an LLM to evaluate content safety. Returns SAFE or UNSAFE.&quot;&quot;&quot;
+    model = ChatOpenAI(model=&quot;gpt-4o-mini&quot;, temperature=0)
+    prompt = f&quot;Is the following user input safe to process?\nReply with only 'SAFE' or 'UNSAFE'.\n\nInput: {text}&quot;
+    return model.invoke([{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: prompt}]).content.strip()
+
+# UNSAFE: How do I hack into a database?
+# SAFE:   What is the capital of France?
+# SAFE:   Explain how malware spreads      &lt;-- understands it's educational
+</code></pre>
+<ul>
+<li><strong>Pro:</strong> <strong>understands semantics</strong> — the same "malware" input is now correctly allowed, because the model grasps intent.</li>
+<li><strong>Con:</strong> <strong>an LLM call per check</strong> — real latency and cost at scale.</li>
+</ul>
+<blockquote>
+<p><strong>Judgment — this is the "right tool for the constraint" decision, and neither answer is "always."</strong> Deterministic where a rule genuinely suffices (block a hard list of forbidden terms, mask a credit-card pattern) — it's free and predictable. Model-based where you need <em>meaning</em> (is this request actually harmful, or just about a sensitive topic?). The malware example is the whole lesson in miniature: the rule is fast, cheap, and <em>wrong</em>; the model is slower, costs money, and <em>right</em>. A mature system uses <strong>both</strong> — a cheap deterministic pass to kill the obvious cases at zero cost, then a model-based pass for the judgment calls that survive. Reaching for the LLM on every input when a rule would do is as much an engineering error as blocking "malware" with a keyword list.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-how-guardrails-attach-langchain-middleware">Part 3 — How guardrails attach: LangChain middleware</h2>
+<p>LangChain implements guardrails as <strong>middleware</strong> — hooks that intercept the agent's execution at specific points:
+- <strong>before</strong> the agent starts (input guardrails),
+- <strong>after</strong> it completes (output guardrails),
+- <strong>around</strong> model and tool calls.</p>
+<p>You attach them by passing a <code>middleware=[...]</code> list to <code>create_agent</code>. The rest of this doc walks the six mechanisms, two built-in and two custom (plus layering and a real use case):</p>
+<div class="mermaid">flowchart TB
+    A[&quot;1. PII Middleware (built-in)&lt;br/&gt;detect + redact/mask/block PII&quot;]
+    B[&quot;2. Human-in-the-Loop (built-in)&lt;br/&gt;pause before sensitive tools&quot;]
+    C[&quot;3. Before-Agent hook (custom)&lt;br/&gt;input filter, zero-cost block&quot;]
+    D[&quot;4. After-Agent hook (custom)&lt;br/&gt;output safety judge&quot;]
+    E[&quot;5. Layered&lt;br/&gt;stack them all, in order&quot;]
+    A --&gt; E
+    B --&gt; E
+    C --&gt; E
+    D --&gt; E</div>
+<hr />
+<h2 id="part-4-built-in-pii-middleware">Part 4 — Built-in: PII middleware</h2>
+<p><code>PIIMiddleware</code> detects and handles <strong>Personally Identifiable Information</strong> — automatically. Supported types: <strong>email, credit_card, ip, mac_address, url</strong> (plus custom patterns via a <code>detector</code> regex). Four strategies:</p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>redact</code></td>
+<td><code>[REDACTED_EMAIL]</code></td>
+</tr>
+<tr>
+<td><code>mask</code></td>
+<td><code>****-****-****-1234</code></td>
+</tr>
+<tr>
+<td><code>hash</code></td>
+<td><code>a8f5f167...</code></td>
+</tr>
+<tr>
+<td><code>block</code></td>
+<td>raises an exception</td>
+</tr>
+</tbody>
+</table>
+<p>It can apply to <strong>input</strong>, <strong>output</strong>, <em>and</em> <strong>tool calls</strong>. Stack one per rule:</p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import PIIMiddleware
+from langchain_core.tools import tool
+
+@tool
+def customer_lookup(query: str) -&gt; str:
+    &quot;&quot;&quot;Look up customer information.&quot;&quot;&quot;
+    return f&quot;Customer record found for query: {query}&quot;
+
+agent = create_agent(
+    model=&quot;gpt-4o&quot;,
+    tools=[customer_lookup],
+    middleware=[
+        PIIMiddleware(&quot;email&quot;,       strategy=&quot;redact&quot;, apply_to_input=True),   # redact emails
+        PIIMiddleware(&quot;credit_card&quot;, strategy=&quot;mask&quot;,   apply_to_input=True),   # mask cards
+        PIIMiddleware(&quot;api_key&quot;, detector=r&quot;sk-[a-zA-Z0-9]{32}&quot;,                # custom regex
+                      strategy=&quot;block&quot;, apply_to_input=True),                    # block: raises
+    ],
+)
+</code></pre>
+<p>Given <em>"My email is john.doe@example.com and my card is 5105-1051-0510-5100"</em>, the agent never sees the raw values — it sees <code>[REDACTED_EMAIL]</code> and <code>****-****-****-5100</code>. And an input containing an API key (<code>strategy="block"</code>) raises an exception outright: <em>"Blocked as expected: Detected 1 instance(s) of api_key in text content."</em></p>
+<blockquote>
+<p><strong>Judgment — PII redaction at the boundary is non-negotiable in any real product, and it's the guardrail that keeps you out of court.</strong> The moment your agent handles a customer's email, card, or SSN, you have a compliance surface — GDPR, HIPAA, PCI. <code>PIIMiddleware</code> at the input boundary means the sensitive value never enters the model's context, never lands in your logs, never leaves in an output. Note the strategy <em>is a policy decision</em>: <code>mask</code> when the shape still matters (last-4 of a card for support), <code>redact</code> when it doesn't, <code>hash</code> when you need to correlate without exposing, <code>block</code> when the data should never have been sent at all. Picking the wrong strategy is a real leak. This is exactly where "an engineer with judgment" earns their seat — the library gives you the mechanism; <em>you</em> own the policy.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-built-in-human-in-the-loop">Part 5 — Built-in: Human-in-the-Loop</h2>
+<p>Some actions are too consequential to let an agent take alone. <code>HumanInTheLoopMiddleware</code> <strong>pauses the agent before a sensitive tool</strong> and waits for a human to <strong>approve or reject</strong>. Best for: financial transactions, sending emails to external parties, deleting production data — <em>any operation with significant business impact.</em></p>
+<pre><code class="language-python">from langchain.agents import create_agent
+from langchain.agents.middleware import HumanInTheLoopMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
+
+@tool
+def search_web(query: str) -&gt; str:
+    &quot;&quot;&quot;Search the web for a query (read-only, safe to auto-approve).&quot;&quot;&quot;
+    return f&quot;Results for '{query}'&quot;
+
+@tool
+def send_email(to: str, subject: str, body: str) -&gt; str:
+    &quot;&quot;&quot;Send an email to a recipient.&quot;&quot;&quot;
+    return f&quot;Email sent to {to} with subject: {subject}&quot;
+
+@tool
+def delete_records(table: str, condition: str) -&gt; str:
+    &quot;&quot;&quot;Delete records from the database.&quot;&quot;&quot;
+    return f&quot;Deleted records from {table} where {condition}&quot;
+
+hitl_agent = create_agent(
+    model=&quot;gpt-4o&quot;,
+    tools=[search_web, send_email, delete_records],
+    middleware=[
+        HumanInTheLoopMiddleware(interrupt_on={
+            &quot;send_email&quot;:     True,    # require approval
+            &quot;delete_records&quot;: True,    # require approval
+            &quot;search_web&quot;:     False,   # auto-approve (harmless, read-only)
+        }),
+    ],
+    checkpointer=InMemorySaver(),      # REQUIRED: persists state across the pause
+)
+
+config = {&quot;configurable&quot;: {&quot;thread_id&quot;: &quot;session_001&quot;}}
+result = hitl_agent.invoke(
+    {&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Send an email to team@company.com about Q4 results&quot;}]},
+    config=config,
+)
+# === Agent paused - awaiting human approval ===
+
+# A human APPROVES (same thread_id resumes the paused session):
+approved = hitl_agent.invoke(Command(resume={&quot;decisions&quot;: [{&quot;type&quot;: &quot;approve&quot;}]}), config=config)
+# === Approved! === &quot;I've sent the email to team@company.com about the Q4 results.&quot;
+
+# ...or REJECTS, with a reason:
+rejected = hitl_agent.invoke(
+    Command(resume={&quot;decisions&quot;: [{&quot;type&quot;: &quot;reject&quot;, &quot;reason&quot;: &quot;Too risky, needs DBA review&quot;}]}),
+    config=config,
+)
+</code></pre>
+<p>Two mechanics matter: <code>interrupt_on</code> is a <strong>per-tool policy</strong> (approve reads automatically, gate writes), and the <strong><code>checkpointer</code> + <code>thread_id</code></strong> are what let the agent <em>pause</em>, hand control to a human, and <em>resume the exact same session</em> later (the state-persistence idea from <a href="ML_Study_13a_LangGraph.html">13a</a>).</p>
+<blockquote>
+<p><strong>Judgment — human-in-the-loop is the codified version of "confirm before you do something irreversible," and it's the single most important guardrail for autonomous agents.</strong> The whole risk of an agent that can <em>act</em> — not just answer — is that it can act <em>wrong</em> on the real world: send the email to the wrong list, delete the wrong rows, move the wrong money. You do not fix that with a better model; you fix it by <strong>gating the irreversible actions behind a human</strong>, and auto-approving only what's safe and reversible (a read, a search). Notice the discipline in the <code>interrupt_on</code> map: it forces you to <em>classify every tool</em> by blast radius. That classification — what can run free, what needs a human — is pure operational judgment, and getting it right is what lets a business trust an autonomous system at all.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-custom-guardrails-before-agent-and-after-agent-hooks">Part 6 — Custom guardrails: before-agent and after-agent hooks</h2>
+<p>When the built-ins aren't enough, write your own middleware by subclassing <code>AgentMiddleware</code> and implementing a hook.</p>
+<p><strong>Before-agent hook — an input filter that blocks at zero LLM cost.</strong> Runs <em>before</em> any model call, so a blocked request never costs a token. Use for keyword/content filtering, auth checks, rate limiting.</p>
+<pre><code class="language-python">from typing import Any
+from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
+from langgraph.runtime import Runtime
+
+class ContentFilterMiddleware(AgentMiddleware):
+    &quot;&quot;&quot;Deterministic guardrail: block requests containing banned keywords.
+    Runs BEFORE the agent processes anything - zero LLM cost for blocked requests.&quot;&quot;&quot;
+    def __init__(self, banned_keywords: list[str]):
+        super().__init__()
+        self.banned_keywords = [kw.lower() for kw in banned_keywords]
+
+    @hook_config(can_jump_to=[&quot;end&quot;])          # this hook may short-circuit to the end
+    def before_agent(self, state: AgentState, runtime: Runtime) -&gt; dict[str, Any] | None:
+        if not state[&quot;messages&quot;]:
+            return None
+        first_message = state[&quot;messages&quot;][0]
+        if first_message.type != &quot;human&quot;:
+            return None
+        content = first_message.content.lower()
+        for keyword in self.banned_keywords:
+            if keyword in content:
+                print(f&quot;🚫 Blocked - keyword detected: '{keyword}'&quot;)
+                return {                        # replace the response and jump straight to end
+                    &quot;messages&quot;: [{&quot;role&quot;: &quot;assistant&quot;,
+                                  &quot;content&quot;: &quot;I cannot process requests containing inappropriate &quot;
+                                             &quot;content. Please rephrase your request.&quot;}],
+                    &quot;jump_to&quot;: &quot;end&quot;,
+                }
+        return None                             # None = allow, continue normally
+
+filtered_agent = create_agent(
+    model=&quot;gpt-4o&quot;, tools=[search_tool],
+    middleware=[ContentFilterMiddleware(banned_keywords=[&quot;hack&quot;, &quot;exploit&quot;, &quot;malware&quot;, &quot;jailbreak&quot;, &quot;bypass&quot;])],
+)
+</code></pre>
+<p><strong>After-agent hook — a model-based output safety judge.</strong> Runs <em>after</em> the agent produces a response, <em>before the user sees it</em>, and can <strong>replace or mutate</strong> unsafe content. Use for safety evaluation, compliance scanning (legal/medical/financial disclaimers), catching sensitive info that slipped through.</p>
+<pre><code class="language-python">from langchain_core.messages import AIMessage
+from langchain_openai import ChatOpenAI
+
+class SafetyGuardrailMiddleware(AgentMiddleware):
+    &quot;&quot;&quot;Model-based guardrail: use an LLM to evaluate response safety.
+    Runs AFTER the agent produces a response, before it reaches the user.&quot;&quot;&quot;
+    def __init__(self):
+        super().__init__()
+        self.safety_model = ChatOpenAI(model=&quot;gpt-4o-mini&quot;, temperature=0)   # cheap judge model
+
+    @hook_config(can_jump_to=[&quot;end&quot;])
+    def after_agent(self, state: AgentState, runtime: Runtime) -&gt; dict[str, Any] | None:
+        if not state[&quot;messages&quot;]:
+            return None
+        last_message = state[&quot;messages&quot;][-1]
+        if not isinstance(last_message, AIMessage):
+            return None
+        safety_prompt = (f&quot;Evaluate if this AI response is safe and appropriate for users. &quot;
+                         f&quot;Respond with only 'SAFE' or 'UNSAFE'.\n\nResponse to evaluate:\n{last_message.content}&quot;)
+        result = self.safety_model.invoke([{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: safety_prompt}])
+        if &quot;UNSAFE&quot; in result.content.upper():
+            print(&quot;⚠️ Output flagged as UNSAFE - replacing with safe fallback&quot;)
+            last_message.content = (&quot;I'm unable to provide that response. &quot;
+                                    &quot;Please rephrase your request or contact support.&quot;)
+        return None
+</code></pre>
+<p>Notice the pairing: the <strong>before</strong> hook is <em>deterministic</em> (cheap, catches the obvious junk before you pay for a single token) and the <strong>after</strong> hook is <em>model-based</em> (a smart, cheap judge on the way out). That's Part 2's two approaches, placed exactly where each is strongest — the cheap rule at the front door, the semantic judge at the back.</p>
+<blockquote>
+<p><strong>Judgment — guard the input <em>and</em> the output, because they fail differently.</strong> A before-hook stops bad <em>requests</em>; it does nothing about a bad <em>response</em> the model generates from a perfectly innocent request (a hallucinated medical claim, a leaked internal detail, a non-compliant statement). You need both ends. And put the <em>cheap</em> check where volume is highest (the input, deterministic, zero-cost) and the <em>expensive</em> check where correctness matters most (the output, model-based). That's not paranoia; it's the same "catch it early, catch it cheap, but always catch it" discipline that runs through every reliable system.</p>
+</blockquote>
+<hr />
+<h2 id="part-7-layered-guardrails-defense-in-depth">Part 7 — Layered guardrails: defense in depth</h2>
+<p>No single guardrail is enough. The real pattern is to <strong>stack them in the <code>middleware=[]</code> list — they execute in order</strong>, each catching what the others miss:</p>
+<div class="mermaid">flowchart TB
+    U[&quot;User input&quot;] --&gt; L1[&quot;Layer 1 - ContentFilterMiddleware&lt;br/&gt;deterministic input filter&quot;]
+    L1 --&gt; L2[&quot;Layer 2 - PIIMiddleware (input)&lt;br/&gt;redact/mask PII in&quot;]
+    L2 --&gt; L3[&quot;Layer 3 - HumanInTheLoopMiddleware&lt;br/&gt;approval for sensitive tools&quot;]
+    L3 --&gt; L4[&quot;Layer 4 - PIIMiddleware (output)&lt;br/&gt;redact PII out&quot;]
+    L4 --&gt; L5[&quot;Layer 5 - SafetyGuardrailMiddleware&lt;br/&gt;model-based output safety&quot;]
+    L5 --&gt; R[&quot;Validated response&quot;]</div>
+<pre><code class="language-python">production_agent = create_agent(
+    model=&quot;gpt-4o&quot;,
+    tools=[search_tool, send_email_tool],
+    middleware=[
+        # Layer 1: deterministic input filter (before agent)
+        ContentFilterMiddleware(banned_keywords=[&quot;hack&quot;, &quot;exploit&quot;, &quot;malware&quot;]),
+        # Layer 2: PII redaction on input
+        PIIMiddleware(&quot;email&quot;,       strategy=&quot;redact&quot;, apply_to_input=True),
+        PIIMiddleware(&quot;credit_card&quot;, strategy=&quot;mask&quot;,   apply_to_input=True),
+        # Layer 3: human approval for sensitive tools
+        HumanInTheLoopMiddleware(interrupt_on={&quot;send_email_tool&quot;: True, &quot;search_tool&quot;: False}),
+        # Layer 4: PII redaction on output
+        PIIMiddleware(&quot;email&quot;, strategy=&quot;redact&quot;, apply_to_output=True),
+        # Layer 5: model-based output safety
+        SafetyGuardrailMiddleware(),
+    ],
+)
+</code></pre>
+<blockquote>
+<p><strong>Judgment — defense in depth is not redundancy; it's honesty about the fact that every single layer will eventually fail.</strong> The keyword filter misses a cleverly worded attack. The model judge occasionally mis-rates. The PII detector doesn't catch a novel format. If any <em>one</em> of those is your only line, its failure is a breach. Stacked, a miss at layer 1 gets caught at layer 5; a leak past the input redactor gets caught by the output redactor. This is the same principle as a well-run program: you don't trust a single check on anything that matters — you put independent controls at each boundary, because the failures are independent too. "It passed the one test" is exactly the moment a serious engineer gets nervous.</p>
+</blockquote>
+<hr />
+<h2 id="part-8-real-world-close-the-healthcare-chatbot-and-the-whole-arc">Part 8 — Real-world close: the healthcare chatbot, and the whole arc</h2>
+<p>Put it together into something real. A <strong>healthcare chatbot</strong> combines every layer:
+1. <strong>Blocks</strong> off-topic or harmful requests (before-agent filter),
+2. <strong>Redacts</strong> patient PII — emails, card numbers (PII middleware, in and out),
+3. <strong>Requires human approval</strong> before booking appointments (human-in-the-loop on the sensitive tool),
+4. <strong>Validates</strong> that outputs are medically appropriate (after-agent safety judge).</p>
+<p>That is a guardrail stack doing exactly what the definition promised: <em>only safe inputs, only approved actions, only compliant outputs</em> — in a domain where getting it wrong is a lawsuit or a life.</p>
+<p>And with that, the agent arc closes. Trace the whole path: a single LLM call → tools (<a href="ML_Study_13_LangChain_Agents.html">13</a>) → a controllable loop (<a href="ML_Study_13a_LangGraph.html">13a</a>) → standardized tools (<a href="ML_Study_13b_MCP.html">13b</a>) → retrieval by similarity (<a href="ML_Study_13c_RAG.html">13c</a>) and by reasoning (<a href="ML_Study_13d_Vectorless_RAG.html">13d</a>) → autonomous planning and delegation (<a href="ML_Study_13e_Deep_Agents.html">13e</a>) → and here, the <strong>bounds</strong> that make all of it safe to run. The shape never changed: <strong>each rung added capability, and each rung had to be earned with discipline.</strong></p>
+<p>The three things worth carrying out of the entire series:
+- <strong>The model is never the hard part.</strong> Chunking, retrieval strategy, planning, and now safety — the difficulty always lived in the <em>structure around</em> the model, not the model itself.
+- <strong>The winning move is always to turn something ambiguous into something clear, repeatable, and not dependent on one hero.</strong> A RAG pipeline, a reasoning tree, a deep agent's plan, a guardrail stack — all the same instinct: make the behavior legible, bounded, and durable.
+- <strong>Judgment is the constant.</strong> Which retrieval? Which agent depth? Deterministic or model-based? Guard where, and how many layers? The tools changed every chapter; the discipline of matching the tool to the real problem — and bounding the risk — never did.</p>
+<p>That discipline is what outlasts any library here. AI doesn't replace it; it demands it, and rewards it. <strong>Learn the tools; keep the judgment.</strong></p>
+<hr />
+<p><strong>Next → LLM Evaluation</strong> — measuring whether all of this actually works: how you know an agent, a RAG pipeline, or a guardrail is good, not just plausible. Reference library for the safety and reliability patterns underneath: <code>systems-in-production/playbooks/ai/</code>.</p>
+<hr />
+<blockquote>
+<p><strong>Security note:</strong> guardrail code handles secrets and PII by nature. Keep API keys in <code>.env</code> (git-ignored), never hardcoded or shown on screen; treat any key that becomes visible as compromised and rotate it. And remember the meta-point of this whole chapter: the guardrails themselves are part of your security surface — test that they actually fire.</p>
+</blockquote>
+</body>
+</html>

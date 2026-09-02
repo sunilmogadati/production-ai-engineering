@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13b — MCP (Model Context Protocol): A Standard Plug for Tools</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13b-mcp-model-context-protocol-a-standard-plug-for-tools">ML Study 13b — MCP (Model Context Protocol): A Standard Plug for Tools</h1>
+<p><strong>Covers:</strong> the problem MCP solves (every tool integration is bespoke) → the <strong>three roles</strong> (server, client, host app) → <strong>building an MCP server</strong> with <code>FastMCP</code> (<code>@mcp.tool()</code>) → <strong>transports</strong> (<code>stdio</code> vs <code>streamable-http</code>) and when to use each → a <strong>client</strong> that discovers tools with <code>MultiServerMCPClient</code> + <code>langchain-mcp-adapters</code> and hands them to a LangGraph agent (<code>create_react_agent</code>) → how this plugs back into everything from Study 13 / 13a.
+<strong>Goal:</strong> stop hand-wiring tools into every agent. MCP is a <em>standard interface for tools</em> — the same idea LangChain applied to model providers, now applied to tools/data — so a tool written once (by you or a third party) is usable by any MCP-aware app.</p>
+<p><strong>Series context:</strong> the <strong>tool-supply rung</strong>. <a href="ML_Study_13_LangChain_Agents.html">Study 13</a> defined tools inline; <a href="ML_Study_13a_LangGraph.html">Study 13a</a> wired them into the ReAct loop by hand. Both assume the tool lives <em>in your codebase</em>. MCP is what you use when the tool lives in <strong>another process, another team's service, or a third-party server</strong>. Built from the MCP section of Krishna Naik's Agentic-AI walkthrough. Companion project: <code>mcpdemolangchain</code> (<code>mathserver.py</code>, <code>weather.py</code>, <code>client.py</code>).</p>
+<hr />
+<h2 id="part-1-the-problem-tools-dont-travel">Part 1 — The problem: tools don't travel</h2>
+<p>By Study 13a you can give an agent tools. But look at <em>how</em>: the tool's Python function lives in your file, you <code>bind_tools</code> it, you wire it into the graph. That's fine for one app. It falls apart at scale:</p>
+<ul>
+<li>Your company has a <strong>weather service</strong>, a <strong>billing service</strong>, a <strong>records service</strong> — each a separate system, owned by a separate team. You do <em>not</em> want to copy their code into every agent.</li>
+<li>A <strong>third-party vendor</strong> ships useful tools (a maps API, a database connector). You want to <em>consume</em> them, not reimplement them.</li>
+<li>You have <strong>five different agent apps</strong>. Re-defining the same ten tools in each is five copies to keep in sync.</li>
+</ul>
+<p>The pattern is the one LangChain already solved once. Raw provider SDKs all differed → LangChain put a <em>standard interface</em> over models (<code>init_chat_model</code> — Study 13, Part 1). <strong>MCP does the identical thing for tools and data</strong>: a standard protocol so a tool exposed once is callable by any MCP-aware host, regardless of who wrote it or what language it's in.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> MCP is <strong>USB-C for AI tools.</strong> Before USB-C every device had its own plug; after it, one port fits everything. MCP is one plug between <em>any</em> agent and <em>any</em> tool/data source. Write the tool once, plug it in anywhere.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-three-roles">Part 2 — The three roles</h2>
+<p>MCP has exactly three parts. Keep them straight and the rest is detail.</p>
+<div class="mermaid">flowchart LR
+    subgraph HOST[&quot;Host App (e.g. your LangGraph chatbot, or Claude Desktop)&quot;]
+        LLM[&quot;LLM decides:&lt;br/&gt;do I need a tool?&quot;]
+        C1[&quot;MCP Client A&quot;]
+        C2[&quot;MCP Client B&quot;]
+    end
+    C1 &lt;--&gt;|MCP protocol| S1[&quot;MCP Server: math&lt;br/&gt;@tool add, multiply&quot;]
+    C2 &lt;--&gt;|MCP protocol| S2[&quot;MCP Server: weather&lt;br/&gt;@tool get_weather&quot;]
+    LLM --&gt; C1
+    LLM --&gt; C2</div>
+<ol>
+<li><strong>MCP Server</strong> — exposes capabilities: <strong>tools</strong> (functions to run), plus <strong>context/resources</strong> and <strong>prompts</strong>. Think of it as "a team, or a third-party company, offering services" — math, a weather API, a database. It can hold <em>many</em> tools.</li>
+<li><strong>MCP Client</strong> — lives <em>inside the host app</em> and maintains a <strong>one-to-one connection</strong> to a server. One client per server. Its job is the plumbing: discover what the server offers, forward calls, return results.</li>
+<li><strong>Host App</strong> — the thing you're building: a LangGraph chatbot, Claude Desktop, Cursor, whatever. It holds the LLM (the decision-maker) and the client(s).</li>
+</ol>
+<p>The runtime story, end to end:</p>
+<ol>
+<li>User asks <em>"what's the weather in New York?"</em></li>
+<li>The host asks its MCP client(s) <em>"what tools exist?"</em> — the server describes them.</li>
+<li>The <strong>LLM decides</strong> a tool call is needed (it has no live weather data on its own — same reasoning as the ReAct loop in 13a).</li>
+<li>The call travels to the server <strong>over the MCP protocol</strong>; the server runs the tool and returns the result.</li>
+<li>The LLM reads the result and answers.</li>
+</ol>
+<blockquote>
+<p><strong>The one-line frame:</strong> <strong>server = offers tools, client = one-to-one wire to a server, host = your app holding the LLM.</strong> The LLM still <em>decides</em>; MCP only standardizes <em>how the tool is reached</em>.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-building-an-mcp-server-with-fastmcp">Part 3 — Building an MCP server with <code>FastMCP</code></h2>
+<p><code>FastMCP</code> makes a server almost boilerplate-free — it's to MCP what FastAPI is to web APIs. Decorate a function with <code>@mcp.tool()</code> and it becomes a callable tool, docstring and type hints included (the LLM reads those to know when and how to call it — the same schema-from-docstring idea as Study 13's <code>@tool</code>).</p>
+<p><strong><code>mathserver.py</code></strong> — a math server on the <code>stdio</code> transport:</p>
+<pre><code class="language-python">from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP(&quot;Math&quot;)           # name the server
+
+@mcp.tool()
+def add(a: int, b: int) -&gt; int:
+    &quot;&quot;&quot;Add two numbers.&quot;&quot;&quot;
+    return a + b
+
+@mcp.tool()
+def multiply(a: int, b: int) -&gt; int:
+    &quot;&quot;&quot;Multiply two numbers.&quot;&quot;&quot;
+    return a * b
+
+if __name__ == &quot;__main__&quot;:
+    # stdio: this server runs as a LOCAL SUBPROCESS, talking over stdin/stdout
+    mcp.run(transport=&quot;stdio&quot;)
+</code></pre>
+<p><strong><code>weather.py</code></strong> — a weather server on the <code>streamable-http</code> transport:</p>
+<pre><code class="language-python">from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP(&quot;Weather&quot;)
+
+@mcp.tool()
+async def get_weather(location: str) -&gt; str:
+    &quot;&quot;&quot;Get the current weather for a location.&quot;&quot;&quot;
+    return f&quot;It's always sunny in {location}.&quot;   # stand-in for a real API call
+
+if __name__ == &quot;__main__&quot;:
+    # streamable-http: this server runs as its own HTTP SERVICE on a port
+    mcp.run(transport=&quot;streamable-http&quot;)          # serves on http://localhost:8000/mcp
+</code></pre>
+<p>Same decorator, same shape — the <em>only</em> difference is the transport in <code>mcp.run(...)</code>. That's the next part.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> <code>@mcp.tool()</code> is the whole server. A function with a docstring becomes a tool any MCP client can discover and call.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-transports-stdio-vs-streamable-http">Part 4 — Transports: <code>stdio</code> vs <code>streamable-http</code></h2>
+<p>A <strong>transport</strong> is <em>how the client and server physically talk</em>. MCP defines two you'll actually use, and the choice is an architecture decision, not a preference.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>stdio</code></th>
+<th><code>streamable-http</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>How it runs</strong></td>
+<td>client launches the server as a <strong>local subprocess</strong>; they talk over stdin/stdout</td>
+<td>server runs as an <strong>independent HTTP service</strong> on a host/port</td>
+</tr>
+<tr>
+<td><strong>Where</strong></td>
+<td>same machine, same box as the host</td>
+<td>anywhere reachable over the network</td>
+</tr>
+<tr>
+<td><strong>Lifecycle</strong></td>
+<td>starts/stops <em>with</em> the host app</td>
+<td>long-lived, started separately, shared by many clients</td>
+</tr>
+<tr>
+<td><strong>Use when</strong></td>
+<td>local tools, dev, a tool bundled with your app (a calculator, a file reader)</td>
+<td>a shared/remote service, a tool owned by another team, anything networked</td>
+</tr>
+</tbody>
+</table>
+<p>Think of it exactly as local function call vs. remote API:</p>
+<ul>
+<li><strong><code>stdio</code></strong> — like importing a local module. Cheap, private, dies when your app dies. Perfect for a math tool that ships <em>inside</em> your agent.</li>
+<li><strong><code>streamable-http</code></strong> — like calling a microservice. The weather server runs on <code>:8000</code> on its own; ten different agents can point at it; it's deployed and scaled independently.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> <code>stdio</code> = the tool lives <em>with</em> your app (subprocess, stdin/stdout); <code>streamable-http</code> = the tool lives <em>somewhere else</em> (its own port, networked). Pick by <em>where the tool should run</em>, not by taste.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-the-client-discover-tools-hand-them-to-a-langgraph-agent">Part 5 — The client: discover tools, hand them to a LangGraph agent</h2>
+<p>Now the payoff. <code>langchain-mcp-adapters</code> bridges MCP servers into LangChain/LangGraph: it <em>discovers</em> the tools a server exposes and returns them as ordinary LangChain tools — the same objects you fed <code>bind_tools</code>/<code>ToolNode</code> in Study 13a. One <code>MultiServerMCPClient</code> can wire up <em>several</em> servers at once, each with its own transport.</p>
+<p><strong><code>client.py</code>:</strong></p>
+<pre><code class="language-python">import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.prebuilt import create_react_agent
+from langchain_groq import ChatGroq
+
+async def main():
+    # One client, MANY servers — each with its own transport.
+    client = MultiServerMCPClient({
+        &quot;math&quot;: {
+            &quot;command&quot;: &quot;python&quot;,
+            &quot;args&quot;: [&quot;mathserver.py&quot;],
+            &quot;transport&quot;: &quot;stdio&quot;,                 # launched as a subprocess
+        },
+        &quot;weather&quot;: {
+            &quot;url&quot;: &quot;http://localhost:8000/mcp&quot;,   # already running as an HTTP service
+            &quot;transport&quot;: &quot;streamable_http&quot;,
+        },
+    })
+
+    # Discover every tool from every server, as LangChain tools.
+    tools = await client.get_tools()
+
+    model = ChatGroq(model=&quot;qwen-qwq-32b&quot;)
+
+    # Same ReAct agent from Study 13a — but its tools came from MCP servers,
+    # not from your codebase. create_react_agent builds the exact graph you
+    # hand-wired in 13a (LLM node + ToolNode + tools_condition loop).
+    agent = create_react_agent(model, tools)
+
+    # math -&gt; routed to the stdio server
+    r1 = await agent.ainvoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;what's (3 + 5) x 12?&quot;}]})
+    print(r1[&quot;messages&quot;][-1].content)
+
+    # weather -&gt; routed to the http server
+    r2 = await agent.ainvoke({&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;weather in California?&quot;}]})
+    print(r2[&quot;messages&quot;][-1].content)
+
+asyncio.run(main())
+</code></pre>
+<p><strong><code>requirements.txt</code>:</strong></p>
+<pre><code>langchain-groq
+langchain-mcp-adapters
+mcp
+</code></pre>
+<p>Read what just happened, because it's the whole point of MCP:</p>
+<ul>
+<li>You defined tools in <strong><code>mathserver.py</code> / <code>weather.py</code></strong> — <em>separate processes</em>, on <em>different transports</em>.</li>
+<li><code>client.get_tools()</code> <strong>discovered</strong> them. You wrote no tool schemas in the agent, no <code>bind_tools</code>, no <code>ToolNode</code> wiring.</li>
+<li><code>create_react_agent(model, tools)</code> built the <strong>same ReAct graph</strong> from <a href="ML_Study_13a_LangGraph.html">Study 13a</a> — LLM node, tool node, conditional loop — but the tools were <em>supplied by MCP</em>.</li>
+<li>The agent <strong>routed automatically</strong>: a math question hit the math (stdio) server, a weather question hit the weather (http) server. The LLM picks the tool; MCP + the adapter deliver the call to the right server.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> <code>MultiServerMCPClient</code> + <code>get_tools()</code> turns "tools someone else runs, over whatever transport" into "an ordinary list you hand to <code>create_react_agent</code>." The agent doesn't know or care that the tools live in other processes.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-where-this-connects">Part 6 — Where this connects</h2>
+<p>Stack the three docs and the whole arc is one sentence per rung:</p>
+<div class="mermaid">flowchart LR
+    A[&quot;Study 13&lt;br/&gt;LLM + tools defined inline&quot;] --&gt; B[&quot;Study 13a&lt;br/&gt;build the ReAct loop from primitives&quot;]
+    B --&gt; C[&quot;Study 13b&lt;br/&gt;MCP: tools supplied by any server&quot;]
+    C --&gt; D[&quot;FastAPI endpoint (Study 12)&lt;br/&gt;agent behind an API&quot;]</div>
+<ul>
+<li><strong>Study 13</strong> — an LLM that can call tools <em>you write in the same file</em>.</li>
+<li><strong>Study 13a</strong> — the agent loop as a LangGraph state graph you can govern (memory, streaming, human-in-the-loop).</li>
+<li><strong>Study 13b (here)</strong> — the tools no longer have to be yours or local; <strong>MCP</strong> is the standard plug, and <code>langchain-mcp-adapters</code> snaps MCP tools into the <em>same</em> agent.</li>
+</ul>
+<p>And it all still ends where the <a href="ML_Study_12_Serving_Models_FastAPI.html">platform</a> does: this agent sits behind a FastAPI endpoint, containerized, deployed — the same serving spine as any model. MCP just means the agent's <em>capabilities</em> can grow (add a server) without redeploying the agent.</p>
+<blockquote>
+<p><strong>The through-line:</strong> LangChain standardized <strong>model providers</strong>; LangGraph standardized the <strong>agent loop</strong>; MCP standardizes <strong>tool/data supply</strong>. Three standard interfaces over the three things that used to be bespoke — provider, orchestration, tools. That's the whole production stack for agents.</p>
+</blockquote>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP (Model Context Protocol)</td>
+<td>a standard protocol for exposing tools/data/prompts to LLM apps</td>
+</tr>
+<tr>
+<td>MCP <strong>server</strong></td>
+<td>offers tools/context/prompts; can hold many tools; owned by you or a third party</td>
+</tr>
+<tr>
+<td>MCP <strong>client</strong></td>
+<td>lives in the host app; <strong>one-to-one</strong> connection to a server; does the plumbing</td>
+</tr>
+<tr>
+<td><strong>host app</strong></td>
+<td>your app (LangGraph chatbot, Claude Desktop, Cursor) holding the LLM + client(s)</td>
+</tr>
+<tr>
+<td><code>FastMCP</code></td>
+<td>library to build an MCP server fast (<code>from mcp.server.fastmcp import FastMCP</code>)</td>
+</tr>
+<tr>
+<td><code>@mcp.tool()</code></td>
+<td>decorator turning a function (with docstring/types) into a discoverable tool</td>
+</tr>
+<tr>
+<td><code>mcp.run(transport=...)</code></td>
+<td>start the server on a transport</td>
+</tr>
+<tr>
+<td>transport <code>stdio</code></td>
+<td>server runs as a <strong>local subprocess</strong> over stdin/stdout; dies with the host</td>
+</tr>
+<tr>
+<td>transport <code>streamable-http</code></td>
+<td>server runs as an <strong>independent HTTP service</strong> on a port; networked, shared</td>
+</tr>
+<tr>
+<td><code>langchain-mcp-adapters</code></td>
+<td>bridges MCP servers into LangChain tools</td>
+</tr>
+<tr>
+<td><code>MultiServerMCPClient({...})</code></td>
+<td>one client wiring up several servers, each with its own transport</td>
+</tr>
+<tr>
+<td><code>client.get_tools()</code></td>
+<td><strong>discover</strong> all servers' tools as LangChain tools</td>
+</tr>
+<tr>
+<td><code>create_react_agent(model, tools)</code></td>
+<td>builds the Study-13a ReAct graph from a model + tool list</td>
+</tr>
+</tbody>
+</table>
+<p><em>ML Study 13b — MCP is a standard interface for </em><em>tools</em><em>, the way LangChain is one for </em><em>model providers</em><em>: an MCP </em><em>server</em><em> (built with <code>FastMCP</code> + <code>@mcp.tool()</code>) exposes tools over a </em><em>transport</em><em> (<code>stdio</code> = local subprocess, <code>streamable-http</code> = networked service); a </em><em>client</em><em> (<code>MultiServerMCPClient</code>) inside the host </em><em>discovers</em><em> them via <code>langchain-mcp-adapters</code> (<code>get_tools()</code>) and hands them to <code>create_react_agent</code> — the same ReAct loop from 13a, now fed by tools any server supplies. Write a tool once, plug it in anywhere.</em></p>
+</body>
+</html>

@@ -290,10 +290,10 @@ Run a stream of questions and watch the message count climb — `2, 4, 6, 8, 10`
 
 ## Part 9 — Where this goes next
 
-This covered LangChain fundamentals. The rest of the arc:
+This covered LangChain fundamentals. The rest of the arc — **the next two docs build both of these as code**:
 
-- **LangGraph** — when you need real control: branching, **memory** across turns, **human-in-the-loop** approval (mandatory in healthcare/finance), multi-step state.
-- **MCP (Model Context Protocol)** — a standard way to expose tools/data to the model (Anthropic-native).
+- **LangGraph** ([Study 13a](ML_Study_13a_LangGraph.html)) — when you need real control: branching, **memory** across turns, **human-in-the-loop** approval (mandatory in healthcare/finance), multi-step state. That doc opens up the box `create_agent` builds and rebuilds the ReAct loop from primitives.
+- **MCP (Model Context Protocol)** ([Study 13b](ML_Study_13b_MCP.html)) — a standard way to expose tools/data to the model, so a tool written once (by you or a third party) plugs into any agent.
 - **Multi-agent** — several agents (planner → executor → reviewer) collaborating.
 - **Deployment** — the agent behind a FastAPI endpoint (Study 12) → containerized → cloud. Same serving discipline as any model.
 - **Observability & eval (LangSmith)** — because an agent that acts must be watched and measured.

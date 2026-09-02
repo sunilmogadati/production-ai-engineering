@@ -64,7 +64,7 @@ def _inline_img(m):
     except FileNotFoundError:
         print("  !! missing figure:", rel)
         return m.group(0)
-body = re.sub(r'src="(ML_Study_Figures/[^"]+)"', _inline_img, body)
+body = re.sub(r'src="(?!https?://|data:)([^"]+\.(?:png|jpe?g|gif|webp))"', _inline_img, body)
 
 TEMPLATE = """<!doctype html>
 <html lang="en">

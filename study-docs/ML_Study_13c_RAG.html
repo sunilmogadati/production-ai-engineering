@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13c — RAG (Retrieval-Augmented Generation): Giving the LLM a Memory It Can Trust</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13c-rag-retrieval-augmented-generation-giving-the-llm-a-memory-it-can-trust">ML Study 13c — RAG (Retrieval-Augmented Generation): Giving the LLM a Memory It Can Trust</h1>
+<p><strong>Covers:</strong> <em>why</em> RAG exists (the two failures of a bare LLM — stale knowledge/hallucination, and private data you can't fine-tune in cheaply) → the <strong>two pipelines</strong> (data ingestion + retrieval) and how they map to the letters <strong>R-A-G</strong> → the <strong>Document</strong> structure (<code>page_content</code> + <code>metadata</code>) and <strong>loaders</strong> (<code>TextLoader</code>, <code>DirectoryLoader</code>, <code>PyPDFLoader</code>/<code>PyMuPDFLoader</code>) → <strong>chunking</strong> with <code>RecursiveCharacterTextSplitter</code> → <strong>embeddings</strong> with a <code>SentenceTransformer</code> (<code>all-MiniLM-L6-v2</code>, 384-dim) wrapped in an <code>EmbeddingManager</code> → a <strong>ChromaDB</strong> <code>VectorStore</code> (persistent) → a <code>RAGRetriever</code> (query → embed → similarity search → threshold) → <strong>generation</strong> (augment context into a prompt, call the LLM) → an <strong>enhanced</strong> pipeline (<code>rag_advanced</code>: sources, confidence, thresholds) → the <strong>modular refactor</strong> from notebook to a real <code>src/</code> package (FAISS store, build-once/load-many, swappable vector backends).
+<strong>Goal:</strong> build a complete, modular traditional-RAG pipeline end to end — and, more importantly, understand <em>where it breaks in production</em>, because RAG almost never fails at the model. It fails at the seams between these steps.</p>
+<p><strong>Series context:</strong> the <strong>grounding rung</strong>. <a href="ML_Study_13_LangChain_Agents.html">Study 13</a> gave the LLM tools; <a href="ML_Study_13a_LangGraph.html">13a</a> gave it a controllable loop; <a href="ML_Study_13b_MCP.html">13b</a> gave it a standard way to reach tools. RAG gives it something different: <strong>access to knowledge it was never trained on, without retraining.</strong> Built from a hands-on Agentic-AI walkthrough, enriched with the production patterns from the RAG playbook in <code>systems-in-production</code>. Companion notebook: <code>pdf_loader.ipynb</code> (workspace <code>YTRAG</code>).</p>
+<blockquote>
+<p>One number to sit with before we start: in most enterprises today, <strong>the majority of the LLM work is RAG work.</strong> Not fine-tuning, not training — retrieval. If you learn one applied-LLM pattern deeply, make it this one.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-why-rag-exists-two-things-a-bare-llm-cant-do">Part 1 — Why RAG exists: two things a bare LLM can't do</h2>
+<p>Start with the simplest possible generative-AI app: a user sends a <strong>query</strong>, you wrap it in a <strong>prompt</strong> (an instruction), the <strong>LLM</strong> generates an answer.</p>
+<div class="mermaid">flowchart LR
+    U[&quot;User query&quot;] --&gt; P[&quot;+ Prompt (instruction)&quot;]
+    P --&gt; LLM[&quot;LLM&lt;br/&gt;(trained on billions of tokens)&quot;]
+    LLM --&gt; O[&quot;Output&quot;]</div>
+<p>That works right up until it doesn't — in two specific, expensive ways.</p>
+<p><strong>Failure 1 — Stale knowledge → hallucination.</strong> Every model has a training cutoff. Ask GPT-class model about an event <em>after</em> its cutoff and it won't say "I don't know." It will <strong>hallucinate</strong> — invent a confident, plausible answer — because the objective it was trained on rewards fluent completion, not calibrated uncertainty. (Put bluntly: the model <em>"does not want to look like a fool."</em>) That's not a bug you prompt your way out of; it's structural.</p>
+<p><strong>Failure 2 — Private, ever-changing data.</strong> You run a company. You have HR policy, finance policy, internal docs — none of it public, none of it in the model's training set, and <strong>all of it changing constantly.</strong> You want a chatbot that answers "what's the leave policy?" from <em>your</em> documents.</p>
+<p>The obvious fix — <strong>fine-tune the model on your data</strong> — is a trap for this use case:</p>
+<ul>
+<li>Fine-tuning tweaks billions of parameters: <strong>expensive, slow, and specialized.</strong></li>
+<li>Your policies change weekly. You are not re-fine-tuning a model every week.</li>
+<li>It bakes knowledge into weights, where you can't easily <strong>cite</strong>, <strong>update</strong>, or <strong>delete</strong> a fact (which matters for compliance and for that one document that got retracted).</li>
+</ul>
+<p>RAG solves both by a different move entirely: <strong>don't put the knowledge in the model — put it in an external store the model consults at answer time.</strong></p>
+<blockquote>
+<p><strong>Judgment — RAG vs. fine-tuning is not "which is better," it's "which problem."</strong> Fine-tune to change <em>behavior, format, tone, or a narrow skill</em>. Reach for RAG to supply <em>knowledge that changes, needs a citation, or differs per user/tenant.</em> Most real systems do <strong>both</strong>: fine-tune the style, retrieve the facts. If someone frames it as either/or, they've mis-scoped the problem.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-shape-of-rag-two-pipelines-three-letters">Part 2 — The shape of RAG: two pipelines, three letters</h2>
+<p>RAG is <strong>R</strong>etrieval-<strong>A</strong>ugmented <strong>G</strong>eneration, and the name is the architecture. It runs as two pipelines that meet at a vector database.</p>
+<div class="mermaid">flowchart TB
+    subgraph ING[&quot;DATA INGESTION PIPELINE (build the knowledge base, offline)&quot;]
+        D[&quot;Your data&lt;br/&gt;PDF · HTML · Excel · SQL · unstructured&quot;] --&gt; PARSE[&quot;Parse → Document&quot;]
+        PARSE --&gt; CHUNK[&quot;Chunk&lt;br/&gt;(split into pieces)&quot;]
+        CHUNK --&gt; EMB1[&quot;Embed&lt;br/&gt;(text → vectors)&quot;]
+        EMB1 --&gt; VDB[(&quot;Vector DB&lt;br/&gt;stores vectors + metadata&quot;)]
+    end
+    subgraph RET[&quot;RETRIEVAL PIPELINE (answer a question, online)&quot;]
+        Q[&quot;User query&quot;] --&gt; EMB2[&quot;Embed the query&lt;br/&gt;(SAME model)&quot;]
+        EMB2 --&gt; SIM[&quot;Similarity search&quot;]
+        VDB --&gt; SIM
+        SIM --&gt; CTX[&quot;Context&lt;br/&gt;(top-k relevant chunks)&quot;]
+        CTX --&gt; AUG[&quot;Augment: context + prompt&quot;]
+        Q -.-&gt; AUG
+        AUG --&gt; LLM2[&quot;LLM&quot;]
+        LLM2 --&gt; OUT[&quot;Grounded answer&quot;]
+    end</div>
+<p>Map it to the letters:
+- <strong>R — Retrieval:</strong> the query hits the vector DB and pulls back the most relevant chunks. That's the <strong>context</strong>.
+- <strong>A — Augmentation:</strong> you <em>augment</em> the prompt by stuffing that context in alongside the user's question and an instruction.
+- <strong>G — Generation:</strong> the LLM generates the answer <strong>from the supplied context</strong>, not from memory.</p>
+<p>Does this eliminate hallucination? No — it <em>reduces</em> it. If the answer is in the store, you'll likely get it grounded and correct. If it isn't, the model can still make something up. (That's why, in Part 8, we add an explicit "no relevant context found" guard — a small thing that separates a demo from a product.) Perplexity is a public example of this pattern at scale: retrievers + tools + web search + an LLM summarizing over the retrieved context. This baseline is called <strong>traditional RAG</strong>; agentic RAG (retrievers as tools an agent chooses) builds on top of it.</p>
+<blockquote>
+<p><strong>The thesis to carry through the whole build:</strong> the LLM is rarely where RAG fails. <strong>RAG fails at the intersections</strong> — the wrong chunk got retrieved, the index was stale, the query was embedded with a different model than the documents, distance got read as similarity, the context came back empty and nobody checked. Every part below is one of those seams. Watch them.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-the-document-the-data-structure-the-whole-pipeline-speaks">Part 3 — The <code>Document</code>: the data structure the whole pipeline speaks</h2>
+<p>Everything in the ingestion pipeline converges on one structure. Every loader outputs it; the splitter consumes and re-emits it; the vector store is fed from it. Learn it once and the rest is plumbing.</p>
+<p>A LangChain <strong><code>Document</code></strong> has exactly two parts:
+- <strong><code>page_content</code></strong> (str) — the actual text, the thing that gets embedded and searched.
+- <strong><code>metadata</code></strong> (dict) — everything <em>about</em> the text: source file, page number, author, timestamp, and anything else you add.</p>
+<pre><code class="language-python">from langchain_core.documents import Document
+
+doc = Document(
+    page_content=&quot;this is the main text content I am using to create RAG&quot;,
+    metadata={
+        &quot;source&quot;: &quot;example.txt&quot;,
+        &quot;pages&quot;: 1,
+        &quot;author&quot;: &quot;A. Researcher&quot;,
+        &quot;date_created&quot;: &quot;2025-01-01&quot;,
+    },
+)
+</code></pre>
+<p>Why does metadata deserve equal billing with the content? Because at retrieval time you can <strong>filter</strong> on it. "Find text about RAG <strong>where author = A. Researcher</strong>" is a metadata filter stacked on top of the semantic search — and that combination is often what makes retrieval actually usable.</p>
+<blockquote>
+<p><strong>Judgment — metadata is under-rated leverage.</strong> Teams spend weeks chasing a "better embedding model" when the real win was a <code>source</code>, <code>page</code>, or <code>date</code> filter that removes 90% of the wrong candidates before similarity even runs. It's also what powers <strong>citations</strong> ("from manual.pdf, p.42") and <strong>per-tenant isolation</strong> (<code>filter: tenant_id == X</code>) — both non-negotiable in a real product. Design your metadata schema deliberately, not as an afterthought.</p>
+</blockquote>
+<h3 id="loaders-any-file-document">Loaders: any file → <code>Document</code></h3>
+<p>You rarely build <code>Document</code>s by hand. <strong>Loaders</strong> read a source and hand you <code>Document</code>s. LangChain ships dozens (PDF, CSV, web, directory, S3, Notion, Slack, Wikipedia, Arxiv…). The pattern is identical for all of them: construct with a path/config, call <code>.load()</code>.</p>
+<p><strong>Text file:</strong></p>
+<pre><code class="language-python">from langchain_community.document_loaders import TextLoader
+
+loader = TextLoader(&quot;../data/text_files/python_intro.txt&quot;, encoding=&quot;utf-8&quot;)
+document = loader.load()   # -&gt; [Document(page_content=..., metadata={'source': ...})]
+</code></pre>
+<p><em>(Note the two import paths you'll see in the wild: <code>langchain.document_loaders</code> and <code>langchain_community.document_loaders</code>. Prefer <code>langchain_community</code>; the old path still works until it deprecates. LangChain reorganizes packages often — expect this and don't panic when an import moves.)</em></p>
+<p><strong>A whole directory at once:</strong></p>
+<pre><code class="language-python">from langchain_community.document_loaders import DirectoryLoader
+
+dir_loader = DirectoryLoader(
+    &quot;../data/text_files&quot;,
+    glob=&quot;**/*.txt&quot;,              # pattern to match files (recursive)
+    loader_cls=TextLoader,        # which loader to use per file
+    loader_kwargs={&quot;encoding&quot;: &quot;utf-8&quot;},
+    show_progress=True,           # needs tqdm installed; set False to skip
+)
+documents = dir_loader.load()     # -&gt; one Document list across all matched files
+</code></pre>
+<p><strong>PDFs</strong> — two loaders, and the choice matters: <code>PyPDFLoader</code> and <code>PyMuPDFLoader</code>. <code>PyMuPDF</code> is generally the stronger parser (layout, speed). Both yield <strong>one <code>Document</code> per page</strong>, with rich auto-populated metadata (source path, total pages, creation date, author).</p>
+<pre><code class="language-python">from langchain_community.document_loaders import PyPDFLoader   # or PyMuPDFLoader
+</code></pre>
+<p>Here's the real ingestion function from the build — read all PDFs in a folder, and <strong>add your own metadata</strong> as you go:</p>
+<pre><code class="language-python">import os
+from pathlib import Path
+from langchain_community.document_loaders import PyPDFLoader
+
+def process_all_pdfs(pdf_directory):
+    &quot;&quot;&quot;Read every PDF in a directory into a flat list of page-Documents.&quot;&quot;&quot;
+    all_documents = []
+    pdf_dir = Path(pdf_directory)
+    pdf_files = list(pdf_dir.glob(&quot;**/*.pdf&quot;))          # recursive
+    print(f&quot;Found {len(pdf_files)} PDF files to process&quot;)
+
+    for pdf_file in pdf_files:
+        print(f&quot;\nProcessing: {pdf_file.name}&quot;)
+        try:
+            loader = PyPDFLoader(str(pdf_file))
+            documents = loader.load()                    # one Document per page
+            for doc in documents:                        # enrich metadata
+                doc.metadata[&quot;source_file&quot;] = pdf_file.name
+                doc.metadata[&quot;file_type&quot;] = &quot;pdf&quot;
+            all_documents.extend(documents)
+            print(f&quot;  Loaded {len(documents)} pages&quot;)
+        except Exception as e:
+            print(f&quot;  Error: {e}&quot;)                        # one bad file shouldn't kill the run
+
+    print(f&quot;\nTotal documents loaded: {len(all_documents)}&quot;)
+    return all_documents
+
+all_pdf_documents = process_all_pdfs(&quot;../data&quot;)
+# Found 4 PDF files -&gt; attention.pdf (15 pages), embeddings.pdf (27),
+# objectdetection.pdf (21), proposal.pdf (1)  -&gt;  64 page-Documents total
+</code></pre>
+<p>Two production-shaped details are hiding in that simple function: the <strong><code>try/except</code> per file</strong> (in a real corpus, <em>some</em> PDF is always corrupt — you log it and keep going, you don't crash the batch), and the <strong>metadata enrichment loop</strong> (you almost always want provenance beyond what the loader gives you). Both are the difference between a notebook and an ingestion job you can run on 10,000 files.</p>
+<blockquote>
+<p><strong>Judgment — data parsing is the step that decides RAG quality, and it's the one everyone rushes.</strong> Put plainly: <em>crack parsing and RAG becomes easy.</em> A clean text extraction with good structure and metadata makes every downstream step better; a sloppy one (tables mangled into word soup, headers lost, two columns interleaved) poisons the embeddings and no amount of prompt-tuning recovers it. When a RAG system "just isn't accurate," the root cause is upstream of the model far more often than teams expect — usually here.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-chunking-why-you-cant-embed-a-whole-pdf">Part 4 — Chunking: why you can't embed a whole PDF</h2>
+<p>You have 64 page-<code>Document</code>s. You can't just embed each page (or the whole doc) as-is. <strong>Every embedding model and every LLM has a fixed context size.</strong> Hand a 100-page PDF to an embedding model and it refuses — too much text for one vector. So you <strong>chunk</strong>: split documents into smaller pieces that fit, and that each carry a coherent idea.</p>
+<pre><code class="language-python">from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+def split_documents(documents, chunk_size=1000, chunk_overlap=200):
+    &quot;&quot;&quot;Split Documents into overlapping chunks for retrieval.&quot;&quot;&quot;
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,            # target characters per chunk
+        chunk_overlap=chunk_overlap,      # characters shared between neighbors
+        length_function=len,
+        separators=[&quot;\n\n&quot;, &quot;\n&quot;, &quot; &quot;, &quot;&quot;],   # try to split on these, in order
+    )
+    split_docs = text_splitter.split_documents(documents)
+    print(f&quot;Split {len(documents)} documents into {len(split_docs)} chunks&quot;)
+    return split_docs
+
+chunks = split_documents(all_pdf_documents)
+# Split 64 documents into 359 chunks
+</code></pre>
+<p>Two knobs and one clever default:
+- <strong><code>chunk_size=1000</code></strong> — the target size of each piece.
+- <strong><code>chunk_overlap=200</code></strong> — neighboring chunks <strong>share</strong> 200 characters. This is deliberate: a sentence that straddles a chunk boundary would otherwise be cut in half and lose its meaning in <em>both</em> chunks. Overlap keeps the seam readable.
+- <strong><code>separators=["\n\n", "\n", " ", ""]</code></strong> — "recursive" means it tries to split on paragraph breaks first, then line breaks, then spaces, then (last resort) mid-word. It prefers to break where humans would.</p>
+<blockquote>
+<p><strong>Judgment — chunking is where most RAG quality is won or lost, and <code>1000/200</code> is a starting point, not a truth.</strong> Chunks <strong>too big</strong> dilute the embedding (one vector trying to represent five unrelated ideas) and bloat the context you later pay the LLM to read. Chunks <strong>too small</strong> sever the context needed to answer. The right size depends on your content: dense legal/technical prose wants smaller chunks; narrative wants larger. Beyond fixed-size, there's <strong>structure-aware</strong> chunking (split on the document's own headings/sections) and <strong>semantic</strong> chunking (split where the topic actually shifts) — both usually beat character-count splitting, at more cost. If your retrieval is returning "close but not quite" chunks, tune <em>here</em> before you touch the model. This is the highest-leverage knob in the system.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-embeddings-turning-text-into-vectors-you-can-compare">Part 5 — Embeddings: turning text into vectors you can compare</h2>
+<p>Now convert each chunk's text into a <strong>vector</strong> — a list of numbers — so you can measure <em>similarity</em> mathematically (cosine similarity, nearest-neighbor search). Similar meaning → nearby vectors.</p>
+<p>The build uses an <strong>open-source</strong> embedding model so anyone can run it: <code>all-MiniLM-L6-v2</code> from Hugging Face, via <code>sentence-transformers</code>. It maps any text to a <strong>384-dimensional</strong> vector. (You could swap in OpenAI or Google embedding models — same interface, different cost/quality/hosting trade-offs.)</p>
+<p>Wrapped in a small class so the pipeline stays modular (this is the shift from script to reusable component — the same discipline as <a href="ML_Study_13a_LangGraph.html">13a</a>/<a href="ML_Study_13b_MCP.html">13b</a>):</p>
+<pre><code class="language-python">import numpy as np
+from typing import List
+from sentence_transformers import SentenceTransformer
+
+class EmbeddingManager:
+    &quot;&quot;&quot;Handles document embedding generation using SentenceTransformer.&quot;&quot;&quot;
+
+    def __init__(self, model_name: str = &quot;all-MiniLM-L6-v2&quot;):
+        self.model_name = model_name
+        self.model = None
+        self._load_model()
+
+    def _load_model(self):
+        &quot;&quot;&quot;Load the SentenceTransformer model (leading _ = 'internal use').&quot;&quot;&quot;
+        try:
+            print(f&quot;Loading embedding model: {self.model_name}&quot;)
+            self.model = SentenceTransformer(self.model_name)
+            dim = self.model.get_sentence_embedding_dimension()
+            print(f&quot;Model loaded successfully. Embedding dimension: {dim}&quot;)
+        except Exception as e:
+            print(f&quot;Error loading model {self.model_name}: {e}&quot;)
+            raise
+
+    def generate_embeddings(self, texts: List[str]) -&gt; np.ndarray:
+        &quot;&quot;&quot;text (list of strings) -&gt; np.ndarray of shape (len(texts), 384).&quot;&quot;&quot;
+        if not self.model:
+            raise ValueError(&quot;Model not loaded&quot;)
+        print(f&quot;Generating embeddings for {len(texts)} texts...&quot;)
+        embeddings = self.model.encode(texts, show_progress_bar=True)
+        print(f&quot;Generated embeddings with shape: {embeddings.shape}&quot;)
+        return embeddings
+
+embedding_manager = EmbeddingManager()
+# Loading embedding model: all-MiniLM-L6-v2
+# Model loaded successfully. Embedding dimension: 384
+</code></pre>
+<blockquote>
+<p><strong>Judgment — the single most common RAG bug lives in this step: you MUST embed the query with the <em>same</em> model you embedded the documents with.</strong> Vectors from two different models live in two different, incompatible spaces; comparing them yields confident nonsense. This is why the retriever (Part 7) calls the <em>same</em> <code>EmbeddingManager</code>. The corollary bites later: the day you decide to upgrade your embedding model, you must <strong>re-embed your entire corpus</strong> — the old vectors are now garbage relative to the new query vectors. That's a migration, not a config change. Version your embedding model alongside your index and plan for it.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-the-vector-store-where-vectors-live-and-get-searched">Part 6 — The vector store: where vectors live and get searched</h2>
+<p>Store the vectors (plus their text and metadata) in a <strong>vector database</strong> so you can run similarity search over them. The build uses <strong>ChromaDB</strong>, open-source and <strong>persistent</strong> — it writes to disk, so you ingest once and reuse forever without re-embedding.</p>
+<pre><code class="language-python">import os
+import uuid
+from typing import Any, List
+import numpy as np
+import chromadb
+
+class VectorStore:
+    &quot;&quot;&quot;Manages document embeddings in a persistent ChromaDB collection.&quot;&quot;&quot;
+
+    def __init__(self, collection_name: str = &quot;pdf_documents&quot;,
+                 persist_directory: str = &quot;../data/vector_store&quot;):
+        self.collection_name = collection_name
+        self.persist_directory = persist_directory
+        self.client = None
+        self.collection = None
+        self._initialize_store()
+
+    def _initialize_store(self):
+        os.makedirs(self.persist_directory, exist_ok=True)
+        self.client = chromadb.PersistentClient(path=self.persist_directory)  # writes to disk
+        self.collection = self.client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={&quot;description&quot;: &quot;PDF document embeddings for RAG&quot;},
+        )
+        print(f&quot;Vector store initialized. Collection: {self.collection_name}&quot;)
+        print(f&quot;Existing documents in collection: {self.collection.count()}&quot;)
+
+    def add_documents(self, documents: List[Any], embeddings: np.ndarray):
+        &quot;&quot;&quot;Store chunks + their embeddings together, keyed by unique id.&quot;&quot;&quot;
+        if len(documents) != len(embeddings):
+            raise ValueError(&quot;Number of documents must match number of embeddings&quot;)
+
+        ids, metadatas, documents_text, embeddings_list = [], [], [], []
+        for i, (doc, embedding) in enumerate(zip(documents, embeddings)):
+            ids.append(f&quot;doc_{uuid.uuid4().hex[:8]}_{i}&quot;)     # unique id per record
+            meta = dict(doc.metadata)
+            meta[&quot;doc_index&quot;] = i
+            meta[&quot;content_length&quot;] = len(doc.page_content)
+            metadatas.append(meta)
+            documents_text.append(doc.page_content)            # keep the text, not just the vector
+            embeddings_list.append(embedding.tolist())
+        try:
+            self.collection.add(
+                ids=ids,
+                embeddings=embeddings_list,
+                metadatas=metadatas,
+                documents=documents_text,
+            )
+            print(f&quot;Successfully added {len(documents)} documents to vector store&quot;)
+            print(f&quot;Total documents in collection: {self.collection.count()}&quot;)
+        except Exception as e:
+            print(f&quot;Error adding documents to vector store: {e}&quot;)
+
+vectorstore = VectorStore()
+</code></pre>
+<p>Notice the collection stores <strong>four parallel things</strong> per record: the <code>id</code>, the <code>embedding</code> (for search), the <code>document</code> text (so you can return it as context), and the <code>metadata</code> (for filtering and citations). That's the whole point — the vector is how you <em>find</em> it; the text and metadata are what you <em>use</em>.</p>
+<p>Now wire the three components together — this is the ingestion pipeline in three lines:</p>
+<pre><code class="language-python">texts = [doc.page_content for doc in chunks]           # 359 chunk texts
+embeddings = embedding_manager.generate_embeddings(texts)   # (359, 384)
+vectorstore.add_documents(chunks, embeddings)          # -&gt; Total documents in collection: 359
+</code></pre>
+<blockquote>
+<p><strong>Judgment — a few things the happy path hides.</strong> (1) <strong>Idempotency:</strong> random UUID ids mean re-running ingestion <em>duplicates</em> every chunk. For a real job you want deterministic ids (hash of source+page+chunk) so re-ingesting updates instead of double-counting — otherwise your index quietly rots. (2) <strong>The vector store now contains your source text in plaintext</strong> — if any of it is PII or confidential, the store is now a place that data lives, with all the access-control and retention consequences that implies. (3) <strong>Persistence is a feature, not a given</strong> — <code>PersistentClient</code> writing to disk is what lets this survive a restart; the in-memory default would vanish. Small line, big operational difference.</p>
+</blockquote>
+<hr />
+<h2 id="part-7-retrieval-query-context">Part 7 — Retrieval: query → context</h2>
+<p>Ingestion is done; the knowledge base exists. Retrieval is the online half: take a user query, embed it <strong>with the same model</strong>, search the store, return the best chunks.</p>
+<pre><code class="language-python">from typing import Any, Dict, List
+
+class RAGRetriever:
+    &quot;&quot;&quot;Query-based retrieval over the vector store.&quot;&quot;&quot;
+
+    def __init__(self, vector_store: VectorStore, embedding_manager: EmbeddingManager):
+        self.vector_store = vector_store
+        self.embedding_manager = embedding_manager      # SAME manager used for ingestion
+
+    def retrieve(self, query: str, top_k: int = 5,
+                 score_threshold: float = 0.0) -&gt; List[Dict[str, Any]]:
+        # 1. Embed the query with the SAME model the documents used
+        query_embedding = self.embedding_manager.generate_embeddings([query])
+
+        # 2. Similarity search in the vector DB
+        results = self.vector_store.collection.query(
+            query_embeddings=query_embedding.tolist(),
+            n_results=top_k,
+        )
+
+        # 3. Package results: convert DISTANCE -&gt; SIMILARITY, filter by threshold
+        retrieved_docs = []
+        if results[&quot;documents&quot;] and results[&quot;documents&quot;][0]:
+            for doc_id, doc, metadata, distance in zip(
+                results[&quot;ids&quot;][0],
+                results[&quot;documents&quot;][0],
+                results[&quot;metadatas&quot;][0],
+                results[&quot;distances&quot;][0],
+            ):
+                similarity = 1 - distance           # Chroma returns distance; similarity = 1 - distance
+                if similarity &gt;= score_threshold:
+                    retrieved_docs.append({
+                        &quot;id&quot;: doc_id,
+                        &quot;content&quot;: doc,
+                        &quot;metadata&quot;: metadata,
+                        &quot;similarity_score&quot;: similarity,
+                        &quot;distance&quot;: distance,
+                    })
+        return retrieved_docs
+
+rag_retriever = RAGRetriever(vectorstore, embedding_manager)
+results = rag_retriever.retrieve(&quot;what is attention is all you need&quot;)
+# -&gt; top-k chunks, each with content + metadata + similarity_score
+</code></pre>
+<p>Three things worth naming:
+- <strong><code>top_k</code></strong> — how many chunks to pull back. Too few and you miss the answer; too many and you drown the LLM (and pay for the tokens).
+- <strong>distance vs. similarity</strong> — Chroma returns a <strong>distance</strong> (smaller = closer). Humans think in <strong>similarity</strong> (bigger = more alike), so we convert: <code>similarity = 1 - distance</code>. Getting this backwards silently ranks your results in reverse — a classic seam bug.
+- <strong><code>score_threshold</code></strong> — drop chunks below a similarity floor. This is your first defense against the failure in the next note.</p>
+<blockquote>
+<p><strong>Judgment — the retriever ALWAYS returns something, even when nothing relevant exists.</strong> Ask about a topic that isn't in your corpus and similarity search still hands back the <em>k</em> least-bad chunks — they're just all wrong. If you pass those to the LLM unguarded, you've <em>reintroduced</em> hallucination through the back door, now dressed up as a grounded answer. The <code>score_threshold</code> (and the "no relevant context" guard in Part 8) exist precisely for this. <strong>Similarity is not correctness.</strong> A production RAG system needs to be able to say "I don't have that" — and that ability is something you build, not something retrieval gives you for free.</p>
+</blockquote>
+<hr />
+<h2 id="part-8-generation-augment-the-context-then-answer">Part 8 — Generation: augment the context, then answer</h2>
+<p>The last step turns retrieved context into an answer. This is the <strong>A</strong> and <strong>G</strong>: <em>augment</em> the prompt with context, then <em>generate</em>. The build uses <code>ChatGroq</code> (fast, free tier) but any chat model works.</p>
+<pre><code class="language-python">import os
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+
+load_dotenv()
+llm = ChatGroq(
+    groq_api_key=os.getenv(&quot;GROQ_API_KEY&quot;),
+    model_name=&quot;gemma2-9b-it&quot;,
+    temperature=0.1,        # low temp: we want faithful, not creative
+    max_tokens=1024,
+)
+
+def rag_simple(query, retriever, llm, k=3):
+    # 1. RETRIEVE
+    results = retriever.retrieve(query, top_k=k)
+
+    # 2. AUGMENT: join the retrieved chunks into one context block
+    context = &quot;\n\n&quot;.join(doc[&quot;content&quot;] for doc in results) if results else &quot;&quot;
+    if not context:                                   # the guard from Part 7's note
+        return &quot;No relevant context found to answer the question.&quot;
+
+    # 3. GENERATE: instruct the LLM to answer FROM the context
+    prompt = (
+        &quot;Use the following context to answer the question concisely.\n\n&quot;
+        &quot;Context:\n{context}\n\n&quot;
+        &quot;Question: {query}\n\n&quot;
+        &quot;Answer:&quot;
+    )
+    response = llm.invoke(prompt.format(context=context, query=query))
+    return response.content
+
+answer = rag_simple(&quot;What is attention mechanism?&quot;, rag_retriever, llm)
+print(answer)
+# -&gt; &quot;Attention mechanism is a function that maps a query ...&quot; (grounded in attention.pdf)
+</code></pre>
+<p>That's the whole loop: <strong>retrieve → augment → generate.</strong> The prompt is doing real work — <em>"Use the following context to answer"</em> is an instruction to prefer the supplied text over the model's own memory. Keep <code>temperature</code> low so the model stays faithful to the context rather than embellishing.</p>
+<p>From here, the natural extensions (the video calls it <code>rag_advanced</code>) return <strong>sources, confidence scores, and the full context</strong> alongside the answer — not extras, but requirements: an answer you can't trace to a source is an answer you can't trust in production.</p>
+<blockquote>
+<p><strong>Judgment — evaluate retrieval and generation separately, because they fail separately.</strong> A RAG answer can be wrong two very different ways: <strong>retrieval</strong> fetched the wrong chunk (the answer was never in the context), or <strong>generation</strong> got the right chunk and still ignored or misread it. These have different fixes (chunking/embedding/filters vs. prompt/model), so a single "is the final answer good?" score tells you nothing about <em>where</em> to look. Measure "did we retrieve the chunk that contains the answer?" independent of "did the model use it faithfully?" And remember the deeper limit: <strong>grounding is not reasoning.</strong> RAG makes the model <em>informed</em>, not <em>smart</em> — it will still fail at multi-hop questions where the answer requires combining facts the retriever pulled as separate, unlinked chunks.</p>
+</blockquote>
+<hr />
+<h2 id="part-9-enhanced-rag-sources-confidence-and-a-threshold-that-means-i-dont-know">Part 9 — Enhanced RAG: sources, confidence, and a threshold that means "I don't know"</h2>
+<p><code>rag_simple</code> returns a bare string. That's a demo. A product needs to answer three more questions every time: <strong>where did this come from, how sure are we, and what did we actually read?</strong> <code>rag_advanced</code> returns all of it — a structured result instead of a sentence.</p>
+<pre><code class="language-python">def rag_advanced(query, retriever, llm, top_k=5, min_score=0.2, return_context=False):
+    &quot;&quot;&quot;
+    RAG pipeline with extra features:
+    - Returns answer, sources, confidence score, and optionally full context.
+    &quot;&quot;&quot;
+    # Retrieval now enforces a real floor: below min_score, a chunk is not &quot;context&quot;
+    results = retriever.retrieve(query, top_k=top_k, score_threshold=min_score)
+    if not results:
+        return {&quot;answer&quot;: &quot;No relevant context found.&quot;, &quot;sources&quot;: [], &quot;confidence&quot;: 0.0, &quot;context&quot;: &quot;&quot;}
+
+    # Prepare context AND a structured trail of where each piece came from
+    context = &quot;\n\n&quot;.join(doc[&quot;content&quot;] for doc in results)
+    sources = [{
+        &quot;source&quot;:  doc[&quot;metadata&quot;].get(&quot;source_file&quot;, doc[&quot;metadata&quot;].get(&quot;source&quot;, &quot;unknown&quot;)),
+        &quot;page&quot;:    doc[&quot;metadata&quot;].get(&quot;page&quot;, &quot;unknown&quot;),
+        &quot;score&quot;:   doc[&quot;similarity_score&quot;],
+        &quot;preview&quot;: doc[&quot;content&quot;][:300] + &quot;...&quot;,
+    } for doc in results]
+    confidence = max(doc[&quot;similarity_score&quot;] for doc in results)
+
+    # Generate
+    prompt = (
+        &quot;Use the following context to answer the question concisely.\n&quot;
+        &quot;Context:\n{context}\n\nQuestion: {query}\n\nAnswer:&quot;
+    )
+    response = llm.invoke([prompt.format(context=context, query=query)])
+
+    output = {&quot;answer&quot;: response.content, &quot;sources&quot;: sources, &quot;confidence&quot;: confidence}
+    if return_context:
+        output[&quot;context&quot;] = context      # opt-in: the full context, for debugging/audit
+    return output
+
+result = rag_advanced(&quot;What is attention mechanism?&quot;, rag_retriever, llm,
+                      top_k=3, min_score=0.1, return_context=True)
+print(&quot;Answer:&quot;,  result[&quot;answer&quot;])
+print(&quot;Sources:&quot;, result[&quot;sources&quot;])        # [{source, page, score, preview}, ...]
+print(&quot;Confidence:&quot;, result[&quot;confidence&quot;])
+print(&quot;Context Preview:&quot;, result[&quot;context&quot;][:300])
+</code></pre>
+<p>Three upgrades, each of which is a production requirement, not a nicety:
+- <strong><code>sources</code></strong> — every answer now carries its provenance (file, page, score, preview). This is what lets a user <em>verify</em> the answer, and what lets you <em>debug</em> a wrong one ("it cited page 4 of the wrong document").
+- <strong><code>confidence</code></strong> — a single number you can act on: route low-confidence answers to a human, suppress them, or show a "low confidence" badge.
+- <strong><code>min_score</code> as a real gate</strong> — the threshold from Part 7, now wired in. Ask about something not in the corpus and <code>rag_advanced</code> returns <em>"No relevant context found."</em> with confidence <code>0.0</code> — it declines instead of hallucinating.</p>
+<p>The video also gestures at a third tier (streaming, citations, conversation history, summarization) — same skeleton, more features bolted on. The pattern to internalize isn't the feature list; it's the <em>progression</em>: <strong>simple → traceable → governable.</strong> Each rung adds something you need before you'd put it in front of a real user.</p>
+<blockquote>
+<p><strong>Judgment — "confidence = max similarity" is a <em>weak</em> signal, and treating it as truth is a classic RAG mistake.</strong> A chunk can be highly similar to the query and still not contain the answer (similar <em>words</em>, wrong <em>fact</em>), and a correct answer can come from a modestly-scored chunk. So <code>confidence</code> here is a useful <em>floor for triage</em>, not a calibrated probability of correctness. In a serious system you'd complement it with an LLM-as-judge check ("does this context actually answer the question?") or a groundedness score. Ship the simple version, but don't tell stakeholders the number means more than it does — that overclaim is how RAG systems lose trust.</p>
+</blockquote>
+<hr />
+<h2 id="part-10-from-notebook-to-pipeline-the-modular-refactor">Part 10 — From notebook to pipeline: the modular refactor</h2>
+<p>Everything so far lived in one notebook. That's fine for learning and useless for production — you can't test it, reuse it, deploy it, or let a second person work on it. The final move is the most important one, and it's the one most tutorials skip: <strong>turn the notebook into a package with clear component boundaries.</strong></p>
+<div class="mermaid">flowchart TB
+    subgraph SRC[&quot;src/ — the pipeline, one job per module&quot;]
+        DL[&quot;data_loader.py&lt;br/&gt;load_all_documents()&quot;]
+        EM[&quot;embedding.py&lt;br/&gt;EmbeddingPipeline&lt;br/&gt;chunk_documents · embed_chunks&quot;]
+        VS[&quot;vectorstore.py&lt;br/&gt;FaissVectorStore&lt;br/&gt;build · save · load · query&quot;]
+        SE[&quot;search.py&lt;br/&gt;RAGSearch&lt;br/&gt;search_and_summarize (LLM)&quot;]
+    end
+    APP[&quot;app.py — orchestrator&lt;br/&gt;wires the components in sequence&quot;]
+    DL --&gt; EM --&gt; VS --&gt; SE
+    APP -.calls.-&gt; DL
+    APP -.calls.-&gt; VS
+    APP -.calls.-&gt; SE</div>
+<p>The directory:</p>
+<pre><code class="language-text">YTRAG/
+├── data/                 # source documents (PDF, TXT, CSV, ...)
+├── faiss_store/          # persisted index + metadata (built once)
+├── src/
+│   ├── __init__.py
+│   ├── data_loader.py    # load_all_documents(data_dir) -&gt; List[Document]
+│   ├── embedding.py      # EmbeddingPipeline: chunk_documents, embed_chunks
+│   ├── vectorstore.py    # FaissVectorStore: build_from_documents, save, load, search, query
+│   └── search.py         # RAGSearch: search_and_summarize (retrieval + LLM)
+└── app.py                # orchestrator: the only file that knows the whole flow
+</code></pre>
+<p>Nothing about the <em>logic</em> changed — the loader still loads, the splitter still splits, the retriever still retrieves. What changed is that each step is now a <strong>named component with one responsibility and a stable interface</strong>, so you can test it, swap it, and reuse it. That is the entire difference between a demo and a system.</p>
+<p><strong>One swap worth noticing: the vector store changed from ChromaDB to FAISS</strong> — and almost nothing else had to. FAISS is a fast in-process similarity library (<code>IndexFlatL2</code> = exact brute-force search); the metadata rides alongside in a pickle file. The <code>search</code>/<code>query</code> methods present the <em>same</em> shape the rest of the pipeline expects.</p>
+<pre><code class="language-python"># src/vectorstore.py  (the core of the FAISS store)
+import os, pickle
+import faiss
+from sentence_transformers import SentenceTransformer
+
+class FaissVectorStore:
+    def __init__(self, persist_dir=&quot;faiss_store&quot;, embedding_model=&quot;all-MiniLM-L6-v2&quot;):
+        self.persist_dir = persist_dir
+        os.makedirs(self.persist_dir, exist_ok=True)
+        self.index = None
+        self.metadata = []
+        self.model = SentenceTransformer(embedding_model)
+
+    def add_embeddings(self, embeddings, metadatas=None):
+        dim = embeddings.shape[1]
+        if self.index is None:
+            self.index = faiss.IndexFlatL2(dim)     # exact L2 nearest-neighbor
+        self.index.add(embeddings)
+        if metadatas:
+            self.metadata.extend(metadatas)
+
+    def save(self):                                  # persist index + metadata to disk
+        faiss.write_index(self.index, os.path.join(self.persist_dir, &quot;faiss.index&quot;))
+        with open(os.path.join(self.persist_dir, &quot;metadata.pkl&quot;), &quot;wb&quot;) as f:
+            pickle.dump(self.metadata, f)
+
+    def load(self):                                  # reload without re-embedding
+        self.index = faiss.read_index(os.path.join(self.persist_dir, &quot;faiss.index&quot;))
+        with open(os.path.join(self.persist_dir, &quot;metadata.pkl&quot;), &quot;rb&quot;) as f:
+            self.metadata = pickle.load(f)
+
+    def query(self, query_text, top_k=5):
+        query_emb = self.model.encode([query_text]).astype(&quot;float32&quot;)
+        D, I = self.index.search(query_emb, top_k)
+        return [{&quot;index&quot;: idx, &quot;distance&quot;: dist,
+                 &quot;metadata&quot;: self.metadata[idx] if idx &lt; len(self.metadata) else None}
+                for idx, dist in zip(I[0], D[0])]
+</code></pre>
+<p>And <code>app.py</code> — the orchestrator — captures the operational shape of a real RAG service in a few lines:</p>
+<pre><code class="language-python">from src.data_loader import load_all_documents
+from src.vectorstore import FaissVectorStore
+from src.search import RAGSearch
+
+if __name__ == &quot;__main__&quot;:
+    # FIRST run: build the index once (expensive: embeds everything) and persist it
+    docs = load_all_documents(&quot;data&quot;)
+    store = FaissVectorStore(&quot;faiss_store&quot;)
+    store.build_from_documents(docs)
+
+    # EVERY run after: skip building — just load and query (cheap, instant)
+    # store = FaissVectorStore(&quot;faiss_store&quot;)
+    # store.load()
+    # print(store.query(&quot;What is attention mechanism?&quot;, top_k=3))
+
+    # With the LLM (full retrieval + generation):
+    # search = RAGSearch(&quot;faiss_store&quot;)
+    # print(search.search_and_summarize(&quot;What is attention mechanism?&quot;))
+</code></pre>
+<blockquote>
+<p><strong>Judgment — the "build once, load many" split is the single most important operational insight in RAG, and the refactor is what makes it possible.</strong> Embedding your whole corpus is the expensive step; you do it <em>once</em> and persist the index, then every query just loads and searches. The <code>if index exists: load, else: build</code> pattern is what turns a 30-second-startup notebook into a service that answers in milliseconds. You only re-build when the <em>documents</em> change — and even then, incrementally, not from scratch. A notebook can't express this cleanly; a package can. This is the whole reason to do the refactor, and it's the same principle as every other durable system: <strong>separate the expensive one-time work from the cheap repeated work, and put a clean seam between them.</strong></p>
+<p><strong>Judgment — two more things the video does that you must NOT copy into production.</strong> (1) It <strong>hardcodes the API key in <code>search.py</code></strong> (<code>groq_api_key = "gsk_..."</code>). Never do this — a key in source is a key in your git history forever, readable by anyone who ever clones the repo. Load it from <code>.env</code>/environment or a secrets manager (<code>os.getenv("GROQ_API_KEY")</code>), and add <code>.env</code> to <code>.gitignore</code>. (2) It ships <strong><code>IndexFlatL2</code> (exact brute-force search)</strong> — perfect for a few hundred chunks, but it scans <em>every</em> vector on every query, so it degrades linearly and won't hold up at millions of chunks. That's your cue for an approximate index (FAISS IVF/HNSW) or a managed vector DB (pgvector, Typesense, Pinecone). The point isn't that FAISS is wrong — it's that <strong>the vector store is a real architecture decision with a scaling cliff</strong>, and "it worked in the demo" is exactly when that cliff is invisible.</p>
+</blockquote>
+<p><strong>On swappable stores:</strong> ChromaDB, FAISS, Typesense, pgvector, Pinecone — the tutorial uses three of them almost interchangeably, and that's the lesson. Behind a stable <code>build / load / query</code> interface, the vector backend is a <em>pluggable choice</em>, not a rewrite — the same "standard interface over varied implementations" pattern you saw LangChain apply to models (Study 13) and MCP apply to tools (Study 13b). Choose the backend by your real constraints (scale, ops burden, filtering needs, cost), not by which one the tutorial happened to use.</p>
+<hr />
+<h2 id="part-11-where-this-goes-and-where-it-breaks">Part 11 — Where this goes, and where it breaks</h2>
+<p>You've built <strong>traditional RAG</strong> end to end: a data-ingestion pipeline (load → chunk → embed → store) and a retrieval pipeline (embed query → search → augment → generate), assembled from modular components (<code>EmbeddingManager</code>, <code>VectorStore</code>, <code>RAGRetriever</code>) so the same code becomes a real <code>src/</code> pipeline instead of notebook cells.</p>
+<p>The map of what you built:</p>
+<div class="mermaid">flowchart LR
+    subgraph OFFLINE[&quot;Ingestion (run once, re-run on updates)&quot;]
+        L[&quot;Loaders&lt;br/&gt;PyPDFLoader&quot;] --&gt; S[&quot;RecursiveCharacter&lt;br/&gt;TextSplitter&quot;]
+        S --&gt; E[&quot;EmbeddingManager&lt;br/&gt;all-MiniLM-L6-v2&quot;]
+        E --&gt; V[(&quot;VectorStore&lt;br/&gt;ChromaDB, persistent&quot;)]
+    end
+    subgraph ONLINE[&quot;Serving (every query)&quot;]
+        QQ[&quot;query&quot;] --&gt; RR[&quot;RAGRetriever&lt;br/&gt;embed + search + threshold&quot;]
+        V --&gt; RR
+        RR --&gt; GG[&quot;rag_simple&lt;br/&gt;augment + ChatGroq&quot;]
+        GG --&gt; AA[&quot;grounded answer&quot;]
+    end</div>
+<p><strong>Where it goes next:</strong> agentic RAG — instead of <em>always</em> retrieving, an agent (Study 13/13a) <em>decides</em> whether to retrieve, which store to hit, whether to also web-search, and whether the answer is good enough to return or needs another pass. The retriever becomes a <strong>tool</strong> (Study 13b) the agent chooses. Everything here stays; it just stops being unconditional.</p>
+<p><strong>Where it breaks — the intersection checklist.</strong> Come back to this when a RAG system "isn't accurate." In production, the culprit is almost never the LLM; it's one of these seams, in roughly this order of likelihood:</p>
+<ol>
+<li><strong>Parsing</strong> dropped structure (tables, columns, headers) → the text was wrong before it was ever embedded.</li>
+<li><strong>Chunking</strong> split answers apart or diluted them → the right idea isn't in any single chunk.</li>
+<li><strong>Embedding mismatch</strong> — query and documents embedded by different models → search is comparing incompatible spaces.</li>
+<li><strong>No threshold / no "I don't know"</strong> → irrelevant chunks pass through and the model hallucinates over them.</li>
+<li><strong>Distance read as similarity</strong> → results ranked backwards.</li>
+<li><strong>Stale index</strong> — the source changed, the vectors didn't → confidently outdated answers.</li>
+<li><strong>Metadata missing</strong> → can't filter, can't cite, can't isolate tenants.</li>
+<li>Only <em>then</em>, occasionally, the model itself.</li>
+</ol>
+<p>Notice that seven of the eight are <em>pipeline</em> problems, not <em>model</em> problems. That's the whole lesson of RAG, and it's the same lesson that runs through every complex system: <strong>the components are rarely where things fail — the connections between them are.</strong> Get the seams right and RAG is dependable. Ignore them and no model, however large, will save you.</p>
+<hr />
+<p><strong>Next → LLM-integrated retrieval, then agentic RAG</strong> — turning <code>rag_simple</code> into an agent that decides when and how to retrieve. Reference library for going deeper on any step above: the RAG playbook in <code>systems-in-production/playbooks/ai/rag/</code> (chunking strategies, retrieval failure modes, evaluation, production patterns).</p>
+</body>
+</html>

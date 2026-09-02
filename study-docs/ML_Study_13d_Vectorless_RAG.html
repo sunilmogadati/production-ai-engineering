@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Study 13d — Vectorless RAG: Retrieval by Reasoning, Not Similarity</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="ml-study-13d-vectorless-rag-retrieval-by-reasoning-not-similarity">ML Study 13d — Vectorless RAG: Retrieval by Reasoning, Not Similarity</h1>
+<p><strong>Covers:</strong> <em>why</em> vector RAG fails on long professional documents (<strong>similarity ≠ relevance</strong>, chunking destroys context, opaque cosine scores, embedding drift) → the core idea of <strong>vectorless / reasoning-based RAG</strong>: skip embeddings entirely and let the LLM <strong>navigate a document tree like a human reading a table of contents</strong> → building the <strong>LLM tree index</strong> (TOC detection → section-aware splitting → per-node summaries → a JSON hierarchy) → <strong>retrieval by reasoning</strong> (the LLM reads the tree, reasons about which sections are relevant, returns node IDs + a navigation path) → a full <strong>PageIndex</strong> pipeline (<code>submit_document</code> → <code>get_tree</code> → <code>llm_tree_search</code> → cited answer) → the <strong>honest comparison</strong> with traditional RAG and when each wins.
+<strong>Goal:</strong> understand a genuinely different retrieval paradigm — and, more importantly, learn <em>the judgment for choosing between them</em>, because the interesting question is never "which is better" but "which fits <em>this</em> document and <em>this</em> constraint."</p>
+<p><strong>Series context:</strong> the <strong>relevance rung</strong>. <a href="ML_Study_13c_RAG.html">Study 13c</a> built traditional RAG and ended on "RAG fails at the intersections" — chunking severs context, similarity retrieves the wrong thing. Vectorless RAG is a direct answer to those exact failures: it removes the chunking seam entirely and replaces similarity with <em>reasoning</em>. Built from a hands-on Agentic-AI walkthrough (the PageIndex / vectorless-RAG section). Companion notebook: <code>PageIndex_Vectorless_RAG.ipynb</code>.</p>
+<blockquote>
+<p>The one-line frame: <strong>traditional RAG finds what's <em>similar</em>; vectorless RAG reasons about what's <em>relevant</em>.</strong> Hold that distinction — it's the whole chapter, and it's a distinction that matters far beyond RAG.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-the-problem-similarity-is-not-relevance">Part 1 — The problem: similarity is not relevance</h2>
+<p>Recall traditional vector RAG from <a href="ML_Study_13c_RAG.html">13c</a>: chunk the document, embed the chunks, store the vectors, and at query time embed the question and pull back the <em>most similar</em> chunks by cosine distance.</p>
+<pre><code class="language-text">query -&gt; embed -&gt; cosine_similarity(query_vec, all_chunk_vecs) -&gt; top-k chunks
+</code></pre>
+<p>That works beautifully for short, factoid lookups over messy, mixed corpora. But on a long, <em>structured</em> professional document — a 10-K, a legal contract, a research paper, an annual report — it has four failure modes that no amount of tuning fully fixes:</p>
+<ol>
+<li><strong>Chunking destroys context.</strong> A chunk that says <em>"as defined in Section 3.2..."</em> is meaningless when retrieved alone — the reference is severed. Fixed-size splitting cuts a single section into three arbitrary pieces, and the idea that spanned them is lost.</li>
+<li><strong>Similarity ≠ relevance.</strong> Embeddings match on <em>surface likeness</em>, not <em>actual answer-bearing</em>. A chunk about "market conditions" can score higher than the real answer just because it shares more words with your query. The retriever can be <em>confidently wrong</em>.</li>
+<li><strong>No cross-section reasoning.</strong> Ask <em>"compare the risk factors in Section 7 to the mitigations in Section 12"</em> and pure similarity can't do it — the answer requires <em>relating</em> two distant sections, not finding one similar chunk.</li>
+<li><strong>Opaque + fragile.</strong> <em>Why</em> was this chunk picked? "Cosine score 0.83" is not an explanation. And the day you change embedding models, every vector is invalidated — <strong>embedding drift</strong> forces you to re-embed the entire corpus.</li>
+</ol>
+<blockquote>
+<p><strong>Judgment — "similarity ≠ relevance" is the deepest idea in this whole series, and it reaches far past RAG.</strong> A tool that optimizes for <em>similarity</em> will confidently hand you the nearest-looking thing and call it done. Getting the <em>relevant</em> thing — the one that actually answers the question in context — takes <em>reasoning</em>. That gap is exactly where human judgment has always lived, and it's why "the model found something" and "the model found the right thing" are different claims. Every part below is one attempt to close that gap with reasoning instead of arithmetic.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-core-idea-let-the-llm-navigate-like-a-human">Part 2 — The core idea: let the LLM navigate like a human</h2>
+<p>Here's how <em>you</em> answer a question from a 500-page book: you don't scan every sentence for similarity. You <strong>open the table of contents</strong>, reason about which chapter is most likely to hold the answer, turn to that page, and read the section whole. You navigate <em>structure</em>.</p>
+<p>Vectorless RAG does exactly that. <strong>No embeddings, no vector database, no chunking.</strong> Instead:</p>
+<div class="mermaid">flowchart TB
+    PDF[&quot;Long structured document&quot;] --&gt; TREE[&quot;LLM Tree Builder&lt;br/&gt;(build a hierarchy of sections,&lt;br/&gt;each with an LLM summary)&quot;]
+    TREE --&gt; JSON[(&quot;JSON Tree Index&lt;br/&gt;node_id · title · page · summary · text&quot;)]
+    Q[&quot;User query&quot;] --&gt; LLM[&quot;LLM reads the tree&lt;br/&gt;and REASONS:&lt;br/&gt;&#x27;which sections answer this?&#x27;&quot;]
+    JSON --&gt; LLM
+    LLM --&gt; NODES[&quot;Selected node_ids&lt;br/&gt;+ navigation path&quot;]
+    NODES --&gt; ANS[&quot;Cited answer&lt;br/&gt;(section title + page)&quot;]</div>
+<p>The document becomes a <strong>tree</strong> that mirrors its own structure — Document → Chapters → Sections → Sub-sections — and <strong>each node carries an LLM-written summary</strong> of what's in it. At query time, the LLM is handed the <em>whole tree as context</em> and asked to reason: <em>which nodes most likely contain the answer?</em> It descends the tree the way a human expert scans a table of contents, picks the relevant sections, reads them <strong>whole</strong>, and answers — <strong>citing the section and page it used.</strong></p>
+<p>Compare the two retrievals directly:</p>
+<pre><code class="language-text">Vector RAG:   query -&gt; embed -&gt; cosine_similarity -&gt; top-k chunks
+              (finds what's SIMILAR)
+
+PageIndex:    query + tree -&gt; LLM reasons -&gt; &quot;nodes 0007 and 0008 contain the answer&quot;
+              (finds what's RELEVANT — and tells you why)
+</code></pre>
+<p>The LLM understands document <em>structure, context, and intent</em> — not just vector proximity.</p>
+<hr />
+<h2 id="part-3-building-the-tree-structure-not-chunks">Part 3 — Building the tree: structure, not chunks</h2>
+<p>The index is built <strong>once, offline</strong>, and it's the heart of the approach. Two cases:</p>
+<p><strong>If the document has a table of contents</strong> (with or without page numbers): parse the chapters/sections directly into a hierarchy.</p>
+<p><strong>If it doesn't:</strong> the LLM <em>reads the pages</em>, infers the headings and structure, and builds the hierarchy itself. This is the crucial contrast with chunking:</p>
+<div class="mermaid">flowchart TB
+    RAW[&quot;Raw PDF (any long structured doc)&quot;] --&gt; DET{&quot;Has a&lt;br/&gt;Table of Contents?&quot;}
+    DET --&gt;|yes| PARSE[&quot;Parse chapters/sections&quot;]
+    DET --&gt;|no| INFER[&quot;LLM reads pages,&lt;br/&gt;infers headings + structure&quot;]
+    PARSE --&gt; SPLIT[&quot;Section-aware splitting&lt;br/&gt;respect LOGICAL boundaries,&lt;br/&gt;NOT token counts&quot;]
+    INFER --&gt; SPLIT
+    SPLIT --&gt; SUM[&quot;LLM summarizes each section&lt;br/&gt;generates node_id, title, page, summary&quot;]
+    SUM --&gt; ASM[&quot;Assemble hierarchical tree&lt;br/&gt;parent -&gt; child -&gt; grandchild&quot;]
+    ASM --&gt; OUT[(&quot;in-context JSON tree&quot;)]</div>
+<p>The pivotal phrase is <strong>section-aware splitting: respect logical boundaries, not token counts.</strong> Traditional chunking splits a coherent section into three arbitrary pieces because it counts to 1000 characters and cuts. The tree builder splits on the document's <em>own</em> structure — one node per real section — so a section stays <strong>whole</strong>. Each node ends up looking like this:</p>
+<pre><code class="language-json">{
+  &quot;title&quot;: &quot;Financial Stability&quot;,
+  &quot;node_id&quot;: &quot;0006&quot;,
+  &quot;page_index&quot;: 21,
+  &quot;summary&quot;: &quot;This section covers monitoring of systemic vulnerabilities and the role of international cooperation...&quot;,
+  &quot;text&quot;: &quot;&lt;the full section text&gt;&quot;,
+  &quot;nodes&quot;: [
+    { &quot;title&quot;: &quot;Monitoring Vulnerabilities&quot;, &quot;node_id&quot;: &quot;0007&quot;, &quot;page_index&quot;: 22, &quot;summary&quot;: &quot;...&quot;, &quot;text&quot;: &quot;...&quot; },
+    { &quot;title&quot;: &quot;International Cooperation&quot;,   &quot;node_id&quot;: &quot;0008&quot;, &quot;page_index&quot;: 28, &quot;summary&quot;: &quot;...&quot;, &quot;text&quot;: &quot;...&quot; }
+  ]
+}
+</code></pre>
+<blockquote>
+<p><strong>Judgment — "sections stay whole" is the direct fix for 13c's "chunking destroys context."</strong> In <a href="ML_Study_13c_RAG.html">13c</a> we named chunking as the highest-leverage knob <em>and</em> a top failure mode — cut in the wrong place and the answer is scattered across chunks that never retrieve together. Vectorless RAG doesn't tune that knob; it <em>removes</em> it. The information for one section lives in exactly one node, and cross-references survive because the section is intact. That's a real architectural win for the right document — and, like every win, it comes with a bill (Part 7).</p>
+</blockquote>
+<hr />
+<h2 id="part-4-where-the-tree-lives-no-vector-db">Part 4 — Where the tree lives (no vector DB)</h2>
+<p>A common question: <em>where do you store the tree?</em> Answer: <strong>anywhere that holds JSON.</strong> The index is just a JSON structure — a filesystem, an S3 bucket, MongoDB, any key-value store. There is <strong>no vector database to provision, tune, or keep in sync.</strong> For <em>N</em> documents you build <em>N</em> JSON trees and hand the relevant one to the LLM as context at query time.</p>
+<blockquote>
+<p><strong>Judgment — "no embedding pipeline" is a real operational saving, and it's underrated.</strong> Half the production pain in <a href="ML_Study_13c_RAG.html">13c</a> lived in the vector-store seam: idempotent ingestion, re-embedding on model change, the scaling cliff of a flat index, PII sitting in the store. Vectorless RAG deletes that entire subsystem. No embed/index/refresh complexity, no embedding drift, no vector DB ops. For a team drowning in vector-store maintenance on a modest set of structured documents, that deletion <em>is</em> the value.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-retrieval-by-reasoning-the-loop">Part 5 — Retrieval by reasoning (the loop)</h2>
+<p>Query time is where the paradigm shows itself. It's not a lookup — it's a small reasoning loop:</p>
+<div class="mermaid">flowchart TB
+    Q[&quot;User query&quot;] --&gt; S1[&quot;Step 1 — read the tree index&lt;br/&gt;LLM scans titles, pages, summaries in context&quot;]
+    S1 --&gt; S2[&quot;Step 2 — reason and select nodes&lt;br/&gt;returns thinking + node_list JSON&quot;]
+    S2 --&gt; S3[&quot;Step 3 — extract section content&lt;br/&gt;fetch full text for selected node_ids&quot;]
+    S3 --&gt; SUF{&quot;Sufficient to answer?&lt;br/&gt;LLM evaluates completeness&quot;}
+    SUF --&gt;|no| S2
+    SUF --&gt;|&quot;cross-reference&lt;br/&gt;(&#x27;see Appendix G&#x27;)&quot;| S2
+    SUF --&gt;|yes| S4[&quot;Step 4 — generate answer&lt;br/&gt;cited by section title + page&quot;]</div>
+<p>Two things make this more than a fancy lookup:
+- <strong>Step 2 returns its reasoning.</strong> The LLM emits a <code>thinking</code> field (why these sections) alongside the <code>node_list</code>. That reasoning <em>is</em> the explanation — the <strong>navigation path</strong>, not a cosine score.
+- <strong>The loop can follow cross-references.</strong> If a selected section says <em>"see Appendix G,"</em> the LLM can loop back, navigate to Appendix G, and pull it in — something pure similarity search structurally cannot do.</p>
+<blockquote>
+<p><strong>Judgment — explainable retrieval is the feature that sells this in regulated work, and it's your "show your work" ethos as an algorithm.</strong> In compliance, audit, legal, and financial advisory, the <em>answer</em> is not enough — you must show <em>where it came from and why</em>. A cosine score can't defend a decision to a regulator; a navigation path ("I read the Risk Factors chapter, section 7.2 on page 41, and here's the cited claim") can. This is the same principle that separates a durable system from a black box: <strong>a result you can trace is a result you can trust.</strong> When the cost of being wrong is real, explainability stops being a nice-to-have and becomes the requirement.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-the-code-a-vectorless-rag-pipeline-pageindex">Part 6 — The code: a vectorless RAG pipeline (PageIndex)</h2>
+<p>One open implementation of this pattern is <strong>PageIndex</strong> (<code>pageindex</code> SDK). You could build the same thing by hand with any LLM — the concepts are what matter — but PageIndex gives you the tree builder for free.</p>
+<p><strong>Setup:</strong></p>
+<pre><code class="language-python"># pip install -U pageindex openai python-dotenv
+import os, json, time
+from dotenv import load_dotenv
+load_dotenv()
+
+PAGEINDEX_API_KEY = os.getenv(&quot;PAGEINDEX_API_KEY&quot;)   # load from env — NEVER hardcode
+OPENAI_API_KEY    = os.getenv(&quot;OPENAI_API_KEY&quot;)
+
+from pageindex import PageIndexClient
+from openai import OpenAI
+pi_client     = PageIndexClient(api_key=PAGEINDEX_API_KEY)
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
+</code></pre>
+<p><strong>Upload and index (the tree builds asynchronously — ~30–90s for a 50-page PDF):</strong></p>
+<pre><code class="language-python">PDF_PATH = &quot;./sample_document.pdf&quot;       # great candidates: annual reports, filings, textbooks
+result   = pi_client.submit_document(PDF_PATH)
+doc_id   = result[&quot;doc_id&quot;]              # save this — it identifies the built tree
+
+# Poll until the tree index is ready
+while True:
+    status = pi_client.get_document(doc_id)
+    if status.get(&quot;status&quot;) == &quot;completed&quot;:
+        break
+    time.sleep(5)
+</code></pre>
+<p><strong>Inspect the tree</strong> — each node is one retrievable section:</p>
+<pre><code class="language-python">tree_result    = pi_client.get_tree(doc_id, node_summary=True)
+pageindex_tree = tree_result.get(&quot;result&quot;, [])
+print(f&quot;Top-level sections: {len(pageindex_tree)}&quot;)
+print(json.dumps(pageindex_tree[0] if pageindex_tree else {}, indent=2))
+
+def count_nodes(nodes):
+    total = len(nodes)
+    for n in nodes:
+        if n.get(&quot;nodes&quot;):
+            total += count_nodes(n[&quot;nodes&quot;])      # recurse into children
+    return total
+print(f&quot;Total nodes in tree: {count_nodes(pageindex_tree)}   # each = one retrievable section&quot;)
+
+def print_tree(nodes, indent=0):
+    for node in nodes:
+        prefix = &quot;  &quot; * indent + (&quot;└ &quot; if indent &gt; 0 else &quot;&quot;)
+        print(f&quot;{prefix}[{node['node_id']}] {node['title']}  (p.{node.get('page_index', '?')})&quot;)
+        if node.get(&quot;nodes&quot;):
+            print_tree(node[&quot;nodes&quot;], indent + 1)
+print_tree(pageindex_tree)
+</code></pre>
+<p><strong>The core — LLM tree search.</strong> This is where PageIndex fundamentally differs from vector RAG: the query + tree go to an LLM, which <em>reasons</em> over the structure and returns node IDs.</p>
+<pre><code class="language-python">def llm_tree_search(query: str, tree: list, model: str = &quot;gpt-4o&quot;) -&gt; dict:
+    &quot;&quot;&quot;Sends query + document tree to an LLM; it reasons and returns relevant node_ids.
+       Returns a dict with 'thinking' (reasoning) and 'node_list' (node IDs).&quot;&quot;&quot;
+
+    # Compress the tree to save tokens — send only titles + short summaries, not full text
+    def compress(nodes):
+        out = []
+        for n in nodes:
+            entry = {&quot;node_id&quot;: n[&quot;node_id&quot;], &quot;title&quot;: n[&quot;title&quot;],
+                     &quot;summary&quot;: n.get(&quot;summary&quot;, &quot;&quot;)[:200]}
+            if n.get(&quot;nodes&quot;):
+                entry[&quot;nodes&quot;] = compress(n[&quot;nodes&quot;])
+            out.append(entry)
+        return out
+    compressed_tree = compress(tree)
+
+    prompt = f&quot;&quot;&quot;You are given a query and a document structure (like a table of contents).
+Your task: identify which nodes most likely contain the answer to the query.
+Think step-by-step about which sections are relevant.
+
+Query: {query}
+
+Document Tree:
+{json.dumps(compressed_tree, indent=2)}
+
+Reply ONLY in this exact JSON format:
+{{
+  &quot;thinking&quot;: &quot;&lt;your step-by-step reasoning&gt;&quot;,
+  &quot;node_list&quot;: [&quot;node_id1&quot;, &quot;node_id2&quot;]
+}}&quot;&quot;&quot;
+
+    response = openai_client.chat.completions.create(
+        model=model,
+        messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: prompt}],
+        response_format={&quot;type&quot;: &quot;json_object&quot;},      # force valid JSON back
+    )
+    return json.loads(response.choices[0].message.content)
+</code></pre>
+<p><strong>Retrieve the selected nodes, then generate a cited answer:</strong></p>
+<pre><code class="language-python">def find_nodes_by_id(nodes, target_ids, found=None):
+    if found is None:
+        found = []
+    for node in nodes:
+        if node[&quot;node_id&quot;] in target_ids:
+            found.append(node)
+        if node.get(&quot;nodes&quot;):
+            find_nodes_by_id(node[&quot;nodes&quot;], target_ids, found)
+    return found
+
+def generate_answer(query, nodes, model=&quot;gpt-4o&quot;):
+    if not nodes:
+        return &quot;No relevant sections found in the document.&quot;     # the honest &quot;I don't know&quot;
+    context_parts = []
+    for node in nodes:
+        context_parts.append(
+            f&quot;[Section: '{node['title']}' | Page {node.get('page_index', '?')}]\n&quot;
+            f&quot;{node.get('text', 'Content not available.')}&quot;
+        )
+    context = &quot;\n\n---\n\n&quot;.join(context_parts)
+
+    prompt = f&quot;&quot;&quot;You are an expert document analyst.
+Answer the question using ONLY the provided context.
+For every claim you make, cite the section title and page number in parentheses.
+Be concise and precise.
+
+Question: {query}
+
+Context:
+{context}
+
+Answer:&quot;&quot;&quot;
+    response = openai_client.chat.completions.create(
+        model=model, messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: prompt}])
+    return response.choices[0].message.content
+</code></pre>
+<p><strong>The full end-to-end pipeline:</strong></p>
+<pre><code class="language-python">def vectorless_rag(query: str, tree: list, verbose: bool = True) -&gt; str:
+    &quot;&quot;&quot;Step 1: LLM tree search -&gt; node_ids.  Step 2: fetch section content.
+       Step 3: generate a cited answer.&quot;&quot;&quot;
+    search_result = llm_tree_search(query, tree)          # reason over structure
+    node_ids      = search_result.get(&quot;node_list&quot;, [])
+    nodes         = find_nodes_by_id(tree, node_ids)      # pull whole sections
+    return generate_answer(query, nodes)                  # cited answer
+
+answer = vectorless_rag(&quot;What is the syllabus covered in modern LLM fine-tuning?&quot;, pageindex_tree)
+print(answer)
+# -&gt; a cited answer drawn from exactly the sections whose node_ids the LLM reasoned toward
+</code></pre>
+<p>Notice what never appears: no embedding model, no vector store, no chunker, no similarity score. The "retriever" is an LLM reasoning over a JSON table of contents.</p>
+<blockquote>
+<p><strong>Judgment — same anti-pattern to refuse as in 13c: don't hardcode the API key.</strong> The walkthrough pastes a live PageIndex key straight into the notebook. Load it from <code>.env</code>/environment (<code>os.getenv</code>), keep <code>.env</code> in <code>.gitignore</code>, and rotate any key that ever touched source. A key in a notebook is a key in your git history forever.</p>
+</blockquote>
+<hr />
+<h2 id="part-7-the-honest-comparison-and-when-each-wins">Part 7 — The honest comparison, and when each wins</h2>
+<p>Neither approach is "better." They optimize for different things. Eight dimensions that matter in production:</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Traditional RAG</th>
+<th>Vectorless RAG</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scale</strong></td>
+<td>Millions of docs ✓</td>
+<td>Tens to thousands</td>
+</tr>
+<tr>
+<td><strong>Latency / query</strong></td>
+<td>Milliseconds ✓</td>
+<td>Hundreds of ms – seconds</td>
+</tr>
+<tr>
+<td><strong>Cost / query</strong></td>
+<td>Cheap ✓ (1 embed + lookup)</td>
+<td>Higher (multiple LLM calls)</td>
+</tr>
+<tr>
+<td><strong>Cross-section reasoning</strong></td>
+<td>Weak</td>
+<td>Strong ✓</td>
+</tr>
+<tr>
+<td><strong>Explainability</strong></td>
+<td>Cosine score (opaque)</td>
+<td>Navigation path ✓</td>
+</tr>
+<tr>
+<td><strong>Best for</strong></td>
+<td>Factoid Q&amp;A, mixed corpora</td>
+<td>Long structured docs</td>
+</tr>
+<tr>
+<td><strong>Setup complexity</strong></td>
+<td>Embedding pipeline + DB</td>
+<td>Tree builder, no DB</td>
+</tr>
+<tr>
+<td><strong>Ecosystem maturity</strong></td>
+<td>Very mature ✓</td>
+<td>Emerging</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reach for traditional (vector) RAG when:</strong>
+- <strong>Massive heterogeneous corpora</strong> — millions of mixed-format docs (blogs, tickets, transcripts, KB articles).
+- <strong>Latency-critical apps</strong> — chatbots, search-as-you-type, voice; every millisecond counts.
+- <strong>Short factoid queries</strong> — "What's the warranty period?" "Who's the CEO?" The answer lives in one chunk.
+- <strong>Cost-sensitive at scale</strong> — thousands of queries/minute where embedding lookups cost pennies and LLM-tree-walks don't.</p>
+<p><strong>Reach for vectorless RAG when:</strong>
+- <strong>Long, structured documents</strong> — annual reports, 10-Ks, legal contracts, regulatory filings, research papers, textbooks.
+- <strong>Reasoning matters more than similarity</strong> — cross-section compare/contrast/synthesize.
+- <strong>Explainability is required</strong> — compliance, audit, legal, financial advisory. Show your work, not just the answer.
+- <strong>Chunking would destroy meaning</strong> — cross-references like "as defined in Section 3.2" that go meaningless when split.</p>
+<blockquote>
+<p><strong>Judgment — the cost/latency line is the honest catch, and it's an engineering decision, not a preference.</strong> Every query in vectorless RAG makes <em>multiple</em> LLM calls to traverse the tree — several hundred milliseconds to a few seconds each, versus a single cheap embedding lookup. And the tree itself doesn't scale to millions of documents; it's a tens-to-thousands tool. So the choice is a real trade, made against <em>your</em> document set and <em>your</em> SLA — not by which one trended on GitHub this week. "It reasons better" is true and irrelevant if your workload is a million tickets answered in 50ms.</p>
+</blockquote>
+<hr />
+<h2 id="part-8-theyre-not-competitors-the-hybrid-future">Part 8 — They're not competitors: the hybrid future</h2>
+<p>The framing that actually holds up in production: <strong>traditional RAG = scale + speed; vectorless RAG = reasoning + structure. They are complementary, not competitors.</strong> Pure vector search and pure tree navigation are both <em>extremes</em>. Real systems are going <strong>hybrid</strong> — vectors to <em>narrow the search space</em> across a huge corpus, then tree navigation to do the <em>precise, explainable reasoning</em> inside the handful of documents that survived.</p>
+<p>Five things to carry out of this chapter:
+1. <strong>Traditional RAG = scale + speed</strong> — vector similarity is unbeatable for millions of docs and millisecond lookups.
+2. <strong>Vectorless RAG = reasoning + structure</strong> — LLM tree navigation preserves context and explains itself.
+3. <strong>They're complementary</strong> — both pure extremes leave value on the table.
+4. <strong>The right pick depends on the <em>doc<em>, not the </em>hype</em></strong> — long structured filing → vectorless; mixed knowledge base → vector; big mixed system → hybrid.
+5. <strong>Production is going hybrid</strong> — vectors narrow, trees reason inside.</p>
+<blockquote>
+<p><strong>Judgment — "the right pick depends on the doc, not the hype" is the whole engineering posture, compressed.</strong> The junior move is to adopt the newest paradigm because it's trending; the senior move is to hold both in hand and choose against the actual constraints — document structure, scale, latency budget, explainability requirement, cost per query. The answer is almost never "always A" — it's "A here, B there, both where it pays." That both/and judgment, deployed calmly while everyone else argues extremes, is exactly what separates someone who <em>chases</em> tools from someone who <em>directs</em> them. The tools keep changing; the discipline of matching the tool to the real problem does not.</p>
+</blockquote>
+<hr />
+<p><strong>Next → Deep Agents</strong> — where retrieval (vector <em>and</em> vectorless) becomes one capability an agent chooses among, alongside tools and planning. Reference library for going deeper on retrieval quality and failure modes: the RAG playbook in <code>systems-in-production/playbooks/ai/rag/</code>.</p>
+</body>
+</html>
