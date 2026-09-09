@@ -224,7 +224,7 @@ Under the hood, `create_agent` builds a **state graph** (this is **LangGraph**):
 ![create_agent → a state graph (LangGraph)](ML_Study_Figures/65_create_agent_graph.png)
 *What this shows: start → **model**. If the model needs no tool, it goes to **end** (answer). If it emits a tool call, it goes to **tools**, runs them, and loops the result back to the model. It repeats until the model is done. `create_agent` runs this loop so you don't hand-write it — but it's the exact loop from Part 7.*
 
-> **Tie to your world:** this loop is the shape of CSI's *observe → plan → act → evaluate → learn*, and of the capstone triage agent. An agent is not magic — it's the tool loop with a graph around it.
+> **Tie to your world:** this loop is the shape of a production diagnostic system's *observe → plan → act → evaluate → learn*, and of the capstone triage agent. An agent is not magic — it's the tool loop with a graph around it.
 
 ---
 
