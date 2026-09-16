@@ -4,6 +4,8 @@
 
 **Goal:** stop treating model selection as a lookup against a price table. By the end you can price a workload before spending anything, you know which lever to pull *first*, and you can defend the choice in a design review — including the case for not routing at all.
 
+**Before you start:** [SETUP.md](SETUP.md) — five minutes, and half the lesson runs with no API key.
+
 **Series context:** first lesson of the Build Track. Pairs with the runnable build in this folder: five steps in [`steps/`](steps/) you run live, and a bench in [`src/`](src/) that runs with **no API key at all**.
 
 ---
