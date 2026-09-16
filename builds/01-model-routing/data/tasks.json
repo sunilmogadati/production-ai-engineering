@@ -1,0 +1,1602 @@
+[
+  {
+    "id": "T000",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 25630,
+    "output_tokens": 2197,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T001",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 925,
+    "output_tokens": 171,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T002",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 2889,
+    "output_tokens": 678,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T003",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6952,
+    "output_tokens": 693,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T004",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 154802,
+    "output_tokens": 4211,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T005",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 6940,
+    "output_tokens": 812,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T006",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 103722,
+    "output_tokens": 2518,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T007",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1692,
+    "output_tokens": 148,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T008",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 10427,
+    "output_tokens": 658,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T009",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1453,
+    "output_tokens": 127,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T010",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 861,
+    "output_tokens": 155,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T011",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 3757,
+    "output_tokens": 662,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T012",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 2489,
+    "output_tokens": 201,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T013",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 4459,
+    "output_tokens": 842,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T014",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 82802,
+    "output_tokens": 1189,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T015",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 377,
+    "output_tokens": 23,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T016",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 650,
+    "output_tokens": 168,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T017",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1777,
+    "output_tokens": 146,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T018",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 701,
+    "output_tokens": 117,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T019",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 7971,
+    "output_tokens": 609,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T020",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 419,
+    "output_tokens": 23,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T021",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 96555,
+    "output_tokens": 2648,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T022",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 6045,
+    "output_tokens": 432,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T023",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 870,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T024",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 648,
+    "output_tokens": 34,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T025",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 35423,
+    "output_tokens": 2153,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T026",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 791,
+    "output_tokens": 30,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T027",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 358,
+    "output_tokens": 42,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T028",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1389,
+    "output_tokens": 107,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T029",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 10334,
+    "output_tokens": 473,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T030",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1699,
+    "output_tokens": 178,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T031",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 771,
+    "output_tokens": 50,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T032",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 967,
+    "output_tokens": 95,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T033",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 483,
+    "output_tokens": 59,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T034",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 417,
+    "output_tokens": 55,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T035",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6257,
+    "output_tokens": 696,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T036",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 2320,
+    "output_tokens": 130,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T037",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 964,
+    "output_tokens": 73,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T038",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 704,
+    "output_tokens": 56,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T039",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 587,
+    "output_tokens": 48,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T040",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 827,
+    "output_tokens": 39,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T041",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7500,
+    "output_tokens": 706,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T042",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 11496,
+    "output_tokens": 489,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T043",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 702,
+    "output_tokens": 37,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T044",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 83269,
+    "output_tokens": 2316,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T045",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 823,
+    "output_tokens": 25,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T046",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 349,
+    "output_tokens": 42,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T047",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 10220,
+    "output_tokens": 327,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T048",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1286,
+    "output_tokens": 202,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T049",
+    "kind": "whole-repo-review",
+    "complexity": 5,
+    "input_tokens": 593914,
+    "output_tokens": 2062,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T050",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 535,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T051",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 436,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T052",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 5520,
+    "output_tokens": 458,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T053",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 48457,
+    "output_tokens": 2884,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T054",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 595,
+    "output_tokens": 60,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T055",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 894,
+    "output_tokens": 174,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T056",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 818,
+    "output_tokens": 106,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T057",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 772,
+    "output_tokens": 45,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T058",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 7371,
+    "output_tokens": 250,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T059",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6948,
+    "output_tokens": 351,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T060",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1052,
+    "output_tokens": 139,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T061",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 2218,
+    "output_tokens": 85,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T062",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 81399,
+    "output_tokens": 1976,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T063",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1453,
+    "output_tokens": 151,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T064",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 366,
+    "output_tokens": 43,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T065",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 718,
+    "output_tokens": 51,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T066",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 575,
+    "output_tokens": 35,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T067",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 781,
+    "output_tokens": 155,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T068",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 632,
+    "output_tokens": 50,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T069",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1732,
+    "output_tokens": 108,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T070",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7686,
+    "output_tokens": 341,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T071",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 498,
+    "output_tokens": 58,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T072",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 739,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T073",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 11798,
+    "output_tokens": 484,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T074",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 62327,
+    "output_tokens": 1824,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T075",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 40554,
+    "output_tokens": 2255,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T076",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1362,
+    "output_tokens": 157,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T077",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7593,
+    "output_tokens": 589,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T078",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 840,
+    "output_tokens": 29,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T079",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 565,
+    "output_tokens": 52,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T080",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6397,
+    "output_tokens": 611,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T081",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1563,
+    "output_tokens": 175,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T082",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 32257,
+    "output_tokens": 2319,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T083",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 766,
+    "output_tokens": 174,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T084",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 403,
+    "output_tokens": 49,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T085",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 521,
+    "output_tokens": 39,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T086",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 125936,
+    "output_tokens": 3229,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T087",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 8991,
+    "output_tokens": 699,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T088",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 787,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T089",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 395,
+    "output_tokens": 53,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T090",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7067,
+    "output_tokens": 647,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T091",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 11798,
+    "output_tokens": 441,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T092",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 706,
+    "output_tokens": 35,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T093",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 796,
+    "output_tokens": 34,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T094",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 794,
+    "output_tokens": 49,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T095",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 7115,
+    "output_tokens": 481,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T096",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 607,
+    "output_tokens": 32,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T097",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 598,
+    "output_tokens": 41,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T098",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 3377,
+    "output_tokens": 483,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T099",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1489,
+    "output_tokens": 118,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T100",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 4531,
+    "output_tokens": 514,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T101",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 874,
+    "output_tokens": 39,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T102",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1803,
+    "output_tokens": 111,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T103",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 649,
+    "output_tokens": 69,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T104",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6663,
+    "output_tokens": 672,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T105",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 616,
+    "output_tokens": 35,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T106",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 77172,
+    "output_tokens": 1189,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T107",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 454,
+    "output_tokens": 42,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T108",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 87101,
+    "output_tokens": 2380,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T109",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 9362,
+    "output_tokens": 510,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T110",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 11084,
+    "output_tokens": 585,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T111",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 709,
+    "output_tokens": 33,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T112",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 32054,
+    "output_tokens": 996,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T113",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 172599,
+    "output_tokens": 1657,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T114",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1478,
+    "output_tokens": 91,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T115",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 11901,
+    "output_tokens": 553,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T116",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 714,
+    "output_tokens": 173,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T117",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 936,
+    "output_tokens": 81,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T118",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1719,
+    "output_tokens": 158,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T119",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 3857,
+    "output_tokens": 394,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T120",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7378,
+    "output_tokens": 548,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T121",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 33313,
+    "output_tokens": 1249,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T122",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 5315,
+    "output_tokens": 547,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T123",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1162,
+    "output_tokens": 97,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T124",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 4328,
+    "output_tokens": 380,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T125",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 51488,
+    "output_tokens": 1181,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T126",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1632,
+    "output_tokens": 171,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T127",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1496,
+    "output_tokens": 98,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T128",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 7300,
+    "output_tokens": 260,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T129",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 10344,
+    "output_tokens": 646,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T130",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 494,
+    "output_tokens": 27,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T131",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 789,
+    "output_tokens": 34,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T132",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 3391,
+    "output_tokens": 807,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T133",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1817,
+    "output_tokens": 171,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T134",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1223,
+    "output_tokens": 108,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T135",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6083,
+    "output_tokens": 290,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T136",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 177300,
+    "output_tokens": 4409,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T137",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 743,
+    "output_tokens": 22,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T138",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 8689,
+    "output_tokens": 429,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T139",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 10504,
+    "output_tokens": 360,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T140",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 602,
+    "output_tokens": 24,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T141",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1521,
+    "output_tokens": 180,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T142",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 2187,
+    "output_tokens": 494,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T143",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 9484,
+    "output_tokens": 439,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T144",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 838,
+    "output_tokens": 125,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T145",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1287,
+    "output_tokens": 124,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T146",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 405,
+    "output_tokens": 26,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T147",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6423,
+    "output_tokens": 459,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T148",
+    "kind": "whole-repo-review",
+    "complexity": 5,
+    "input_tokens": 315087,
+    "output_tokens": 4871,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T149",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1792,
+    "output_tokens": 96,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T150",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 9053,
+    "output_tokens": 551,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T151",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1017,
+    "output_tokens": 115,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T152",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 514,
+    "output_tokens": 51,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T153",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 79463,
+    "output_tokens": 4234,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T154",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 67592,
+    "output_tokens": 886,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T155",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 6989,
+    "output_tokens": 857,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T156",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 843,
+    "output_tokens": 144,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T157",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1582,
+    "output_tokens": 109,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T158",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 3426,
+    "output_tokens": 737,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T159",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1852,
+    "output_tokens": 110,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T160",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 40609,
+    "output_tokens": 1652,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T161",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 758,
+    "output_tokens": 54,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T162",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 27077,
+    "output_tokens": 911,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T163",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 4610,
+    "output_tokens": 711,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T164",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6375,
+    "output_tokens": 348,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T165",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 864,
+    "output_tokens": 94,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T166",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1123,
+    "output_tokens": 89,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T167",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 4457,
+    "output_tokens": 425,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T168",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1146,
+    "output_tokens": 75,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T169",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 384,
+    "output_tokens": 44,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T170",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 85808,
+    "output_tokens": 2562,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T171",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1609,
+    "output_tokens": 77,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T172",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 55502,
+    "output_tokens": 1571,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T173",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 680,
+    "output_tokens": 30,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T174",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 603,
+    "output_tokens": 54,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T175",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 2219,
+    "output_tokens": 147,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T176",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 48176,
+    "output_tokens": 1285,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T177",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 54721,
+    "output_tokens": 2308,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T178",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 49154,
+    "output_tokens": 2056,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T179",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 897,
+    "output_tokens": 39,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T180",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 564,
+    "output_tokens": 21,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T181",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 646,
+    "output_tokens": 20,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T182",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 79334,
+    "output_tokens": 1003,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T183",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 75087,
+    "output_tokens": 2291,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T184",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 9574,
+    "output_tokens": 621,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T185",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 614,
+    "output_tokens": 36,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T186",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 780,
+    "output_tokens": 29,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T187",
+    "kind": "incident-root-cause",
+    "complexity": 5,
+    "input_tokens": 60949,
+    "output_tokens": 3774,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T188",
+    "kind": "sentiment-tag",
+    "complexity": 1,
+    "input_tokens": 390,
+    "output_tokens": 47,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T189",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 52647,
+    "output_tokens": 2369,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T190",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 7875,
+    "output_tokens": 685,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T191",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 840,
+    "output_tokens": 97,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T192",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 3641,
+    "output_tokens": 530,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T193",
+    "kind": "ticket-triage",
+    "complexity": 2,
+    "input_tokens": 1138,
+    "output_tokens": 61,
+    "latency_sensitive": true
+  },
+  {
+    "id": "T194",
+    "kind": "contract-analysis",
+    "complexity": 4,
+    "input_tokens": 58751,
+    "output_tokens": 913,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T195",
+    "kind": "policy-question",
+    "complexity": 3,
+    "input_tokens": 7708,
+    "output_tokens": 713,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T196",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 8038,
+    "output_tokens": 445,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T197",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 1959,
+    "output_tokens": 136,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T198",
+    "kind": "summarize-thread",
+    "complexity": 3,
+    "input_tokens": 6000,
+    "output_tokens": 540,
+    "latency_sensitive": false
+  },
+  {
+    "id": "T199",
+    "kind": "field-extraction",
+    "complexity": 2,
+    "input_tokens": 859,
+    "output_tokens": 197,
+    "latency_sensitive": false
+  }
+]

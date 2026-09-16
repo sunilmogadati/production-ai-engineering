@@ -1,0 +1,12 @@
+[project]
+name = "build-01-model-routing"
+version = "1.0.0"
+description = "Model routing: price the workload before you spend, and make the router earn its place."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+# Only the live bench needs the SDK. The offline path -- the one you run first --
+# has no dependencies at all beyond the standard library.
+live = ["anthropic>=1.0"]
+dev = ["pytest>=8.0"]

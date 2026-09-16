@@ -10,6 +10,9 @@
 *.xls
 *.env
 .env*
+# Exception: .env.example carries NAMES ONLY (no values) and must ship with a build,
+# so a reader knows which variables to set. Verified by each build's fence tests.
+!**/.env.example
 *.key
 *.pem
 secrets*
@@ -39,3 +42,7 @@ models/
 .ipynb_checkpoints/
 node_modules/
 .DS_Store
+
+# uv resolves the optional live/dev extras on demand; the offline path has no
+# runtime dependencies, so a committed lock would only pin things nobody needs.
+uv.lock

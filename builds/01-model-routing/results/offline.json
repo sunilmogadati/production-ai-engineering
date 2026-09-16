@@ -1,0 +1,7165 @@
+{
+  "mode": "offline",
+  "rates_taken_on": "2026-09-16",
+  "rates_source": "Anthropic published model pricing",
+  "task_count": 200,
+  "shared_prefix_tokens": 4000,
+  "assumptions": {
+    "effort_output_multiplier": {
+      "low": 0.45,
+      "medium": 0.7,
+      "high": 1.0,
+      "xhigh": 1.6
+    },
+    "retry_rate": {
+      "claude-haiku-4-5": {
+        "1": 0.01,
+        "2": 0.04,
+        "3": 0.18,
+        "4": 0.4,
+        "5": 0.6
+      },
+      "claude-sonnet-5": {
+        "1": 0.01,
+        "2": 0.01,
+        "3": 0.04,
+        "4": 0.14,
+        "5": 0.28
+      },
+      "claude-opus-5": {
+        "1": 0.0,
+        "2": 0.01,
+        "3": 0.02,
+        "4": 0.05,
+        "5": 0.1
+      }
+    },
+    "note": "effort_output_multiplier and retry_rate are ASSUMED, not measured. They are the two inputs that decide whether routing wins. Run --live against your own workload before trusting any conclusion that depends on them."
+  },
+  "configurations": [
+    {
+      "configuration": "router (policy-based cascade)",
+      "effort": "high",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-haiku-4-5",
+        "claude-opus-5",
+        "claude-sonnet-5"
+      ],
+      "cost_calls_usd": 18.867,
+      "cost_classifier_usd": 0.052,
+      "cost_escalations_usd": 1.5247,
+      "cost_total_usd": 20.4437,
+      "cost_per_completed_task_usd": 0.102219,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "R1-context-overflow"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "R1-context-overflow"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        }
+      ]
+    },
+    {
+      "configuration": "opus only @ high",
+      "effort": "high",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-opus-5"
+      ],
+      "cost_calls_usd": 20.1321,
+      "cost_classifier_usd": 0.0,
+      "cost_escalations_usd": 1.4828,
+      "cost_total_usd": 21.6149,
+      "cost_per_completed_task_usd": 0.108074,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        }
+      ]
+    },
+    {
+      "configuration": "opus only @ medium",
+      "effort": "medium",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-opus-5"
+      ],
+      "cost_calls_usd": 19.2409,
+      "cost_classifier_usd": 0.0,
+      "cost_escalations_usd": 1.4332,
+      "cost_total_usd": 20.6741,
+      "cost_per_completed_task_usd": 0.103371,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        }
+      ]
+    },
+    {
+      "configuration": "opus only @ low",
+      "effort": "low",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-opus-5"
+      ],
+      "cost_calls_usd": 18.5002,
+      "cost_classifier_usd": 0.0,
+      "cost_escalations_usd": 1.392,
+      "cost_total_usd": 19.8922,
+      "cost_per_completed_task_usd": 0.099461,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed"
+        }
+      ]
+    },
+    {
+      "configuration": "sonnet only @ high",
+      "effort": "high",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-sonnet-5"
+      ],
+      "cost_calls_usd": 8.0528,
+      "cost_classifier_usd": 0.0,
+      "cost_escalations_usd": 4.124,
+      "cost_total_usd": 12.1768,
+      "cost_per_completed_task_usd": 0.060884,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "fixed"
+        }
+      ]
+    },
+    {
+      "configuration": "haiku only @ high",
+      "effort": "high",
+      "cache_enabled": true,
+      "distinct_models_used": [
+        "claude-haiku-4-5",
+        "claude-opus-5"
+      ],
+      "cost_calls_usd": 7.7723,
+      "cost_classifier_usd": 0.0,
+      "cost_escalations_usd": 7.391,
+      "cost_total_usd": 15.1633,
+      "cost_per_completed_task_usd": 0.075817,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed+context-guard"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "fixed+context-guard"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "fixed"
+        }
+      ]
+    },
+    {
+      "configuration": "router (no cache reuse)",
+      "effort": "high",
+      "cache_enabled": false,
+      "distinct_models_used": [
+        "claude-haiku-4-5",
+        "claude-opus-5",
+        "claude-sonnet-5"
+      ],
+      "cost_calls_usd": 20.2784,
+      "cost_classifier_usd": 0.052,
+      "cost_escalations_usd": 1.6474,
+      "cost_total_usd": 21.9778,
+      "cost_per_completed_task_usd": 0.109889,
+      "latency_note": "UNMEASURED - requires a live run",
+      "quality_note": "UNMEASURED - requires a live run",
+      "decisions": [
+        {
+          "task_id": "T000",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T001",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T002",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T003",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T004",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T005",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T006",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T007",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T008",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T009",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T010",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T011",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T012",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T013",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T014",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T015",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T016",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T017",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T018",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T019",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T020",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T021",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T022",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T023",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T024",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T025",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T026",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T027",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T028",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T029",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T030",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T031",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T032",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T033",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T034",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T035",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T036",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T037",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T038",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T039",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T040",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T041",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T042",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T043",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T044",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T045",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T046",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T047",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T048",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T049",
+          "model_id": "claude-opus-5",
+          "rule_id": "R1-context-overflow"
+        },
+        {
+          "task_id": "T050",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T051",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T052",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T053",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T054",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T055",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T056",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T057",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T058",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T059",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T060",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T061",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T062",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T063",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T064",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T065",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T066",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T067",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T068",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T069",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T070",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T071",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T072",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T073",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T074",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T075",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T076",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T077",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T078",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T079",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T080",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T081",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T082",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T083",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T084",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T085",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T086",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T087",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T088",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T089",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T090",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T091",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T092",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T093",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T094",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T095",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T096",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T097",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T098",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T099",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T100",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T101",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T102",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T103",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T104",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T105",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T106",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T107",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T108",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T109",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T110",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T111",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T112",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T113",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T114",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T115",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T116",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T117",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T118",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T119",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T120",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T121",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T122",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T123",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T124",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T125",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T126",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T127",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T128",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T129",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T130",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T131",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T132",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T133",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T134",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T135",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T136",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T137",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T138",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T139",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T140",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T141",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T142",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T143",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T144",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T145",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T146",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T147",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T148",
+          "model_id": "claude-opus-5",
+          "rule_id": "R1-context-overflow"
+        },
+        {
+          "task_id": "T149",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T150",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T151",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T152",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T153",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T154",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T155",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T156",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T157",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T158",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T159",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T160",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T161",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T162",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T163",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T164",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T165",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T166",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T167",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T168",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T169",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T170",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T171",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T172",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T173",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T174",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T175",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T176",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T177",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T178",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T179",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T180",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T181",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T182",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T183",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T184",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T185",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T186",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T187",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T188",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T189",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T190",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T191",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T192",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T193",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R2-latency-first"
+        },
+        {
+          "task_id": "T194",
+          "model_id": "claude-opus-5",
+          "rule_id": "R5-default-hard"
+        },
+        {
+          "task_id": "T195",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T196",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T197",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        },
+        {
+          "task_id": "T198",
+          "model_id": "claude-sonnet-5",
+          "rule_id": "R4-moderate"
+        },
+        {
+          "task_id": "T199",
+          "model_id": "claude-haiku-4-5",
+          "rule_id": "R3-trivial"
+        }
+      ]
+    }
+  ]
+}
