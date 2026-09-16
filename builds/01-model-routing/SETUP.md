@@ -32,6 +32,12 @@ Come back up a level when you're done: `cd ..`
 
 ## 4. Get an API key
 
+**If you are running the [Colab notebook](https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb)**, you do not need steps 1–3 at all —
+get a key below, then click the 🔑 in Colab's left sidebar, **Add new secret**, name it exactly
+`ANTHROPIC_API_KEY`, and switch on **Notebook access**. Done once, it works in every notebook after.
+
+### Getting one
+
 1. Go to [console.anthropic.com](https://console.anthropic.com) and sign in or create an account.
 2. Add a small amount of credit — **$5 is more than enough**; this lesson costs a few cents.
 3. Go to **API Keys** → **Create Key**. Copy it immediately; you cannot view it again.
