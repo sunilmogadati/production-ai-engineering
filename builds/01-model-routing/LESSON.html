@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 01 — Choosing a Model: The Decision That Outlives the Model List</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="lesson-01-choosing-a-model-the-decision-that-outlives-the-model-list">Lesson 01 — Choosing a Model: The Decision That Outlives the Model List</h1>
+<p><strong>Covers:</strong> the three tiers and the three dimensions they trade off (<strong>intelligence · speed · cost</strong>) → matching a model to a task → <strong>smart routing</strong>, the optimisation everyone reaches for first → the four things a price table leaves out (<strong>effort</strong>, <strong>model-scoped caches</strong>, <strong>the classifier's own bill</strong>, <strong>cost per <em>completed</em> task</strong>) → a router that reports the rule behind every decision → what a bench says when you actually measure it.</p>
+<p><strong>Goal:</strong> stop treating model selection as a lookup against a price table. By the end you can price a workload before spending anything, you know which lever to pull <em>first</em>, and you can defend the choice in a design review — including the case for not routing at all.</p>
+<p><strong>Before you start:</strong> <a href="SETUP.md">SETUP.md</a> — five minutes, and half the lesson runs with no API key.</p>
+<p><strong>Run it in the browser:</strong> <a href="https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> — nothing to install.</p>
+<p><strong>Series context:</strong> first lesson of the Build Track. Pairs with the runnable build in this folder: five steps in <a href="steps/"><code>steps/</code></a> you run live, and a bench in <a href="src/"><code>src/</code></a> that runs with <strong>no API key at all</strong>.</p>
+<hr />
+<h2 id="part-1-the-problem-the-model-list-is-already-out-of-date">Part 1 — The problem: the model list is already out of date</h2>
+<p>Here is the table every introduction to a model family ends with.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Model</th>
+<th>Input $/MTok</th>
+<th>Output $/MTok</th>
+<th>Context</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Large</td>
+<td><code>claude-opus-5</code></td>
+<td>$5.00</td>
+<td>$25.00</td>
+<td>1M</td>
+</tr>
+<tr>
+<td>Mid</td>
+<td><code>claude-sonnet-5</code></td>
+<td>$2.00</td>
+<td>$10.00</td>
+<td>1M</td>
+</tr>
+<tr>
+<td>Small</td>
+<td><code>claude-haiku-4-5</code></td>
+<td>$1.00</td>
+<td>$5.00</td>
+<td>200K</td>
+</tr>
+</tbody>
+</table>
+<p><em>Rates verified 2026-09-16.</em></p>
+<p>Three tiers, priced in order. And the conclusion that follows feels obvious: most work is easy, the small tier is a fifth the price, so classify each request and send the easy ones down.</p>
+<p><strong>Start with the uncomfortable part.</strong> That table will be wrong within months. Model families ship on a cadence measured in weeks — names change, prices move, and the relationship between tiers changes with them. A course, a blog post, or a doc built on a <em>specific list of models</em> has a shelf life, and anything you memorised about which model is "the fast one" expires with it.</p>
+<p>So we are not going to teach the table. We are going to teach the <strong>decision procedure</strong>, which does not expire — and then run it against today's table.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the model list is a fact with an expiry date. The <strong>way you choose</strong> is the part worth learning, because it survives the next release.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-three-dimensions-and-the-one-that-lies">Part 2 — The three dimensions, and the one that lies</h2>
+<p>Every model is described on three axes:</p>
+<ul>
+<li><strong>Intelligence</strong> — how well it handles reasoning, nuance, and multi-step problems.</li>
+<li><strong>Speed</strong> — latency. How long the user waits.</li>
+<li><strong>Cost</strong> — dollars per million tokens, in and out.</li>
+</ul>
+<p>Two of those are honest. <strong>Cost is not a dimension — it is four line items</strong>, and a price table shows you one of them.</p>
+<div class="mermaid">flowchart TB
+    Q[&quot;What does this request cost?&quot;]
+    Q --&gt; A[&quot;1. Tokens x rate&lt;br/&gt;the only line in the price table&quot;]
+    Q --&gt; B[&quot;2. Cache: warm or cold&lt;br/&gt;a repeated prefix bills ~0.1x when warm&lt;br/&gt;caches are scoped to ONE model&quot;]
+    Q --&gt; C[&quot;3. The routing decision&lt;br/&gt;a model call of its own,&lt;br/&gt;charged on every request&quot;]
+    Q --&gt; D[&quot;4. Retries and escalation&lt;br/&gt;a failed cheap call still bills,&lt;br/&gt;then a stronger model bills again&quot;]
+    A --&gt; T[&quot;What you are actually billed&quot;]
+    B --&gt; T
+    C --&gt; T
+    D --&gt; T</div>
+<p>Lines 2, 3 and 4 appear in no tier table anywhere. They are also the three that decide whether routing is worth doing — which is why the obvious optimisation so often disappoints.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> a price table tells you what a <strong>token</strong> costs. It does not tell you what the <strong>work</strong> costs, and those two numbers rank your options differently.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-the-claim-and-how-to-test-it">Part 3 — The claim, and how to test it</h2>
+<p>You will read everywhere — vendor docs, courses, conference talks — that routing simple work to a small model saves <strong>80% or more</strong>.</p>
+<p>That number is not a lie. It is achievable. It requires three conditions to hold at once:</p>
+<ol>
+<li>Almost all of your traffic is genuinely trivial.</li>
+<li>There is little or no repeated prefix, so splitting the cache costs nothing.</li>
+<li>The small tier almost never fails, so almost nothing escalates.</li>
+</ol>
+<p>Break any one of them and the number collapses. <strong>80% is a property of a workload, not a fact about routing.</strong> Someone measured it on theirs. The engineering question is what it is on yours.</p>
+<p>So we measure. <code>src/bench.py</code> in this folder prices 200 synthetic tasks across seven configurations, offline, from published rates. Here is what it produced:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Models</th>
+<th>Calls</th>
+<th>Classifier</th>
+<th>Escalations</th>
+<th><strong>Total</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>router (policy cascade)</td>
+<td>3</td>
+<td>$18.87</td>
+<td>$0.05</td>
+<td>$1.53</td>
+<td><strong>$20.44</strong></td>
+</tr>
+<tr>
+<td>opus only @ high effort</td>
+<td>1</td>
+<td>$20.13</td>
+<td>—</td>
+<td>$1.48</td>
+<td><strong>$21.61</strong></td>
+</tr>
+<tr>
+<td><strong>opus only @ low effort</strong></td>
+<td>1</td>
+<td>$18.50</td>
+<td>—</td>
+<td>$1.39</td>
+<td><strong>$19.89</strong></td>
+</tr>
+<tr>
+<td><strong>sonnet only @ high</strong></td>
+<td>1</td>
+<td>$8.05</td>
+<td>—</td>
+<td>$4.12</td>
+<td><strong>$12.18</strong></td>
+</tr>
+<tr>
+<td>haiku only @ high</td>
+<td>2</td>
+<td>$7.77</td>
+<td>—</td>
+<td>$7.39</td>
+<td><strong>$15.16</strong></td>
+</tr>
+<tr>
+<td>router, cache reuse off</td>
+<td>3</td>
+<td>$20.28</td>
+<td>$0.05</td>
+<td>$1.65</td>
+<td><strong>$21.98</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Four readings, and the first one is the lesson:</p>
+<p><strong>1. The router saved 5.4% — and lost to one model at lower effort.</strong> Against the naive full-effort baseline it wins. Against the <em>same model with one parameter changed</em>, it is 2.8% more expensive, and that configuration saves 8.0% on its own. One model, one cache, no classifier, no second failure mode, and a better number.</p>
+<p><strong>2. The cache split cost more than routing saved.</strong> Turn cache reuse off and the router's bill rises $1.53 — <strong>7.5%</strong>. It was built to capture 5.4%. The mechanism it defeats itself with is larger than the one it exploits.</p>
+<p><strong>3. The cheapest tokens produced an expensive outcome.</strong> Haiku has the lowest rate of the three. <strong>48.7% of its bill is escalation</strong> — work it attempted, failed, and handed upward, having already been paid for.</p>
+<p><strong>4. The genuinely cheapest option was the least sophisticated.</strong> One mid-tier model, no routing logic at all: <strong>43.7% below</strong> the naive baseline.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the 80% claim and our 5.4% are both true, of different workloads. <strong>Measure the simple fix before you build the sophisticated one.</strong></p>
+</blockquote>
+<hr />
+<h2 id="part-4-the-procedure">Part 4 — The procedure</h2>
+<p>This is the part that survives the next model release.</p>
+<div class="mermaid">flowchart TD
+    S[&quot;A workload to serve&quot;] --&gt; P[&quot;1. PRICE IT&lt;br/&gt;count tokens, multiply by rates&lt;br/&gt;free, instant, no API call&quot;]
+    P --&gt; B[&quot;2. BASELINE&lt;br/&gt;strongest model, reduced effort&lt;br/&gt;one model, one cache&quot;]
+    B --&gt; M{&quot;3. Does it meet&lt;br/&gt;quality and latency?&quot;}
+    M --&gt;|yes| DONE[&quot;Ship it.&lt;br/&gt;You are done.&quot;]
+    M --&gt;|no| E[&quot;4. Raise effort, or move a tier&quot;]
+    E --&gt; R{&quot;5. Still not there,&lt;br/&gt;and volume is large?&quot;}
+    R --&gt;|no| DONE
+    R --&gt;|yes| C[&quot;6. NOW consider routing&lt;br/&gt;price the cache split&lt;br/&gt;price the classifier&lt;br/&gt;count escalations&quot;]
+    C --&gt; V{&quot;7. Does it beat&lt;br/&gt;step 2 by enough&lt;br/&gt;to justify two systems?&quot;}
+    V --&gt;|no| DONE
+    V --&gt;|yes| SHIP[&quot;Route — and make every&lt;br/&gt;decision report its rule&quot;]</div>
+<p>Step 2 is where most teams go wrong, by skipping it. They compare routing against the <em>naive</em> default — strongest model, full effort — which is a baseline nobody should be running. Beating it proves very little.</p>
+<p>Two hard constraints sit outside the procedure and override it:</p>
+<ul>
+<li><strong>Context window.</strong> A model that cannot hold the input is not a cheaper option; it is a different failure. Check fit before cost.</li>
+<li><strong>Latency.</strong> If the large tier cannot meet your response budget, routing buys you <em>time</em>, not money — a completely different justification, and a legitimate one.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> price it, baseline one model at reduced effort, and make routing <strong>earn its place</strong> against that — not against a default nobody should be running.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-the-decision-you-would-defend">Part 5 — The decision you would defend</h2>
+<p>A design review asks: <em>why is there no router?</em> "Routers are overrated" is not an answer. This is:</p>
+<ol>
+<li><strong>We measured the one-model baseline first</strong> — strongest model at reduced effort, on our traffic.</li>
+<li><strong>We priced the cache split.</strong> Our shared prefix is <em>N</em> tokens on every request; splitting it across three models costs <em>X</em> a month against a projected routing saving of <em>Y</em>.</li>
+<li><strong>We counted escalations, not calls.</strong> Cost per completed task, with failed cheap calls charged twice.</li>
+<li><strong>We know what we have not measured</strong>, and we said so rather than quoting a plausible number.</li>
+</ol>
+<p>And the conditions under which the answer flips, stated in advance — because a decision with no reversal condition is just a belief:</p>
+<ul>
+<li>A <strong>large, genuinely trivial</strong> share of traffic, with low escalation.</li>
+<li>A <strong>small or absent shared prefix</strong>, which removes the cache penalty.</li>
+<li>A <strong>latency requirement</strong> the large tier cannot meet.</li>
+</ul>
+<blockquote>
+<p><strong>The one-line frame:</strong> the defensible position is not a verdict on routing — it is <strong>the baseline you measured, the mechanism you priced, and the condition under which you would change your mind.</strong></p>
+</blockquote>
+<hr />
+<h2 id="run-it">Run it</h2>
+<p>Five steps, one idea each — see <a href="steps/README.md"><code>steps/README.md</code></a>:</p>
+<pre><code class="language-bash">export ANTHROPIC_API_KEY=sk-ant-...
+cd steps
+python3 01_one_call.py      # one call, and what it cost
+python3 02_three_tiers.py   # same work, three tiers
+python3 03_effort.py        # the lever inside one model
+python3 04_route.py         # a router that reports its rule
+python3 05_price_first.py   # price before you spend
+</code></pre>
+<p>No key? The full bench runs offline — cost is arithmetic:</p>
+<pre><code class="language-bash">cd src &amp;&amp; python3 bench.py
+</code></pre>
+<p>The deeper write-up, including how the bench models cache warmth and escalation, is in <a href="README.md">README.md</a>.</p>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>effort</strong></td>
+<td>request-level control trading thoroughness against spend <em>within one model</em> — the lever to try before a second model</td>
+</tr>
+<tr>
+<td><strong>prompt cache</strong></td>
+<td>a warm copy of a repeated prefix, billed ~0.1× on read, ~1.25× to write — <strong>scoped to one model</strong></td>
+</tr>
+<tr>
+<td><strong>cache affinity</strong></td>
+<td>routing for locality because a miss costs more than the cheaper rate saves</td>
+</tr>
+<tr>
+<td><strong>classifier tax</strong></td>
+<td>the cost of deciding where to route, charged on every request including ones headed for the expensive tier</td>
+</tr>
+<tr>
+<td><strong>escalation</strong></td>
+<td>a failed cheap call handed upward; the task pays for both</td>
+</tr>
+<tr>
+<td><strong>cost per completed task</strong></td>
+<td>total spend ÷ tasks <em>finished</em> — the only unit that survives retries</td>
+</tr>
+<tr>
+<td><strong>context window</strong></td>
+<td>a hard constraint, never a preference</td>
+</tr>
+<tr>
+<td><code>response.usage</code></td>
+<td>what the call actually consumed — the only honest basis for a cost figure</td>
+</tr>
+<tr>
+<td><code>count_tokens</code></td>
+<td>prices the input side <em>before</em> you spend anything</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Lesson 01 — the model list expires; the decision procedure does not. Cost is not one number but four: tokens × rate, cache warmth, the routing decision itself, and escalation — and a price table shows you only the first. So price the workload before spending (arithmetic, free), baseline the strongest model at reduced effort (one model, one cache, one failure mode), and make routing earn its place against </em><em>that</em><em> rather than against a default nobody should run. On our bench the router beat the naive baseline by 5.4% and </em><em>lost to the same model at low effort</em><em>, while the cache split it caused cost 7.5% — more than routing saved. The widely-quoted 80% saving is real on some workload; it is a property of that workload, not of routing. Measure yours. And make every routing decision carry the rule that produced it, so a reviewer argues with the policy instead of the outcome.</em></p>
+</body>
+</html>

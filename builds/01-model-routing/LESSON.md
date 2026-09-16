@@ -6,6 +6,8 @@
 
 **Before you start:** [SETUP.md](SETUP.md) — five minutes, and half the lesson runs with no API key.
 
+**Run it in the browser:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb) — nothing to install.
+
 **Series context:** first lesson of the Build Track. Pairs with the runnable build in this folder: five steps in [`steps/`](steps/) you run live, and a bench in [`src/`](src/) that runs with **no API key at all**.
 
 ---

@@ -31,9 +31,39 @@ def _grab_display(m):
 text = re.sub(r"\$\$(.+?)\$\$", _grab_display, text, flags=re.DOTALL)
 
 # 3) Protect inline math $ ... $  (single line)
+#
+# The naive rule -- "anything between two dollar signs on one line is math" --
+# swallows currency. A row like "| $5.00 | $25.00 |" has two dollar signs on one
+# line, so "5.00 | " becomes MathJax and the table loses a column. So does prose
+# like "every extra $1,000 of ad spend ... $". Docs about cost are full of both.
+#
+# Three tests, in order:
+#   1. Anything carrying a TeX marker (\ ^ _ { }) is math. Settles $\alpha$,
+#      $x^2$, $2m = 2 \times 4$ -- including the ones that open with a digit.
+#   2. A pipe means a table cell boundary was crossed. Not math.
+#   3. A number followed by whitespace and a word is a price inside a sentence.
+#      Not math. ($2m$ and $2x$ have no space, so they survive as math.)
+_TEX_MARKER = re.compile(r"[\\^_{}]")
+_CELL_BOUNDARY = re.compile(r"\|")
+_PRICE_IN_PROSE = re.compile(r"^\s*\d[\d.,]*\s+\S")
+
+
+def _looks_like_math(candidate):
+    if _TEX_MARKER.search(candidate):
+        return True
+    if _CELL_BOUNDARY.search(candidate):
+        return False
+    return not _PRICE_IN_PROSE.match(candidate)
+
+
 def _grab_inline(m):
-    math_blocks.append(("inline", m.group(1).strip()))
+    candidate = m.group(1)
+    if not _looks_like_math(candidate):
+        return m.group(0)  # leave it alone; it is text, not math
+    math_blocks.append(("inline", candidate.strip()))
     return f"@@MATH{len(math_blocks)-1}@@"
+
+
 text = re.sub(r"\$([^\n$]+?)\$", _grab_inline, text)
 
 # 4) Markdown -> HTML
