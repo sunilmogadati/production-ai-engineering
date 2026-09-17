@@ -1,4 +1,4 @@
-# Setup — 5 minutes, before Lesson 01
+# Setup — 5 minutes, before Build 01
 
 You need three things: Python, this repository, and an API key. Nothing is installed globally
 and nothing here costs more than a few cents to run.
@@ -56,9 +56,23 @@ the console immediately — that is what the revoke button is for, and everyone 
 
 ## 5. Install the SDK and verify
 
+**Use a virtual environment.** It keeps this project's packages out of your system Python, so
+nothing here can break another project — and deleting one folder undoes everything.
+
 ```bash
+python3 -m venv .venv          # creates ./.venv inside this build folder
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install anthropic
 cd steps && python3 01_one_call.py
+```
+
+Your prompt now shows `(.venv)`. That is how you know you're inside it. Open a new terminal later
+and you'll need `source .venv/bin/activate` again — or just use `deactivate` when you're done.
+
+Prefer `uv`? It makes the environment for you and needs no activation:
+
+```bash
+cd steps && uv run --with anthropic python 01_one_call.py
 ```
 
 Expected: one word of output, plus token counts and a cost of roughly $0.00001.

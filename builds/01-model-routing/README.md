@@ -140,7 +140,7 @@ One rule earns special mention. `R1-context-overflow` exists because **a context
 | **opus only @ low** | 1 | $18.50 | — | $1.39 | **$19.89** | $0.0995 |
 | **sonnet only @ high** | 1 | $8.05 | — | $4.12 | **$12.18** | $0.0609 |
 | haiku only @ high | 2 | $7.77 | — | $7.39 | **$15.16** | $0.0758 |
-| router (cache reuse off) | 3 | $20.28 | $0.05 | $1.65 | **$21.98** | $0.1099 |
+| router (caching disabled) | 3 | $20.28 | $0.05 | $1.65 | **$21.98** | $0.1099 |
 
 **All cost figures are COMPUTED** from published rates under the assumptions in the report. **Latency and quality are UNMEASURED.**
 
@@ -148,7 +148,7 @@ Four things fall out, and the first one is the reason this build exists:
 
 **1. The router beat the naive baseline — and lost to the simpler fix.** Against `opus @ high` the router saves **5.4%**. Against the same model at **low effort** it is **2.8% more expensive**, and that configuration saves **8.0%** on its own. One parameter, one model, one cache, no classifier, no second failure mode — and a better number. A team that reaches for a cascade first has skipped the cheaper experiment.
 
-**2. The cache split cost the router more than routing won it.** Turn cache reuse off and the router's bill rises **$1.53, or 7.5%**. The saving the cascade was built to capture was 5.4%. *The mechanism it defeats itself with is larger than the mechanism it exploits.* This is the number that is invisible in a per-token comparison, and it is why the tier table ranks the options wrong.
+**2. Caching was worth more than routing was — and it applies to every configuration.** Turn caching off and the router's bill rises **$1.53, or 7.0%**, against the 5.4% routing itself saved. Splitting the cache across three models, by contrast, costs **$0.015 — 0.07%**: a handful of extra cold starts, not a recurring tax. The lesson is not that caching penalises routing. It is that **the cheap multipliers — caching, effort — move more money than the architecture does.**
 
 **3. The cheapest model produced an expensive outcome.** Haiku has the lowest per-token rate of the three. **48.7% of its total bill is escalation** — work it attempted, failed, and handed to a stronger model, having already been paid for. Its per-token rate was the best available and its cost per completed task was worse than the mid tier's.
 
@@ -171,7 +171,7 @@ Which is why they are labelled `ASSUMED` in the report rather than presented as 
 A design review asks: *why is there no router?* The answer that holds up is not "routers are overrated." It is evidence, in this order:
 
 1. **We measured the one-model baseline first.** One model at reduced effort, on our traffic. That is the number a cascade has to beat, not the naive full-effort default.
-2. **We priced the cache split.** Our shared prefix is *N* tokens on every request; splitting it across three models costs *X* per month in cold reads, against a projected routing saving of *Y*.
+2. **We priced the multipliers first.** Caching on, effort tuned. Both move more money than the tier choice, and both apply whatever we decide here.
 3. **We counted escalations, not calls.** Cost per completed task, with failed cheap calls charged for both attempts.
 4. **We know what we did not measure.** Latency and quality figures are outstanding, and we have said so rather than quoting a plausible number.
 
@@ -210,4 +210,4 @@ See [RUNBOOK.md](./RUNBOOK.md). The offline path needs no API key and no credent
 
 ---
 
-*Build 01 — model selection is not a lookup against a price table; it is a **cache-affinity decision with a classifier tax and an escalation path**. Cost is arithmetic and provable offline, so price the workload before you spend anything. Latency and quality are empirical and must be measured. Between them sit two assumed inputs — **what effort does to output tokens** and **how often each tier actually fails your work** — and those two numbers, not the published rates, decide the ranking. On this workload the router beat the naive full-effort baseline by 5.4% and **lost to the same model at low effort**, while the cache split it caused cost 7.5% — more than routing saved. Measure the one-parameter fix before you build the two-model one, and make every decision carry the rule that produced it, so a reviewer can argue with the policy instead of the outcome.*
+*Build 01 — model selection is not a lookup against a price table; it is a **cache-affinity decision with a classifier tax and an escalation path**. Cost is arithmetic and provable offline, so price the workload before you spend anything. Latency and quality are empirical and must be measured. Between them sit two assumed inputs — **what effort does to output tokens** and **how often each tier actually fails your work** — and those two numbers, not the published rates, decide the ranking. On this workload the router beat the naive full-effort baseline by 5.4% and **lost to the same model at low effort**, while simply having caching on was worth 7.0% — more than routing saved, and available on every path. Measure the one-parameter fix before you build the two-model one, and make every decision carry the rule that produced it, so a reviewer can argue with the policy instead of the outcome.*

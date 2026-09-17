@@ -21,7 +21,7 @@ The machinery around the model: what it costs, how the loop is controlled, what 
   picks a model per task, and a bench that makes it compete against one model at lower effort.* Price
   a workload before spending anything; find out whether the router earned its place. On the committed
   run, it did not. Start with the
-  [lesson](builds/01-model-routing/LESSON.md) and the five
+  [build brief](builds/01-model-routing/BUILD.md) and the five
   [steps](builds/01-model-routing/steps/) or the [Colab notebook](notebooks/hello_model_selection.ipynb); the bench runs with no API key.
 
 *Builds 02–07 in progress.*

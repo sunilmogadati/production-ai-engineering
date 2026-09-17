@@ -1,4 +1,4 @@
-# Lesson 01 — Choosing a Model: The Decision That Outlives the Model List
+# Build 01 — Model Selection: The Decision That Outlives the Model List
 
 **Covers:** the three tiers and the three dimensions they trade off (**intelligence · speed · cost**) → matching a model to a task → **smart routing**, the optimisation everyone reaches for first → the four things a price table leaves out (**effort**, **model-scoped caches**, **the classifier's own bill**, **cost per *completed* task**) → a router that reports the rule behind every decision → what a bench says when you actually measure it.
 
@@ -8,7 +8,45 @@
 
 **Run it in the browser:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb) — nothing to install.
 
-**Series context:** first lesson of the Build Track. Pairs with the runnable build in this folder: five steps in [`steps/`](steps/) you run live, and a bench in [`src/`](src/) that runs with **no API key at all**.
+**Where this sits:** first build of the Build Track. Pairs with the runnable build in this folder: five steps in [`steps/`](steps/) you run live, and a bench in [`src/`](src/) that runs with **no API key at all**.
+
+---
+
+## Part 0 — What a harness is, and why this track is about building one
+
+A **model** takes text and returns text. That is all it does. Everything that turns it into a system
+somebody depends on is code you write around it — and that surrounding code is the **harness**.
+
+The harness is what decides which model gets called, what goes into the prompt and what gets left
+out, when to stop looping, which tools the model may reach for, what happens when a call fails, what
+gets logged, and what a human has to approve. None of that lives in the model. All of it is yours.
+
+```mermaid
+flowchart LR
+    subgraph HARNESS["THE HARNESS — the part you build and own"]
+        direction TB
+        SEL["model selection<br/>which tier, what effort"]
+        CTX["context<br/>what goes in, what gets pruned"]
+        LOOP["the loop<br/>when to continue, when to stop"]
+        TOOLS["tools<br/>what it may reach for"]
+        GUARD["guardrails<br/>what it may never do"]
+        OBS["evaluation & logging<br/>how you know it works"]
+    end
+    IN["a request"] --> HARNESS --> M(("model<br/>text in,<br/>text out"))
+    M --> HARNESS --> OUT["an answer you can<br/>put in front of a customer"]
+```
+
+**Why this matters commercially:** the model is the part you cannot differentiate on — your
+competitor can call the same one tomorrow. The harness is the part that is yours. It is where the
+cost lives, where the failures live, and where production judgment shows up.
+
+This track builds a harness one piece at a time. **Build 01 is the first piece: model selection.**
+It comes first because every later decision — context, tools, guardrails, evaluation — assumes a
+model has already been chosen, and because it is the piece teams get wrong earliest and most
+expensively.
+
+> **The one-line frame:** the model is a component. **The harness is the product.** This track builds
+> the harness.
 
 ---
 
@@ -84,13 +122,13 @@ So we measure. `src/bench.py` in this folder prices 200 synthetic tasks across s
 | **opus only @ low effort** | 1 | $18.50 | — | $1.39 | **$19.89** |
 | **sonnet only @ high** | 1 | $8.05 | — | $4.12 | **$12.18** |
 | haiku only @ high | 2 | $7.77 | — | $7.39 | **$15.16** |
-| router, cache reuse off | 3 | $20.28 | $0.05 | $1.65 | **$21.98** |
+| router, caching disabled | 3 | $20.28 | $0.05 | $1.65 | **$21.98** |
 
 Four readings, and the first one is the lesson:
 
 **1. The router saved 5.4% — and lost to one model at lower effort.** Against the naive full-effort baseline it wins. Against the *same model with one parameter changed*, it is 2.8% more expensive, and that configuration saves 8.0% on its own. One model, one cache, no classifier, no second failure mode, and a better number.
 
-**2. The cache split cost more than routing saved.** Turn cache reuse off and the router's bill rises $1.53 — **7.5%**. It was built to capture 5.4%. The mechanism it defeats itself with is larger than the one it exploits.
+**2. Caching was worth more than routing was — and it is available on every path.** Turn caching off and the router's bill rises $1.53, **7.0%**. Routing itself saved 5.4%. One parameter, settable on *any* configuration, beat the whole architecture. And splitting a cache across three models costs almost nothing — **$0.015, or 0.07%** — a few extra cold starts, not a recurring tax. Caching is not an argument against routing; it is an argument that **the cheap multipliers move more money than the tier you pick.**
 
 **3. The cheapest tokens produced an expensive outcome.** Haiku has the lowest rate of the three. **48.7% of its bill is escalation** — work it attempted, failed, and handed upward, having already been paid for.
 
@@ -113,7 +151,7 @@ flowchart TD
     M -->|no| E["4. Raise effort, or move a tier"]
     E --> R{"5. Still not there,<br/>and volume is large?"}
     R -->|no| DONE
-    R -->|yes| C["6. NOW consider routing<br/>price the cache split<br/>price the classifier<br/>count escalations"]
+    R -->|yes| C["6. NOW consider routing<br/>price the classifier<br/>price the classifier<br/>count escalations"]
     C --> V{"7. Does it beat<br/>step 2 by enough<br/>to justify two systems?"}
     V -->|no| DONE
     V -->|yes| SHIP["Route — and make every<br/>decision report its rule"]
@@ -135,7 +173,7 @@ Two hard constraints sit outside the procedure and override it:
 A design review asks: *why is there no router?* "Routers are overrated" is not an answer. This is:
 
 1. **We measured the one-model baseline first** — strongest model at reduced effort, on our traffic.
-2. **We priced the cache split.** Our shared prefix is *N* tokens on every request; splitting it across three models costs *X* a month against a projected routing saving of *Y*.
+2. **We priced the multipliers first.** Caching is on, and effort is tuned. Those move more money than the tier choice, and they apply whatever we decide here.
 3. **We counted escalations, not calls.** Cost per completed task, with failed cheap calls charged twice.
 4. **We know what we have not measured**, and we said so rather than quoting a plausible number.
 
@@ -189,4 +227,4 @@ The deeper write-up, including how the bench models cache warmth and escalation,
 
 ---
 
-*Lesson 01 — the model list expires; the decision procedure does not. Cost is not one number but four: tokens × rate, cache warmth, the routing decision itself, and escalation — and a price table shows you only the first. So price the workload before spending (arithmetic, free), baseline the strongest model at reduced effort (one model, one cache, one failure mode), and make routing earn its place against **that** rather than against a default nobody should run. On our bench the router beat the naive baseline by 5.4% and **lost to the same model at low effort**, while the cache split it caused cost 7.5% — more than routing saved. The widely-quoted 80% saving is real on some workload; it is a property of that workload, not of routing. Measure yours. And make every routing decision carry the rule that produced it, so a reviewer argues with the policy instead of the outcome.*
+*Build 01 — the model list expires; the decision procedure does not. Cost is not one number but four: tokens × rate, cache warmth, the routing decision itself, and escalation — and a price table shows you only the first. So price the workload before spending (arithmetic, free), baseline the strongest model at reduced effort (one model, one cache, one failure mode), and make routing earn its place against **that** rather than against a default nobody should run. On our bench the router beat the naive baseline by 5.4% and **lost to the same model at low effort**, while simply turning caching on was worth 7.0% — more than routing saved, and available on every path. The widely-quoted 80% saving is real on some workload; it is a property of that workload, not of routing. Measure yours. And make every routing decision carry the rule that produced it, so a reviewer argues with the policy instead of the outcome.*

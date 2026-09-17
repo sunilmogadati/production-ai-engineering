@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lesson 01 — Choosing a Model: The Decision That Outlives the Model List</title>
+<title>Build 01 — Model Selection: The Decision That Outlives the Model List</title>
 <script>
   window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
                       svg: { fontCache: 'global' } };
@@ -38,12 +38,42 @@
 </style>
 </head>
 <body>
-<h1 id="lesson-01-choosing-a-model-the-decision-that-outlives-the-model-list">Lesson 01 — Choosing a Model: The Decision That Outlives the Model List</h1>
+<h1 id="build-01-model-selection-the-decision-that-outlives-the-model-list">Build 01 — Model Selection: The Decision That Outlives the Model List</h1>
 <p><strong>Covers:</strong> the three tiers and the three dimensions they trade off (<strong>intelligence · speed · cost</strong>) → matching a model to a task → <strong>smart routing</strong>, the optimisation everyone reaches for first → the four things a price table leaves out (<strong>effort</strong>, <strong>model-scoped caches</strong>, <strong>the classifier's own bill</strong>, <strong>cost per <em>completed</em> task</strong>) → a router that reports the rule behind every decision → what a bench says when you actually measure it.</p>
 <p><strong>Goal:</strong> stop treating model selection as a lookup against a price table. By the end you can price a workload before spending anything, you know which lever to pull <em>first</em>, and you can defend the choice in a design review — including the case for not routing at all.</p>
 <p><strong>Before you start:</strong> <a href="SETUP.md">SETUP.md</a> — five minutes, and half the lesson runs with no API key.</p>
 <p><strong>Run it in the browser:</strong> <a href="https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> — nothing to install.</p>
-<p><strong>Series context:</strong> first lesson of the Build Track. Pairs with the runnable build in this folder: five steps in <a href="steps/"><code>steps/</code></a> you run live, and a bench in <a href="src/"><code>src/</code></a> that runs with <strong>no API key at all</strong>.</p>
+<p><strong>Where this sits:</strong> first build of the Build Track. Pairs with the runnable build in this folder: five steps in <a href="steps/"><code>steps/</code></a> you run live, and a bench in <a href="src/"><code>src/</code></a> that runs with <strong>no API key at all</strong>.</p>
+<hr />
+<h2 id="part-0-what-a-harness-is-and-why-this-track-is-about-building-one">Part 0 — What a harness is, and why this track is about building one</h2>
+<p>A <strong>model</strong> takes text and returns text. That is all it does. Everything that turns it into a system
+somebody depends on is code you write around it — and that surrounding code is the <strong>harness</strong>.</p>
+<p>The harness is what decides which model gets called, what goes into the prompt and what gets left
+out, when to stop looping, which tools the model may reach for, what happens when a call fails, what
+gets logged, and what a human has to approve. None of that lives in the model. All of it is yours.</p>
+<div class="mermaid">flowchart LR
+    subgraph HARNESS[&quot;THE HARNESS — the part you build and own&quot;]
+        direction TB
+        SEL[&quot;model selection&lt;br/&gt;which tier, what effort&quot;]
+        CTX[&quot;context&lt;br/&gt;what goes in, what gets pruned&quot;]
+        LOOP[&quot;the loop&lt;br/&gt;when to continue, when to stop&quot;]
+        TOOLS[&quot;tools&lt;br/&gt;what it may reach for&quot;]
+        GUARD[&quot;guardrails&lt;br/&gt;what it may never do&quot;]
+        OBS[&quot;evaluation &amp; logging&lt;br/&gt;how you know it works&quot;]
+    end
+    IN[&quot;a request&quot;] --&gt; HARNESS --&gt; M((&quot;model&lt;br/&gt;text in,&lt;br/&gt;text out&quot;))
+    M --&gt; HARNESS --&gt; OUT[&quot;an answer you can&lt;br/&gt;put in front of a customer&quot;]</div>
+<p><strong>Why this matters commercially:</strong> the model is the part you cannot differentiate on — your
+competitor can call the same one tomorrow. The harness is the part that is yours. It is where the
+cost lives, where the failures live, and where production judgment shows up.</p>
+<p>This track builds a harness one piece at a time. <strong>Build 01 is the first piece: model selection.</strong>
+It comes first because every later decision — context, tools, guardrails, evaluation — assumes a
+model has already been chosen, and because it is the piece teams get wrong earliest and most
+expensively.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the model is a component. <strong>The harness is the product.</strong> This track builds
+the harness.</p>
+</blockquote>
 <hr />
 <h2 id="part-1-the-problem-the-model-list-is-already-out-of-date">Part 1 — The problem: the model list is already out of date</h2>
 <p>Here is the table every introduction to a model family ends with.</p>
@@ -175,7 +205,7 @@
 <td><strong>$15.16</strong></td>
 </tr>
 <tr>
-<td>router, cache reuse off</td>
+<td>router, caching disabled</td>
 <td>3</td>
 <td>$20.28</td>
 <td>$0.05</td>
@@ -186,7 +216,7 @@
 </table>
 <p>Four readings, and the first one is the lesson:</p>
 <p><strong>1. The router saved 5.4% — and lost to one model at lower effort.</strong> Against the naive full-effort baseline it wins. Against the <em>same model with one parameter changed</em>, it is 2.8% more expensive, and that configuration saves 8.0% on its own. One model, one cache, no classifier, no second failure mode, and a better number.</p>
-<p><strong>2. The cache split cost more than routing saved.</strong> Turn cache reuse off and the router's bill rises $1.53 — <strong>7.5%</strong>. It was built to capture 5.4%. The mechanism it defeats itself with is larger than the one it exploits.</p>
+<p><strong>2. Caching was worth more than routing was — and it is available on every path.</strong> Turn caching off and the router's bill rises $1.53, <strong>7.0%</strong>. Routing itself saved 5.4%. One parameter, settable on <em>any</em> configuration, beat the whole architecture. And splitting a cache across three models costs almost nothing — <strong>$0.015, or 0.07%</strong> — a few extra cold starts, not a recurring tax. Caching is not an argument against routing; it is an argument that <strong>the cheap multipliers move more money than the tier you pick.</strong></p>
 <p><strong>3. The cheapest tokens produced an expensive outcome.</strong> Haiku has the lowest rate of the three. <strong>48.7% of its bill is escalation</strong> — work it attempted, failed, and handed upward, having already been paid for.</p>
 <p><strong>4. The genuinely cheapest option was the least sophisticated.</strong> One mid-tier model, no routing logic at all: <strong>43.7% below</strong> the naive baseline.</p>
 <blockquote>
@@ -203,7 +233,7 @@
     M --&gt;|no| E[&quot;4. Raise effort, or move a tier&quot;]
     E --&gt; R{&quot;5. Still not there,&lt;br/&gt;and volume is large?&quot;}
     R --&gt;|no| DONE
-    R --&gt;|yes| C[&quot;6. NOW consider routing&lt;br/&gt;price the cache split&lt;br/&gt;price the classifier&lt;br/&gt;count escalations&quot;]
+    R --&gt;|yes| C[&quot;6. NOW consider routing&lt;br/&gt;price the classifier&lt;br/&gt;price the classifier&lt;br/&gt;count escalations&quot;]
     C --&gt; V{&quot;7. Does it beat&lt;br/&gt;step 2 by enough&lt;br/&gt;to justify two systems?&quot;}
     V --&gt;|no| DONE
     V --&gt;|yes| SHIP[&quot;Route — and make every&lt;br/&gt;decision report its rule&quot;]</div>
@@ -221,7 +251,7 @@
 <p>A design review asks: <em>why is there no router?</em> "Routers are overrated" is not an answer. This is:</p>
 <ol>
 <li><strong>We measured the one-model baseline first</strong> — strongest model at reduced effort, on our traffic.</li>
-<li><strong>We priced the cache split.</strong> Our shared prefix is <em>N</em> tokens on every request; splitting it across three models costs <em>X</em> a month against a projected routing saving of <em>Y</em>.</li>
+<li><strong>We priced the multipliers first.</strong> Caching is on, and effort is tuned. Those move more money than the tier choice, and they apply whatever we decide here.</li>
 <li><strong>We counted escalations, not calls.</strong> Cost per completed task, with failed cheap calls charged twice.</li>
 <li><strong>We know what we have not measured</strong>, and we said so rather than quoting a plausible number.</li>
 </ol>
@@ -298,6 +328,6 @@ python3 05_price_first.py   # price before you spend
 </tbody>
 </table>
 <hr />
-<p><em>Lesson 01 — the model list expires; the decision procedure does not. Cost is not one number but four: tokens × rate, cache warmth, the routing decision itself, and escalation — and a price table shows you only the first. So price the workload before spending (arithmetic, free), baseline the strongest model at reduced effort (one model, one cache, one failure mode), and make routing earn its place against </em><em>that</em><em> rather than against a default nobody should run. On our bench the router beat the naive baseline by 5.4% and </em><em>lost to the same model at low effort</em><em>, while the cache split it caused cost 7.5% — more than routing saved. The widely-quoted 80% saving is real on some workload; it is a property of that workload, not of routing. Measure yours. And make every routing decision carry the rule that produced it, so a reviewer argues with the policy instead of the outcome.</em></p>
+<p><em>Build 01 — the model list expires; the decision procedure does not. Cost is not one number but four: tokens × rate, cache warmth, the routing decision itself, and escalation — and a price table shows you only the first. So price the workload before spending (arithmetic, free), baseline the strongest model at reduced effort (one model, one cache, one failure mode), and make routing earn its place against </em><em>that</em><em> rather than against a default nobody should run. On our bench the router beat the naive baseline by 5.4% and </em><em>lost to the same model at low effort</em><em>, while simply turning caching on was worth 7.0% — more than routing saved, and available on every path. The widely-quoted 80% saving is real on some workload; it is a property of that workload, not of routing. Measure yours. And make every routing decision carry the rule that produced it, so a reviewer argues with the policy instead of the outcome.</em></p>
 </body>
 </html>

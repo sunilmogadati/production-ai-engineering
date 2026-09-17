@@ -12,10 +12,14 @@ start wherever the idea you want is.
 | `05_price_first.py` | counting tokens to price a workload *before* spending | yes |
 
 ```bash
+python3 -m venv ../.venv && source ../.venv/bin/activate
+pip install anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
-cd steps
 python3 01_one_call.py        # then 02, 03, 04, 05
 ```
+
+Or with `uv`, which needs no venv of your own:
+`uv run --with anthropic python 01_one_call.py`
 
 No API key? `../src/bench.py` runs the full comparison offline — cost is arithmetic.
 
