@@ -134,6 +134,30 @@ Four readings, and the first one is the lesson:
 
 **4. The genuinely cheapest option was the least sophisticated.** One mid-tier model, no routing logic at all: **43.7% below** the naive baseline.
 
+### The two myths, and what our numbers actually say
+
+You will meet both of these in any introduction to a model family. Neither is wrong. Both are
+incomplete in the same direction.
+
+**Myth 1 — "bigger is always better."** True that it is a myth: on an easy task the small tier is
+often indistinguishable, faster, and a fifth the price. But the correction has its own failure mode,
+and our bench found it. **Haiku had the lowest rate of the three and the second-worst cost per
+completed task**, because 48.7% of its bill was escalation — work it attempted, failed, and handed
+upward, having already been paid for. "Bigger is always better" is wrong. **"Cheaper is cheaper" is
+wrong in the same way**, and it is the error you make second.
+
+**Myth 2 — "cost is the only difference."** Also right, and it is the dimension this build is
+weakest on. Latency is a real constraint: for an interactive surface, a fast adequate answer beats a
+slow excellent one, and no amount of cost arithmetic tells you that. **Our bench cannot see it** —
+cost is arithmetic, latency is empirical. That is why every bench row says `UNMEASURED` for latency
+rather than guessing.
+
+You measure it in the steps instead. `02_three_tiers.py` and `03_effort.py` **time every call**, so
+the latency numbers you see there are real ones from your own machine. Watch what effort does to the
+clock, not just to the bill — on an interactive path that may be the number that decides.
+
+---
+
 > **The one-line frame:** the 80% claim and our 5.4% are both true, of different workloads. **Measure the simple fix before you build the sophisticated one.**
 
 ---

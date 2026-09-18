@@ -219,6 +219,24 @@ the harness.</p>
 <p><strong>2. Caching was worth more than routing was — and it is available on every path.</strong> Turn caching off and the router's bill rises $1.53, <strong>7.0%</strong>. Routing itself saved 5.4%. One parameter, settable on <em>any</em> configuration, beat the whole architecture. And splitting a cache across three models costs almost nothing — <strong>$0.015, or 0.07%</strong> — a few extra cold starts, not a recurring tax. Caching is not an argument against routing; it is an argument that <strong>the cheap multipliers move more money than the tier you pick.</strong></p>
 <p><strong>3. The cheapest tokens produced an expensive outcome.</strong> Haiku has the lowest rate of the three. <strong>48.7% of its bill is escalation</strong> — work it attempted, failed, and handed upward, having already been paid for.</p>
 <p><strong>4. The genuinely cheapest option was the least sophisticated.</strong> One mid-tier model, no routing logic at all: <strong>43.7% below</strong> the naive baseline.</p>
+<h3 id="the-two-myths-and-what-our-numbers-actually-say">The two myths, and what our numbers actually say</h3>
+<p>You will meet both of these in any introduction to a model family. Neither is wrong. Both are
+incomplete in the same direction.</p>
+<p><strong>Myth 1 — "bigger is always better."</strong> True that it is a myth: on an easy task the small tier is
+often indistinguishable, faster, and a fifth the price. But the correction has its own failure mode,
+and our bench found it. <strong>Haiku had the lowest rate of the three and the second-worst cost per
+completed task</strong>, because 48.7% of its bill was escalation — work it attempted, failed, and handed
+upward, having already been paid for. "Bigger is always better" is wrong. <strong>"Cheaper is cheaper" is
+wrong in the same way</strong>, and it is the error you make second.</p>
+<p><strong>Myth 2 — "cost is the only difference."</strong> Also right, and it is the dimension this build is
+weakest on. Latency is a real constraint: for an interactive surface, a fast adequate answer beats a
+slow excellent one, and no amount of cost arithmetic tells you that. <strong>Our bench cannot see it</strong> —
+cost is arithmetic, latency is empirical. That is why every bench row says <code>UNMEASURED</code> for latency
+rather than guessing.</p>
+<p>You measure it in the steps instead. <code>02_three_tiers.py</code> and <code>03_effort.py</code> <strong>time every call</strong>, so
+the latency numbers you see there are real ones from your own machine. Watch what effort does to the
+clock, not just to the bill — on an interactive path that may be the number that decides.</p>
+<hr />
 <blockquote>
 <p><strong>The one-line frame:</strong> the 80% claim and our 5.4% are both true, of different workloads. <strong>Measure the simple fix before you build the sophisticated one.</strong></p>
 </blockquote>
