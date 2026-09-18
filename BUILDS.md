@@ -13,6 +13,13 @@ so you can tell what was proven from what is still owed a measurement.
 
 ---
 
+## Part 0 — Foundations
+
+- **00 — Foundations** — [builds/00-foundations](builds/00-foundations/) — *Ship: a working local
+  environment, and a hello-world in both languages.* What harness engineering actually names, the four
+  parts of a harness, why this track is Claude-native when you already know LangChain, and what else
+  exists. Your own key, your own laptop — no hosted workspace.
+
 ## Part A — The harness
 
 The machinery around the model: what it costs, how the loop is controlled, what stays in context.

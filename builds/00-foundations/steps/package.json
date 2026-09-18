@@ -1,0 +1,16 @@
+{
+  "name": "build-00-foundations",
+  "private": true,
+  "type": "module",
+  "description": "The same hello-world in TypeScript, to show the harness pattern is not the syntax.",
+  "scripts": {
+    "hello": "tsx 01_hello.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

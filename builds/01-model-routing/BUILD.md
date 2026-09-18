@@ -4,7 +4,7 @@
 
 **Goal:** stop treating model selection as a lookup against a price table. By the end you can price a workload before spending anything, you know which lever to pull *first*, and you can defend the choice in a design review — including the case for not routing at all.
 
-**Before you start:** [SETUP.md](SETUP.md) — five minutes, and half the lesson runs with no API key.
+**Before you start:** [Build 00 — Foundations](../00-foundations/BUILD.md) explains what a harness is and why this track is Claude-native; [its SETUP](../00-foundations/SETUP.md) gets you running. Half of this build needs no API key at all.
 
 **Run it in the browser:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb) — nothing to install.
 

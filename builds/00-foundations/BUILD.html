@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build 00 — Foundations: What a Harness Is, and Why Claude-Native</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="build-00-foundations-what-a-harness-is-and-why-claude-native">Build 00 — Foundations: What a Harness Is, and Why Claude-Native</h1>
+<p><strong>Covers:</strong> what <strong>harness engineering</strong> actually names, and whether it is just "building reliable LLM apps" → the four things a harness is made of — <strong>the loop, the tools, the context strategy, the configuration</strong> → why this track is <strong>Claude-native</strong> when you already know LangChain → what else exists → and the setup that gets you running on your own laptop with your own key.</p>
+<p><strong>Goal:</strong> know what you are building before you build it, and know why the stack was chosen rather than inheriting it.</p>
+<p><strong>Where this sits:</strong> build zero of the Build Track. Everything after this assumes you can run code against the API from your own machine.</p>
+<hr />
+<h2 id="part-1-what-harness-engineering-is">Part 1 — What harness engineering is</h2>
+<p>A model takes text and returns text. That is the whole contract. It has no memory, no access to your systems, no ability to stop itself, and no idea what it is allowed to do.</p>
+<p>Everything that turns that into something a customer depends on is <strong>code you write around the model</strong>. That surrounding code is the <strong>harness</strong>, and building it is harness engineering.</p>
+<h3 id="is-it-the-same-as-building-reliable-llm-apps">Is it the same as "building reliable LLM apps"?</h3>
+<p>Nearly — but the word choice is doing real work, and it is worth being precise about.</p>
+<p>"Building reliable LLM apps" names an <strong>outcome</strong>. "Harness engineering" names <strong>where the work is</strong>, and makes a claim about ownership:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>The model</th>
+<th>The harness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who builds it</td>
+<td>Anthropic, OpenAI, Google</td>
+<td><strong>You</strong></td>
+</tr>
+<tr>
+<td>How you get it</td>
+<td>rent it, per token</td>
+<td>write it</td>
+</tr>
+<tr>
+<td>Can a competitor have the identical thing?</td>
+<td><strong>yes, tomorrow</strong></td>
+<td>no</td>
+</tr>
+<tr>
+<td>Where cost is decided</td>
+<td>partly</td>
+<td><strong>mostly</strong></td>
+</tr>
+<tr>
+<td>Where production failures live</td>
+<td>rarely</td>
+<td><strong>almost always</strong></td>
+</tr>
+<tr>
+<td>Does it survive a model upgrade?</td>
+<td>it <em>is</em> the upgrade</td>
+<td><strong>yes, if built well</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The model is a <strong>component</strong>. The harness is the <strong>product</strong>. Teams that spend their effort on prompt-tuning a model they do not own, and little on the harness they do, end up with nothing transferable when the next model ships.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the model is rented and interchangeable; <strong>the harness is the part that is yours</strong>, and it is where the cost, the failures, and the differentiation all live.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-four-parts-of-a-harness">Part 2 — The four parts of a harness</h2>
+<div class="mermaid">flowchart LR
+    IN[&quot;a request&quot;] --&gt; H
+    subgraph H[&quot;THE HARNESS&quot;]
+        direction TB
+        LOOP[&quot;THE LOOP&lt;br/&gt;when to call again,&lt;br/&gt;when to stop&quot;]
+        TOOLS[&quot;THE TOOLS&lt;br/&gt;what it can reach for,&lt;br/&gt;and what comes back&quot;]
+        CTX[&quot;THE CONTEXT STRATEGY&lt;br/&gt;what goes in,&lt;br/&gt;what gets dropped&quot;]
+        CFG[&quot;THE CONFIGURATION&lt;br/&gt;which model, what effort,&lt;br/&gt;what is forbidden&quot;]
+    end
+    H &lt;--&gt; M((&quot;model&lt;br/&gt;text in,&lt;br/&gt;text out&quot;))
+    H --&gt; OUT[&quot;an answer you can put&lt;br/&gt;in front of a customer&quot;]</div>
+<p><strong>The loop.</strong> A model answers once. Real work takes several turns: the model asks for a tool, you run it, you hand back the result, it continues. <em>You</em> own that cycle — when it runs again, when it stops, what happens if it never converges. In the Anthropic API the signal is <code>stop_reason</code>: <code>end_turn</code> means finished, <code>tool_use</code> means it wants something from you. A loop with no bound is an unbounded bill.</p>
+<p><strong>The tools.</strong> The functions the model may call, described so it knows when to reach for each. This is API design where the consumer reads documentation <em>at runtime</em> and cannot ask a follow-up question. Two tools with vague, overlapping descriptions get confused — and the fix is a better description, not a stern prompt.</p>
+<p><strong>The context strategy.</strong> Everything sent on each request: the system prompt, conversation so far, retrieved documents, tool output. It is a <strong>budget</strong>, not a bucket. Long conversations need pruning of verbose tool output, pinning of facts that must never drop, and compression of resolved sections. Two things make this load-bearing: you pay for every token on every request, and models attend less reliably to material buried in the middle.</p>
+<p><strong>The configuration.</strong> Which model, at what effort, with which tools available, under which rules. Not a settings file — <strong>a design surface</strong>. Build 01 is entirely about one dimension of it, and finds that a single configuration parameter moved more money than the architecture did.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> loop, tools, context, configuration. <strong>Everything in this track is one of those four</strong>, and none of them is inside the model.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-why-claude-native-when-you-already-know-langchain">Part 3 — Why Claude-native, when you already know LangChain</h2>
+<p>You have already built agents with LangChain and LangGraph. Reasonable question: why not just keep using them?</p>
+<p><strong>First, clear up a category error.</strong> These are not competing products at the same layer:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it is</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Provider SDK</strong></td>
+<td>a typed client for <strong>one</strong> vendor's API</td>
+<td><code>anthropic</code>, <code>openai</code>, <code>google-genai</code></td>
+</tr>
+<tr>
+<td><strong>Abstraction / orchestration</strong></td>
+<td>one interface over <strong>many</strong> providers, plus composition</td>
+<td>LangChain, LlamaIndex, Haystack, Semantic Kernel</td>
+</tr>
+<tr>
+<td><strong>Agent harness</strong></td>
+<td>an opinionated loop + built-in tools</td>
+<td><strong>Claude Agent SDK</strong>, LangGraph, CrewAI, AutoGen</td>
+</tr>
+<tr>
+<td><strong>Gateway</strong></td>
+<td>one endpoint in front of many providers</td>
+<td>LiteLLM, OpenRouter — see <a href="../../study-docs/ML_Study_13h_LLM_Gateways.md">ML Study 13h</a></td>
+</tr>
+</tbody>
+</table>
+<p>"Claude ecosystem" spans two of those rows: the <strong>Anthropic SDK</strong> (provider SDK) and the <strong>Claude Agent SDK</strong> (agent harness), plus <strong>MCP</strong> for tools and <strong>Claude Code</strong> for the developer surface.</p>
+<h3 id="does-the-claude-stack-use-langchain-underneath">Does the Claude stack use LangChain underneath?</h3>
+<p><strong>No.</strong> The Anthropic SDK and the Claude Agent SDK have no LangChain dependency.</p>
+<p>The dependency runs the <strong>other way</strong>: LangChain ships <code>langchain-anthropic</code>, an integration that wraps the Anthropic SDK. LangChain depends on the provider SDK; the provider SDK knows nothing about LangChain.</p>
+<p>That matters practically: <strong>anything the provider SDK can do, it can do first.</strong> An abstraction layer can only expose a feature after someone writes the wrapper.</p>
+<h3 id="the-real-trade-off-abstraction-lag">The real trade-off: abstraction lag</h3>
+<p>A framework spanning many providers must express features in terms all providers share. New per-provider capabilities either arrive late or arrive as an escape hatch.</p>
+<p>Build 01 is a live example. <strong><code>effort</code></strong> — the parameter that beat the entire routing architecture — is current Anthropic API surface. A cross-provider abstraction has nowhere natural to put it, because most providers have no equivalent. Reach for it through a generic wrapper and you are passing vendor-specific kwargs through a layer whose purpose was to hide them.</p>
+<p>Same for <strong>adaptive thinking</strong>, <strong>prompt caching breakpoints</strong>, <strong>structured outputs</strong>, <strong>hooks</strong>, <strong><code>stop_reason</code> control</strong>. These are exactly what harness engineering is about, and they are exactly what generic abstraction flattens.</p>
+<h3 id="when-to-choose-which">When to choose which</h3>
+<p><strong>Go Claude-native when:</strong>
+- You have committed to Claude, or would switch deliberately rather than dynamically.
+- You want current API surface the day it ships.
+- The work <em>is</em> the harness — loop control, caching strategy, tool governance, guardrails.
+- You want fewer layers between your code and the failure. When something breaks at 2am, one SDK and one API is a much shorter path than a stack trace through a framework.
+- <strong>Good fits:</strong> a document-extraction pipeline, an incident-triage agent, a compliance-gated workflow, a code-review orchestrator — anything where behaviour under failure matters more than provider breadth.</p>
+<p><strong>Go LangChain / LlamaIndex when:</strong>
+- <strong>Multi-provider is a requirement</strong>, not a preference — a contract, a regulator, a procurement rule.
+- You need the <strong>integration breadth</strong>: hundreds of loaders, vector stores, and third-party tools already wrapped. Rebuilding that is not harness engineering, it is plumbing.
+- The team has standardised on it and consistency beats the last 10% of capability.
+- <strong>Good fits:</strong> RAG over many heterogeneous sources; a prototype that must swap models weekly; an org with a provider-neutrality mandate.</p>
+<p><strong>These are not exclusive.</strong> A common production shape is Claude-native for the agent's control surface, with a retrieval library for ingestion, behind a gateway for failover.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> LangChain optimises for <strong>breadth across providers</strong>; the Claude stack optimises for <strong>depth on one</strong>. Harness engineering lives in the depth — so this track goes native, and you keep LangChain for the problems it is genuinely better at.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-what-else-is-out-there">Part 4 — What else is out there</h2>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Options</th>
+<th>Reach for it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Provider SDKs</strong></td>
+<td><code>anthropic</code>, <code>openai</code>, <code>google-genai</code>, <code>mistralai</code></td>
+<td>you have picked a provider and want its full surface</td>
+</tr>
+<tr>
+<td><strong>Orchestration</strong></td>
+<td>LangChain · LlamaIndex (retrieval-first) · Haystack · Semantic Kernel (.NET-leaning)</td>
+<td>many providers, or heavy integration needs</td>
+</tr>
+<tr>
+<td><strong>Agent frameworks</strong></td>
+<td>Claude Agent SDK · LangGraph · CrewAI · AutoGen · OpenAI Agents SDK</td>
+<td>you want a loop you did not write</td>
+</tr>
+<tr>
+<td><strong>Typed / structured</strong></td>
+<td>Pydantic AI · Instructor · DSPy (optimises prompts programmatically)</td>
+<td>output shape is the hard requirement</td>
+</tr>
+<tr>
+<td><strong>App layer (TS)</strong></td>
+<td>Vercel AI SDK</td>
+<td>streaming UI is the main problem</td>
+</tr>
+<tr>
+<td><strong>Gateways</strong></td>
+<td>LiteLLM · OpenRouter</td>
+<td>failover, spend control, one endpoint — <a href="../../study-docs/ML_Study_13h_LLM_Gateways.md">ML Study 13h</a></td>
+</tr>
+<tr>
+<td><strong>Tool protocol</strong></td>
+<td><strong>MCP</strong> — an open standard, not Anthropic-only</td>
+<td>tools must be reusable across apps — <a href="../../study-docs/ML_Study_13b_MCP.md">ML Study 13b</a></td>
+</tr>
+</tbody>
+</table>
+<p>Note the last row. <strong>MCP is not a lock-in</strong>: it is an open protocol, and a server you write is callable by any MCP-aware host.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the ecosystem is layered, not tribal. Pick a layer per problem — and know which layer each tool actually occupies before comparing two of them.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-your-laptop-your-key">Part 5 — Your laptop, your key</h2>
+<p><strong>You do not need a hosted classroom workspace.</strong> A hosted workspace is a proxy in front of the same API — it changes one thing, the <code>base_url</code>, and hands you a scoped key.</p>
+<p>With <strong>your own</strong> key:</p>
+<ul>
+<li><strong>No <code>base_url</code>.</strong> The SDK defaults to Anthropic's API. Set <code>base_url</code> <em>only</em> when talking to a proxy.</li>
+<li><strong>No proxy key.</strong> <code>ANTHROPIC_API_KEY</code> is read from the environment automatically; you rarely pass it in code at all.</li>
+<li><strong>You get the current model generation.</strong> Proxies lag. A classroom proxy may offer <code>claude-opus-4-7</code> while your own key reaches <code>claude-opus-5</code>. This track uses the current generation.</li>
+</ul>
+<pre><code class="language-python">import anthropic
+
+# Your own key: this is the whole setup.
+client = anthropic.Anthropic()          # reads ANTHROPIC_API_KEY from the environment
+
+# A proxy would need the extra line -- and nothing else:
+# client = anthropic.Anthropic(base_url=&quot;https://some-proxy.example.com&quot;)
+</code></pre>
+<p><strong>Set a budget anyway.</strong> In the Console, put a spend limit on the workspace the key belongs to. Not because you will overspend on this track — every build here costs cents — but because an unbounded loop against an unbounded key is the one expensive mistake in agent work, and the limit is the only thing that makes it a non-event.</p>
+<p>See <a href="SETUP.md">SETUP.md</a> for the install.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> a proxy changes exactly one line. Your own key means <strong>no <code>base_url</code>, current models, and a spend limit you control.</strong></p>
+</blockquote>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>harness</strong></td>
+<td>all the code around the model — loop, tools, context, configuration. The part you own.</td>
+</tr>
+<tr>
+<td><strong>the loop</strong></td>
+<td>the turn cycle you control; driven by <code>stop_reason</code>. Unbounded loop, unbounded bill.</td>
+</tr>
+<tr>
+<td><strong>tools</strong></td>
+<td>functions the model may call, described so it knows when. API design for a consumer that reads docs at runtime.</td>
+</tr>
+<tr>
+<td><strong>context strategy</strong></td>
+<td>what goes into each request, under a token budget. Prune, pin, compress.</td>
+</tr>
+<tr>
+<td><strong>configuration</strong></td>
+<td>model, effort, available tools, forbidden actions. A design surface, not a settings file.</td>
+</tr>
+<tr>
+<td><strong>provider SDK</strong></td>
+<td>typed client for one vendor — <code>anthropic</code>. No LangChain underneath.</td>
+</tr>
+<tr>
+<td><strong>abstraction layer</strong></td>
+<td>one interface over many providers — LangChain. Depends on provider SDKs, not the reverse.</td>
+</tr>
+<tr>
+<td><strong>abstraction lag</strong></td>
+<td>new per-provider features arrive late, or as an escape hatch, in any cross-provider layer.</td>
+</tr>
+<tr>
+<td><strong>MCP</strong></td>
+<td>open protocol for exposing tools to any MCP-aware host. Not vendor lock-in.</td>
+</tr>
+<tr>
+<td><strong>gateway</strong></td>
+<td>one endpoint in front of many providers, for failover and spend control.</td>
+</tr>
+<tr>
+<td><code>base_url</code></td>
+<td>only needed for a proxy. With your own key, leave it alone.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Build 00 — a model takes text and returns text; everything that makes it a product is the harness you write around it: the loop, the tools, the context strategy, the configuration. That framing is a claim about ownership — the model is rented and your competitor can rent the same one tomorrow, while the harness is the asset that survives the next release. The stack choice follows from it: LangChain optimises for breadth across providers and pays for it in abstraction lag, and harness engineering lives precisely in the per-provider depth that lag hides — so this track is Claude-native, and keeps LangChain for retrieval breadth and provider neutrality where those are the real requirement. Nothing here is a hosted classroom: your own key, no <code>base_url</code>, the current model generation, and a spend limit you set yourself.</em></p>
+</body>
+</html>
