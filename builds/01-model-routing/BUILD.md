@@ -121,6 +121,90 @@ control**, and that not checking `cache_read_input_tokens` is how teams pay full
 
 ---
 
+### Who decides "complexity", and against what?
+
+A **second model call** decides it — and there is nothing to check its answer against.
+
+Look at what `04_route.py` actually does: it sends the task to the cheapest tier and asks for a digit
+from 1 to 5. That is a model **judging a task it has not performed**, before anyone knows how hard it
+turned out to be. There is no ground truth at routing time, by construction — if you already knew the
+difficulty, you would not need to ask.
+
+So the router's input is an **unvalidated model output**, with a price, a latency, and a failure mode
+of its own. You can only measure its accuracy **offline, afterwards**: take a sample, record what the
+classifier said, record what actually happened, and compare. Nothing measures it live.
+
+**And here is what our bench says about that** — reported because it is uncomfortable, not despite it.
+Sweeping classifier accuracy:
+
+| Accuracy | Misrouted / 200 | Router total |
+|---|---|---|
+| 1.00 (perfect) | 0 | $20.44 |
+| 0.90 | 20 | $20.55 |
+| 0.82 | 29 | $20.42 |
+| 0.70 | 59 | $20.47 |
+| **0.50 (a coin flip)** | 92 | **$19.37** |
+
+A coin-flip classifier comes out **cheaper**. That is not a finding that accuracy is irrelevant — it is
+**the cost model failing, and it is the most important thing on this page.**
+
+A misrouted hard task is priced here as *(cheap call + probability-of-failure × escalation)*. But the
+genuinely worst outcome is a weak model returning a **confident wrong answer that nobody catches**.
+That costs **$0** in this model and the most in production. Cost-only analysis is structurally blind
+to it.
+
+> **Misclassification's real price is quality, not dollars — and quality is `UNMEASURED` across this
+> entire build.** Anyone who justifies a router on cost arithmetic alone has proven nothing about the
+> thing that actually decides it.
+
+### So how do you pick the thresholds?
+
+The ones in `policy.py` — complexity ≤ 2 to the small tier, ≤ 3 to the mid — are **hand-picked
+constants**. They are a starting point, not a derivation, and the doc would be lying to present them
+as anything else.
+
+The principled version is a break-even. Route down when:
+
+```
+cost_cheap  +  P(fail) × cost_escalation   <   cost_strong
+```
+
+Rearranged, route down while:
+
+```
+P(fail)  <  (cost_strong − cost_cheap) / cost_escalation
+```
+
+Put our numbers in — roughly $0.108 per task on the strong tier, $0.02 on the small one, escalation
+back to strong at $0.108 — and the tolerance is about **0.8**. On cost alone you could accept an
+**80% failure rate** before routing down stops paying.
+
+That number should stop you. **It is the same blind spot again**: cost arithmetic permits a tier that
+fails four times in five, because it never prices the wrong answer. So use the break-even to find the
+*ceiling*, then set the real threshold from a quality bar you measured — the point where the small
+tier's answers stop being good enough on **your** tasks, which is always lower.
+
+**Cost sets the ceiling. Quality sets the threshold.**
+
+### Is conversation history shared across models?
+
+**Yes — because the API is stateless and you are holding the history anyway.** Nothing server-side
+remembers a conversation. Every request carries the full `messages` array, so sending it to a
+different `model` string is mechanically trivial. Mid-conversation switching works.
+
+Four things make it lossy, though, and all four are the harness's problem:
+
+| | What happens when you switch |
+|---|---|
+| **Prompt cache** | Caches are **per-model**. Switching means a cold cache and a re-write of the prefix. |
+| **Thinking blocks** | Bound to the model that produced them. Another model **silently drops** them — no error, just lost reasoning. |
+| **Context window** | Tiers differ (200K vs 1M). A conversation that outgrew the small tier's window **cannot go back to it**. |
+| **Style and calibration** | Tiers phrase, hedge and format differently. A visible seam mid-conversation is a real product defect. |
+
+So: portable, not free. This is why routing sits most naturally at the **task** boundary — one
+decision, one model, one coherent conversation — rather than switching turn by turn inside a live
+exchange.
+
 ### So where does routing actually live?
 
 **Not in the API, and not in Claude Code.** There is no routing feature to switch on.

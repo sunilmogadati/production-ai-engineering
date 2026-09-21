@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 from pathlib import Path
 
 import pricing
@@ -69,6 +70,29 @@ ASSUMPTIONS = {
         "claude-sonnet-5": {1: 0.01, 2: 0.01, 3: 0.04, 4: 0.14, 5: 0.28},
         "claude-opus-5": {1: 0.00, 2: 0.01, 3: 0.02, 4: 0.05, 5: 0.10},
     },
+    "classifier_accuracy": 0.82,
+    # How often the classifier gets the difficulty right. It is a model call
+    # judging a task it has not performed, against no ground truth -- there is
+    # nothing to check its answer against at routing time. Errors are assumed
+    # adjacent (off by one), which is the realistic shape: a 4 read as a 3, a 2
+    # read as a 3. An off-by-one DOWNWARD is the expensive direction, because it
+    # routes hard work to a tier that will fail it and escalate.
+    #
+    # Until this was modelled the bench read ground-truth difficulty straight
+    # from the generator -- i.e. it assumed a PERFECT classifier, and flattered
+    # the router accordingly.
+
+    # LIMITATION, stated because the numbers look reassuring and should not.
+    # Sweeping classifier_accuracy from 1.00 to 0.30 barely moves the router's
+    # total, and at 0.50 it comes out CHEAPER. That is not evidence that accuracy
+    # does not matter. It is this model failing: a misrouted hard task is priced
+    # as (cheap call + P(fail) x escalation), and the genuinely worst outcome --
+    # a weak model returning a confident WRONG answer that nobody catches --
+    # costs $0 here and the most in production.
+    #
+    # Cost-only modelling cannot see misclassification. Its real price is quality,
+    # and quality is UNMEASURED across this whole build.
+
     "note": (
         "effort_output_multiplier and retry_rate are ASSUMED, not measured. They are "
         "the two inputs that decide whether routing wins. Run --live against your own "
@@ -120,9 +144,21 @@ def run_configuration(
     total_retry = 0.0
     decisions = []
 
+    # Seeded so a misclassification pattern is reproducible across runs.
+    rng = random.Random(20260916)
+    accuracy = ASSUMPTIONS["classifier_accuracy"]
+    misrouted = 0
+
     for task in task_list:
         if fixed_model is None:
-            decision = router_module.route(task)
+            # The router sees the classifier's ANSWER, not the truth. Everything
+            # downstream (cost, escalation) is judged against the truth.
+            perceived = task["complexity"]
+            if rng.random() > accuracy:
+                perceived = max(1, min(5, perceived + rng.choice([-1, 1])))
+                misrouted += 1
+
+            decision = router_module.route({**task, "complexity": perceived})
             model_id = decision.model_id
             classifier = decision.classifier_cost_usd
             rule_id = decision.rule_id
@@ -181,6 +217,7 @@ def run_configuration(
         "cost_escalations_usd": round(total_retry, 4),
         "cost_total_usd": round(total, 4),
         "cost_per_completed_task_usd": round(total / len(task_list), 6),
+        "misclassified_tasks": misrouted,
         "latency_note": "UNMEASURED - requires a live run",
         "quality_note": "UNMEASURED - requires a live run",
         "decisions": decisions,

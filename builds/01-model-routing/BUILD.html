@@ -172,6 +172,116 @@ extra cold starts — measured at 0.07% here, so small, but the reason the row e
 this. The portable lesson is not the syntax: it is that <strong>a repeated prefix is a cost lever you
 control</strong>, and that not checking <code>cache_read_input_tokens</code> is how teams pay full price for months.</p>
 <hr />
+<h3 id="who-decides-complexity-and-against-what">Who decides "complexity", and against what?</h3>
+<p>A <strong>second model call</strong> decides it — and there is nothing to check its answer against.</p>
+<p>Look at what <code>04_route.py</code> actually does: it sends the task to the cheapest tier and asks for a digit
+from 1 to 5. That is a model <strong>judging a task it has not performed</strong>, before anyone knows how hard it
+turned out to be. There is no ground truth at routing time, by construction — if you already knew the
+difficulty, you would not need to ask.</p>
+<p>So the router's input is an <strong>unvalidated model output</strong>, with a price, a latency, and a failure mode
+of its own. You can only measure its accuracy <strong>offline, afterwards</strong>: take a sample, record what the
+classifier said, record what actually happened, and compare. Nothing measures it live.</p>
+<p><strong>And here is what our bench says about that</strong> — reported because it is uncomfortable, not despite it.
+Sweeping classifier accuracy:</p>
+<table>
+<thead>
+<tr>
+<th>Accuracy</th>
+<th>Misrouted / 200</th>
+<th>Router total</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.00 (perfect)</td>
+<td>0</td>
+<td>$20.44</td>
+</tr>
+<tr>
+<td>0.90</td>
+<td>20</td>
+<td>$20.55</td>
+</tr>
+<tr>
+<td>0.82</td>
+<td>29</td>
+<td>$20.42</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>59</td>
+<td>$20.47</td>
+</tr>
+<tr>
+<td><strong>0.50 (a coin flip)</strong></td>
+<td>92</td>
+<td><strong>$19.37</strong></td>
+</tr>
+</tbody>
+</table>
+<p>A coin-flip classifier comes out <strong>cheaper</strong>. That is not a finding that accuracy is irrelevant — it is
+<strong>the cost model failing, and it is the most important thing on this page.</strong></p>
+<p>A misrouted hard task is priced here as <em>(cheap call + probability-of-failure × escalation)</em>. But the
+genuinely worst outcome is a weak model returning a <strong>confident wrong answer that nobody catches</strong>.
+That costs <strong>$0</strong> in this model and the most in production. Cost-only analysis is structurally blind
+to it.</p>
+<blockquote>
+<p><strong>Misclassification's real price is quality, not dollars — and quality is <code>UNMEASURED</code> across this
+entire build.</strong> Anyone who justifies a router on cost arithmetic alone has proven nothing about the
+thing that actually decides it.</p>
+</blockquote>
+<h3 id="so-how-do-you-pick-the-thresholds">So how do you pick the thresholds?</h3>
+<p>The ones in <code>policy.py</code> — complexity ≤ 2 to the small tier, ≤ 3 to the mid — are <strong>hand-picked
+constants</strong>. They are a starting point, not a derivation, and the doc would be lying to present them
+as anything else.</p>
+<p>The principled version is a break-even. Route down when:</p>
+<pre><code>cost_cheap  +  P(fail) × cost_escalation   &lt;   cost_strong
+</code></pre>
+<p>Rearranged, route down while:</p>
+<pre><code>P(fail)  &lt;  (cost_strong − cost_cheap) / cost_escalation
+</code></pre>
+<p>Put our numbers in — roughly $0.108 per task on the strong tier, $0.02 on the small one, escalation
+back to strong at $0.108 — and the tolerance is about <strong>0.8</strong>. On cost alone you could accept an
+<strong>80% failure rate</strong> before routing down stops paying.</p>
+<p>That number should stop you. <strong>It is the same blind spot again</strong>: cost arithmetic permits a tier that
+fails four times in five, because it never prices the wrong answer. So use the break-even to find the
+<em>ceiling</em>, then set the real threshold from a quality bar you measured — the point where the small
+tier's answers stop being good enough on <strong>your</strong> tasks, which is always lower.</p>
+<p><strong>Cost sets the ceiling. Quality sets the threshold.</strong></p>
+<h3 id="is-conversation-history-shared-across-models">Is conversation history shared across models?</h3>
+<p><strong>Yes — because the API is stateless and you are holding the history anyway.</strong> Nothing server-side
+remembers a conversation. Every request carries the full <code>messages</code> array, so sending it to a
+different <code>model</code> string is mechanically trivial. Mid-conversation switching works.</p>
+<p>Four things make it lossy, though, and all four are the harness's problem:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>What happens when you switch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Prompt cache</strong></td>
+<td>Caches are <strong>per-model</strong>. Switching means a cold cache and a re-write of the prefix.</td>
+</tr>
+<tr>
+<td><strong>Thinking blocks</strong></td>
+<td>Bound to the model that produced them. Another model <strong>silently drops</strong> them — no error, just lost reasoning.</td>
+</tr>
+<tr>
+<td><strong>Context window</strong></td>
+<td>Tiers differ (200K vs 1M). A conversation that outgrew the small tier's window <strong>cannot go back to it</strong>.</td>
+</tr>
+<tr>
+<td><strong>Style and calibration</strong></td>
+<td>Tiers phrase, hedge and format differently. A visible seam mid-conversation is a real product defect.</td>
+</tr>
+</tbody>
+</table>
+<p>So: portable, not free. This is why routing sits most naturally at the <strong>task</strong> boundary — one
+decision, one model, one coherent conversation — rather than switching turn by turn inside a live
+exchange.</p>
 <h3 id="so-where-does-routing-actually-live">So where does routing actually live?</h3>
 <p><strong>Not in the API, and not in Claude Code.</strong> There is no routing feature to switch on.</p>
 <ul>
