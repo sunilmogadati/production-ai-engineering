@@ -51,9 +51,46 @@ flowchart LR
     H --> OUT["an answer you can put<br/>in front of a customer"]
 ```
 
-**The loop.** A model answers once. Real work takes several turns: the model asks for a tool, you run it, you hand back the result, it continues. *You* own that cycle — when it runs again, when it stops, what happens if it never converges. In the Anthropic API the signal is `stop_reason`: `end_turn` means finished, `tool_use` means it wants something from you. A loop with no bound is an unbounded bill.
+**The loop.** A model answers once. Real work takes several turns: the model asks for a tool, you run it, you hand back the result, it continues. *You* own that cycle — when it runs again, when it stops, what happens if it never converges. A loop with no bound is an unbounded bill.
+
+**Yes — this is ReAct.** You have met this loop before, under that name, in [ML Study 13a](../../study-docs/ML_Study_13a_LangGraph.md) as `create_react_agent`. ReAct is *Reasoning + Acting*: the model thinks, acts via a tool, observes the result, and repeats. Same cycle, different vocabulary.
+
+One thing did change, and it matters. The original ReAct made the model **write** `Thought:` / `Action:` / `Observation:` as plain text, which your code then **parsed** — brittle, and a malformed line broke the agent. Modern models have **native tool calling**: the request comes back as a structured `tool_use` block with typed arguments. Nothing is parsed out of prose. When you see a ReAct diagram today, the loop is the same and the transport is not.
+
+**Where the signal physically is.** `stop_reason` is a **field in the JSON body the API returns**. Anthropic's server sets it when it finishes generating; your SDK deserialises it; you read it off the response object. Nothing is streamed out-of-band, and nothing calls you back:
+
+```jsonc
+// POST /v1/messages  ->  200 OK
+{
+  "id": "msg_01...",
+  "role": "assistant",
+  "content": [ { "type": "tool_use", "id": "toolu_01...", "name": "get_metrics", "input": {...} } ],
+  "stop_reason": "tool_use",     // <- the server's answer to "why did I stop?"
+  "usage": { "input_tokens": 1834, "output_tokens": 97 }
+}
+```
+
+```python
+response = client.messages.create(...)
+response.stop_reason        # "end_turn" | "tool_use" | "max_tokens" | "refusal"
+```
+
+It is a **return value, not an event.** There is no webhook, no callback, no daemon. The request ends, you inspect the response, and you decide whether to send another. That is why the loop is unambiguously yours.
 
 **The tools.** The functions the model may call, described so it knows when to reach for each. This is API design where the consumer reads documentation *at runtime* and cannot ask a follow-up question. Two tools with vague, overlapping descriptions get confused — and the fix is a better description, not a stern prompt.
+
+**What can actually be a tool.** Four kinds, and they differ in *who runs the code*:
+
+| Kind | Who executes it | Examples |
+|---|---|---|
+| **Your own functions** (client-side) | **you**, in your process | query a database, call an internal API, run a calculation |
+| **Anthropic-hosted** (server-side) | Anthropic, before the response returns | `web_search`, `web_fetch`, `code_execution`, `bash`, `text_editor`, `memory` |
+| **MCP servers** | a separate process or service | a team's service, a vendor's connector, anything speaking [MCP](../../study-docs/ML_Study_13b_MCP.md) |
+| **Subagents / Skills** | a nested model call you configured | a scoped reviewer, a packaged procedure |
+
+**RAG is not on that list, and that is the point.** Retrieval is a *pattern*, not a tool type — it becomes a tool when you expose it as one (`search_docs(query)` hitting your vector store), which lands it in row one. The same is true of "memory" and "long-term state": they are things you *implement*, then expose.
+
+The distinction that matters operationally is **who runs the code**, because that decides who pays for the failure. A client-side tool that hangs is your outage. A server-side tool that fails returns an error block in a `200 OK` response — **it does not raise**, so code that only catches exceptions will sail straight past it.
 
 **The context strategy.** Everything sent on each request: the system prompt, conversation so far, retrieved documents, tool output. It is a **budget**, not a bucket. Long conversations need pruning of verbose tool output, pinning of facts that must never drop, and compression of resolved sections. Two things make this load-bearing: you pay for every token on every request, and models attend less reliably to material buried in the middle.
 
@@ -93,6 +130,32 @@ A framework spanning many providers must express features in terms all providers
 Build 01 is a live example. **`effort`** — the parameter that beat the entire routing architecture — is current Anthropic API surface. A cross-provider abstraction has nowhere natural to put it, because most providers have no equivalent. Reach for it through a generic wrapper and you are passing vendor-specific kwargs through a layer whose purpose was to hide them.
 
 Same for **adaptive thinking**, **prompt caching breakpoints**, **structured outputs**, **hooks**, **`stop_reason` control**. These are exactly what harness engineering is about, and they are exactly what generic abstraction flattens.
+
+### What the Claude stack does NOT give you
+
+The honest answer to "is everything I use in LangChain available here?" is **no**, and pretending
+otherwise would be the kind of claim this track exists to argue against. Going native is a real
+trade, so here is the ledger:
+
+| You use today | In the Claude stack | Verdict |
+|---|---|---|
+| **LangGraph** — explicit state graphs, branches, checkpoints | The Agent SDK gives a loop, subagents and hooks — **not a graph you declare**. You write control flow as code. | **Gap.** You lose the declared graph and its visual/replay tooling. You gain an ordinary `while` you can debug with a breakpoint. |
+| **LCEL / chains** — declarative composition | None. You compose with functions. | **Gap by design.** Python is the composition layer. |
+| **Guardrails** (NeMo, Guardrails AI) | **Hooks** in the Agent SDK and Claude Code run deterministic code before/after a tool. Plus structured outputs. | **Partial, and stronger where it overlaps.** A hook is code, not a prompt instruction — which is the point of [Build 20](../../BUILDS.md). No stand-alone rules DSL. |
+| **Evaluation** (LangSmith, promptfoo) | No eval framework in the SDK. The Console has an evaluation tool; the rest you build or bring. | **Gap.** Build 15 builds one. Nothing stops you pointing promptfoo or LangSmith at Claude. |
+| **Tracing / observability** | No built-in tracer. OpenTelemetry, Langfuse, LangSmith all work against it. | **Gap — bring your own.** |
+| **Deep agents / planning** | Subagents + orchestration patterns, hand-written. | **Partial.** More assembly, fewer assumptions. |
+| **Vector stores, loaders, splitters** | **None, and none intended.** | **Gap, and not one worth closing.** Use LlamaIndex or the store's own client. This is plumbing, not harness. |
+| **LLM gateways** (LiteLLM, OpenRouter) | Orthogonal — a gateway sits *in front of* any SDK. | **Not a gap.** Point the SDK's `base_url` at a gateway and both work. See [ML Study 13h](../../study-docs/ML_Study_13h_LLM_Gateways.md). |
+
+Read the right-hand column carefully. The gaps cluster in **ecosystem breadth** — retrieval plumbing,
+tracing backends, eval harnesses, graph tooling. The strengths cluster in **model-surface depth** —
+effort, adaptive thinking, cache control, `stop_reason`, hooks, MCP.
+
+That is the same trade stated twice: **breadth across providers versus depth on one.** Harness
+engineering lives in the depth, which is why the track goes native — and why nobody should tell you
+to delete LangChain. **A gateway in front, a retrieval library beside, and a Claude-native control
+surface is a perfectly normal production shape.**
 
 ### When to choose which
 

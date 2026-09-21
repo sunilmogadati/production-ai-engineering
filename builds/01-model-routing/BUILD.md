@@ -12,41 +12,15 @@
 
 ---
 
-## Part 0 — What a harness is, and why this track is about building one
+## Part 0 — Where this sits
 
-A **model** takes text and returns text. That is all it does. Everything that turns it into a system
-somebody depends on is code you write around it — and that surrounding code is the **harness**.
+A model takes text and returns text; everything that makes it a system is the **harness** you write
+around it — the loop, the tools, the context strategy, the configuration. [Build 00](../00-foundations/BUILD.md)
+defines that in full, with the diagram.
 
-The harness is what decides which model gets called, what goes into the prompt and what gets left
-out, when to stop looping, which tools the model may reach for, what happens when a call fails, what
-gets logged, and what a human has to approve. None of that lives in the model. All of it is yours.
-
-```mermaid
-flowchart LR
-    subgraph HARNESS["THE HARNESS — the part you build and own"]
-        direction TB
-        SEL["model selection<br/>which tier, what effort"]
-        CTX["context<br/>what goes in, what gets pruned"]
-        LOOP["the loop<br/>when to continue, when to stop"]
-        TOOLS["tools<br/>what it may reach for"]
-        GUARD["guardrails<br/>what it may never do"]
-        OBS["evaluation & logging<br/>how you know it works"]
-    end
-    IN["a request"] --> HARNESS --> M(("model<br/>text in,<br/>text out"))
-    M --> HARNESS --> OUT["an answer you can<br/>put in front of a customer"]
-```
-
-**Why this matters commercially:** the model is the part you cannot differentiate on — your
-competitor can call the same one tomorrow. The harness is the part that is yours. It is where the
-cost lives, where the failures live, and where production judgment shows up.
-
-This track builds a harness one piece at a time. **Build 01 is the first piece: model selection.**
-It comes first because every later decision — context, tools, guardrails, evaluation — assumes a
-model has already been chosen, and because it is the piece teams get wrong earliest and most
-expensively.
-
-> **The one-line frame:** the model is a component. **The harness is the product.** This track builds
-> the harness.
+This build is the **configuration** corner of it, and specifically one dimension: *which model, at
+what effort.* It comes first because every later decision assumes a model has already been chosen,
+and because it is the piece teams get wrong earliest and most expensively.
 
 ---
 
@@ -96,6 +70,72 @@ flowchart TB
 ```
 
 Lines 2, 3 and 4 appear in no tier table anywhere. They are also the three that decide whether routing is worth doing — which is why the obvious optimisation so often disappoints.
+
+### Is caching automatic, or something you do?
+
+**Something you do.** This is the most common wrong assumption about the cache line, and it is worth
+being exact, because a team that believes caching is automatic never checks whether it is working.
+
+Nothing is cached by default. You mark a **breakpoint** in the request, and everything *before* that
+point becomes cacheable:
+
+```python
+response = client.messages.create(
+    model="claude-opus-5",
+    max_tokens=2000,
+    system=[{
+        "type": "text",
+        "text": LARGE_STABLE_INSTRUCTIONS,      # the part worth caching
+        "cache_control": {"type": "ephemeral"}, # <- the breakpoint. Without it: nothing caches.
+    }],
+    messages=[{"role": "user", "content": todays_question}],   # after the breakpoint, never cached
+)
+```
+
+**What you control:**
+
+| Lever | What it does |
+|---|---|
+| **Where the breakpoint goes** | everything before it is cacheable; up to 4 breakpoints per request |
+| **What sits before it** | ordering is yours: stable content first, volatile content last |
+| **TTL** | ~5 minutes by default; `{"type": "ephemeral", "ttl": "1h"}` for an hour |
+| **Whether to use it at all** | omit `cache_control` and you pay full rate on every token, every time |
+
+**What you do not control:** the storage, eviction, or the multipliers (~0.1× to read, ~1.25× to write).
+
+**It is a prefix match, and that is the whole trap.** Any byte that changes *before* the breakpoint
+invalidates everything after it. A timestamp in the system prompt, a UUID, an unsorted `json.dumps`,
+a tool list that varies by request — each silently drops your hit rate to zero with no error
+anywhere. The check is one line:
+
+```python
+print(response.usage.cache_read_input_tokens)   # zero across repeated calls => something is invalidating it
+```
+
+**And it is per-model.** Each model keeps its own cache, which is the mechanism behind the router's
+extra cold starts — measured at 0.07% here, so small, but the reason the row exists.
+
+**Other providers have equivalents**, with different ergonomics — some automatic, some opt-in like
+this. The portable lesson is not the syntax: it is that **a repeated prefix is a cost lever you
+control**, and that not checking `cache_read_input_tokens` is how teams pay full price for months.
+
+---
+
+### So where does routing actually live?
+
+**Not in the API, and not in Claude Code.** There is no routing feature to switch on.
+
+- **The Claude API** takes a `model` string per request. That is the entire mechanism. Choosing which
+  string to send is **your application's code** — that is literally all `04_route.py` is.
+- **Claude Code** lets *you* pick a model (`/model`, or config) for your session. That is a developer
+  preference, not a request router.
+- **Gateways** (LiteLLM, OpenRouter) do offer routing as a product feature — rules, fallbacks, spend
+  caps — sitting in front of any SDK. If you want routing as infrastructure rather than application
+  code, that is the layer. See [ML Study 13h](../../study-docs/ML_Study_13h_LLM_Gateways.md).
+
+So: `02_three_tiers.py` shows the *mechanism* (same request, different `model` string, three results
+you can compare), and `04_route.py` shows the *policy* (a rule deciding which string to send). Both
+are ordinary code you own — which is exactly why this build can ask whether it earns its place.
 
 > **The one-line frame:** a price table tells you what a **token** costs. It does not tell you what the **work** costs, and those two numbers rank your options differently.
 

@@ -107,8 +107,58 @@
     end
     H &lt;--&gt; M((&quot;model&lt;br/&gt;text in,&lt;br/&gt;text out&quot;))
     H --&gt; OUT[&quot;an answer you can put&lt;br/&gt;in front of a customer&quot;]</div>
-<p><strong>The loop.</strong> A model answers once. Real work takes several turns: the model asks for a tool, you run it, you hand back the result, it continues. <em>You</em> own that cycle — when it runs again, when it stops, what happens if it never converges. In the Anthropic API the signal is <code>stop_reason</code>: <code>end_turn</code> means finished, <code>tool_use</code> means it wants something from you. A loop with no bound is an unbounded bill.</p>
+<p><strong>The loop.</strong> A model answers once. Real work takes several turns: the model asks for a tool, you run it, you hand back the result, it continues. <em>You</em> own that cycle — when it runs again, when it stops, what happens if it never converges. A loop with no bound is an unbounded bill.</p>
+<p><strong>Yes — this is ReAct.</strong> You have met this loop before, under that name, in <a href="../../study-docs/ML_Study_13a_LangGraph.md">ML Study 13a</a> as <code>create_react_agent</code>. ReAct is <em>Reasoning + Acting</em>: the model thinks, acts via a tool, observes the result, and repeats. Same cycle, different vocabulary.</p>
+<p>One thing did change, and it matters. The original ReAct made the model <strong>write</strong> <code>Thought:</code> / <code>Action:</code> / <code>Observation:</code> as plain text, which your code then <strong>parsed</strong> — brittle, and a malformed line broke the agent. Modern models have <strong>native tool calling</strong>: the request comes back as a structured <code>tool_use</code> block with typed arguments. Nothing is parsed out of prose. When you see a ReAct diagram today, the loop is the same and the transport is not.</p>
+<p><strong>Where the signal physically is.</strong> <code>stop_reason</code> is a <strong>field in the JSON body the API returns</strong>. Anthropic's server sets it when it finishes generating; your SDK deserialises it; you read it off the response object. Nothing is streamed out-of-band, and nothing calls you back:</p>
+<pre><code class="language-jsonc">// POST /v1/messages  -&gt;  200 OK
+{
+  &quot;id&quot;: &quot;msg_01...&quot;,
+  &quot;role&quot;: &quot;assistant&quot;,
+  &quot;content&quot;: [ { &quot;type&quot;: &quot;tool_use&quot;, &quot;id&quot;: &quot;toolu_01...&quot;, &quot;name&quot;: &quot;get_metrics&quot;, &quot;input&quot;: {...} } ],
+  &quot;stop_reason&quot;: &quot;tool_use&quot;,     // &lt;- the server's answer to &quot;why did I stop?&quot;
+  &quot;usage&quot;: { &quot;input_tokens&quot;: 1834, &quot;output_tokens&quot;: 97 }
+}
+</code></pre>
+<pre><code class="language-python">response = client.messages.create(...)
+response.stop_reason        # &quot;end_turn&quot; | &quot;tool_use&quot; | &quot;max_tokens&quot; | &quot;refusal&quot;
+</code></pre>
+<p>It is a <strong>return value, not an event.</strong> There is no webhook, no callback, no daemon. The request ends, you inspect the response, and you decide whether to send another. That is why the loop is unambiguously yours.</p>
 <p><strong>The tools.</strong> The functions the model may call, described so it knows when to reach for each. This is API design where the consumer reads documentation <em>at runtime</em> and cannot ask a follow-up question. Two tools with vague, overlapping descriptions get confused — and the fix is a better description, not a stern prompt.</p>
+<p><strong>What can actually be a tool.</strong> Four kinds, and they differ in <em>who runs the code</em>:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Who executes it</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Your own functions</strong> (client-side)</td>
+<td><strong>you</strong>, in your process</td>
+<td>query a database, call an internal API, run a calculation</td>
+</tr>
+<tr>
+<td><strong>Anthropic-hosted</strong> (server-side)</td>
+<td>Anthropic, before the response returns</td>
+<td><code>web_search</code>, <code>web_fetch</code>, <code>code_execution</code>, <code>bash</code>, <code>text_editor</code>, <code>memory</code></td>
+</tr>
+<tr>
+<td><strong>MCP servers</strong></td>
+<td>a separate process or service</td>
+<td>a team's service, a vendor's connector, anything speaking <a href="../../study-docs/ML_Study_13b_MCP.md">MCP</a></td>
+</tr>
+<tr>
+<td><strong>Subagents / Skills</strong></td>
+<td>a nested model call you configured</td>
+<td>a scoped reviewer, a packaged procedure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>RAG is not on that list, and that is the point.</strong> Retrieval is a <em>pattern</em>, not a tool type — it becomes a tool when you expose it as one (<code>search_docs(query)</code> hitting your vector store), which lands it in row one. The same is true of "memory" and "long-term state": they are things you <em>implement</em>, then expose.</p>
+<p>The distinction that matters operationally is <strong>who runs the code</strong>, because that decides who pays for the failure. A client-side tool that hangs is your outage. A server-side tool that fails returns an error block in a <code>200 OK</code> response — <strong>it does not raise</strong>, so code that only catches exceptions will sail straight past it.</p>
 <p><strong>The context strategy.</strong> Everything sent on each request: the system prompt, conversation so far, retrieved documents, tool output. It is a <strong>budget</strong>, not a bucket. Long conversations need pruning of verbose tool output, pinning of facts that must never drop, and compression of resolved sections. Two things make this load-bearing: you pay for every token on every request, and models attend less reliably to material buried in the middle.</p>
 <p><strong>The configuration.</strong> Which model, at what effort, with which tools available, under which rules. Not a settings file — <strong>a design surface</strong>. Build 01 is entirely about one dimension of it, and finds that a single configuration parameter moved more money than the architecture did.</p>
 <blockquote>
@@ -158,6 +208,68 @@
 <p>A framework spanning many providers must express features in terms all providers share. New per-provider capabilities either arrive late or arrive as an escape hatch.</p>
 <p>Build 01 is a live example. <strong><code>effort</code></strong> — the parameter that beat the entire routing architecture — is current Anthropic API surface. A cross-provider abstraction has nowhere natural to put it, because most providers have no equivalent. Reach for it through a generic wrapper and you are passing vendor-specific kwargs through a layer whose purpose was to hide them.</p>
 <p>Same for <strong>adaptive thinking</strong>, <strong>prompt caching breakpoints</strong>, <strong>structured outputs</strong>, <strong>hooks</strong>, <strong><code>stop_reason</code> control</strong>. These are exactly what harness engineering is about, and they are exactly what generic abstraction flattens.</p>
+<h3 id="what-the-claude-stack-does-not-give-you">What the Claude stack does NOT give you</h3>
+<p>The honest answer to "is everything I use in LangChain available here?" is <strong>no</strong>, and pretending
+otherwise would be the kind of claim this track exists to argue against. Going native is a real
+trade, so here is the ledger:</p>
+<table>
+<thead>
+<tr>
+<th>You use today</th>
+<th>In the Claude stack</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LangGraph</strong> — explicit state graphs, branches, checkpoints</td>
+<td>The Agent SDK gives a loop, subagents and hooks — <strong>not a graph you declare</strong>. You write control flow as code.</td>
+<td><strong>Gap.</strong> You lose the declared graph and its visual/replay tooling. You gain an ordinary <code>while</code> you can debug with a breakpoint.</td>
+</tr>
+<tr>
+<td><strong>LCEL / chains</strong> — declarative composition</td>
+<td>None. You compose with functions.</td>
+<td><strong>Gap by design.</strong> Python is the composition layer.</td>
+</tr>
+<tr>
+<td><strong>Guardrails</strong> (NeMo, Guardrails AI)</td>
+<td><strong>Hooks</strong> in the Agent SDK and Claude Code run deterministic code before/after a tool. Plus structured outputs.</td>
+<td><strong>Partial, and stronger where it overlaps.</strong> A hook is code, not a prompt instruction — which is the point of <a href="../../BUILDS.md">Build 20</a>. No stand-alone rules DSL.</td>
+</tr>
+<tr>
+<td><strong>Evaluation</strong> (LangSmith, promptfoo)</td>
+<td>No eval framework in the SDK. The Console has an evaluation tool; the rest you build or bring.</td>
+<td><strong>Gap.</strong> Build 15 builds one. Nothing stops you pointing promptfoo or LangSmith at Claude.</td>
+</tr>
+<tr>
+<td><strong>Tracing / observability</strong></td>
+<td>No built-in tracer. OpenTelemetry, Langfuse, LangSmith all work against it.</td>
+<td><strong>Gap — bring your own.</strong></td>
+</tr>
+<tr>
+<td><strong>Deep agents / planning</strong></td>
+<td>Subagents + orchestration patterns, hand-written.</td>
+<td><strong>Partial.</strong> More assembly, fewer assumptions.</td>
+</tr>
+<tr>
+<td><strong>Vector stores, loaders, splitters</strong></td>
+<td><strong>None, and none intended.</strong></td>
+<td><strong>Gap, and not one worth closing.</strong> Use LlamaIndex or the store's own client. This is plumbing, not harness.</td>
+</tr>
+<tr>
+<td><strong>LLM gateways</strong> (LiteLLM, OpenRouter)</td>
+<td>Orthogonal — a gateway sits <em>in front of</em> any SDK.</td>
+<td><strong>Not a gap.</strong> Point the SDK's <code>base_url</code> at a gateway and both work. See <a href="../../study-docs/ML_Study_13h_LLM_Gateways.md">ML Study 13h</a>.</td>
+</tr>
+</tbody>
+</table>
+<p>Read the right-hand column carefully. The gaps cluster in <strong>ecosystem breadth</strong> — retrieval plumbing,
+tracing backends, eval harnesses, graph tooling. The strengths cluster in <strong>model-surface depth</strong> —
+effort, adaptive thinking, cache control, <code>stop_reason</code>, hooks, MCP.</p>
+<p>That is the same trade stated twice: <strong>breadth across providers versus depth on one.</strong> Harness
+engineering lives in the depth, which is why the track goes native — and why nobody should tell you
+to delete LangChain. <strong>A gateway in front, a retrieval library beside, and a Claude-native control
+surface is a perfectly normal production shape.</strong></p>
 <h3 id="when-to-choose-which">When to choose which</h3>
 <p><strong>Go Claude-native when:</strong>
 - You have committed to Claude, or would switch deliberately rather than dynamically.

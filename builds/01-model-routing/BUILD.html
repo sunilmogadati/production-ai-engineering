@@ -45,35 +45,13 @@
 <p><strong>Run it in the browser:</strong> <a href="https://colab.research.google.com/github/sunilmogadati/production-ai-engineering/blob/main/notebooks/hello_model_selection.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> — nothing to install.</p>
 <p><strong>Where this sits:</strong> first build of the Build Track. Pairs with the runnable build in this folder: five steps in <a href="steps/"><code>steps/</code></a> you run live, and a bench in <a href="src/"><code>src/</code></a> that runs with <strong>no API key at all</strong>.</p>
 <hr />
-<h2 id="part-0-what-a-harness-is-and-why-this-track-is-about-building-one">Part 0 — What a harness is, and why this track is about building one</h2>
-<p>A <strong>model</strong> takes text and returns text. That is all it does. Everything that turns it into a system
-somebody depends on is code you write around it — and that surrounding code is the <strong>harness</strong>.</p>
-<p>The harness is what decides which model gets called, what goes into the prompt and what gets left
-out, when to stop looping, which tools the model may reach for, what happens when a call fails, what
-gets logged, and what a human has to approve. None of that lives in the model. All of it is yours.</p>
-<div class="mermaid">flowchart LR
-    subgraph HARNESS[&quot;THE HARNESS — the part you build and own&quot;]
-        direction TB
-        SEL[&quot;model selection&lt;br/&gt;which tier, what effort&quot;]
-        CTX[&quot;context&lt;br/&gt;what goes in, what gets pruned&quot;]
-        LOOP[&quot;the loop&lt;br/&gt;when to continue, when to stop&quot;]
-        TOOLS[&quot;tools&lt;br/&gt;what it may reach for&quot;]
-        GUARD[&quot;guardrails&lt;br/&gt;what it may never do&quot;]
-        OBS[&quot;evaluation &amp; logging&lt;br/&gt;how you know it works&quot;]
-    end
-    IN[&quot;a request&quot;] --&gt; HARNESS --&gt; M((&quot;model&lt;br/&gt;text in,&lt;br/&gt;text out&quot;))
-    M --&gt; HARNESS --&gt; OUT[&quot;an answer you can&lt;br/&gt;put in front of a customer&quot;]</div>
-<p><strong>Why this matters commercially:</strong> the model is the part you cannot differentiate on — your
-competitor can call the same one tomorrow. The harness is the part that is yours. It is where the
-cost lives, where the failures live, and where production judgment shows up.</p>
-<p>This track builds a harness one piece at a time. <strong>Build 01 is the first piece: model selection.</strong>
-It comes first because every later decision — context, tools, guardrails, evaluation — assumes a
-model has already been chosen, and because it is the piece teams get wrong earliest and most
-expensively.</p>
-<blockquote>
-<p><strong>The one-line frame:</strong> the model is a component. <strong>The harness is the product.</strong> This track builds
-the harness.</p>
-</blockquote>
+<h2 id="part-0-where-this-sits">Part 0 — Where this sits</h2>
+<p>A model takes text and returns text; everything that makes it a system is the <strong>harness</strong> you write
+around it — the loop, the tools, the context strategy, the configuration. <a href="../00-foundations/BUILD.md">Build 00</a>
+defines that in full, with the diagram.</p>
+<p>This build is the <strong>configuration</strong> corner of it, and specifically one dimension: <em>which model, at
+what effort.</em> It comes first because every later decision assumes a model has already been chosen,
+and because it is the piece teams get wrong earliest and most expensively.</p>
 <hr />
 <h2 id="part-1-the-problem-the-model-list-is-already-out-of-date">Part 1 — The problem: the model list is already out of date</h2>
 <p>Here is the table every introduction to a model family ends with.</p>
@@ -138,6 +116,76 @@ the harness.</p>
     C --&gt; T
     D --&gt; T</div>
 <p>Lines 2, 3 and 4 appear in no tier table anywhere. They are also the three that decide whether routing is worth doing — which is why the obvious optimisation so often disappoints.</p>
+<h3 id="is-caching-automatic-or-something-you-do">Is caching automatic, or something you do?</h3>
+<p><strong>Something you do.</strong> This is the most common wrong assumption about the cache line, and it is worth
+being exact, because a team that believes caching is automatic never checks whether it is working.</p>
+<p>Nothing is cached by default. You mark a <strong>breakpoint</strong> in the request, and everything <em>before</em> that
+point becomes cacheable:</p>
+<pre><code class="language-python">response = client.messages.create(
+    model=&quot;claude-opus-5&quot;,
+    max_tokens=2000,
+    system=[{
+        &quot;type&quot;: &quot;text&quot;,
+        &quot;text&quot;: LARGE_STABLE_INSTRUCTIONS,      # the part worth caching
+        &quot;cache_control&quot;: {&quot;type&quot;: &quot;ephemeral&quot;}, # &lt;- the breakpoint. Without it: nothing caches.
+    }],
+    messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: todays_question}],   # after the breakpoint, never cached
+)
+</code></pre>
+<p><strong>What you control:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Lever</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Where the breakpoint goes</strong></td>
+<td>everything before it is cacheable; up to 4 breakpoints per request</td>
+</tr>
+<tr>
+<td><strong>What sits before it</strong></td>
+<td>ordering is yours: stable content first, volatile content last</td>
+</tr>
+<tr>
+<td><strong>TTL</strong></td>
+<td>~5 minutes by default; <code>{"type": "ephemeral", "ttl": "1h"}</code> for an hour</td>
+</tr>
+<tr>
+<td><strong>Whether to use it at all</strong></td>
+<td>omit <code>cache_control</code> and you pay full rate on every token, every time</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What you do not control:</strong> the storage, eviction, or the multipliers (~0.1× to read, ~1.25× to write).</p>
+<p><strong>It is a prefix match, and that is the whole trap.</strong> Any byte that changes <em>before</em> the breakpoint
+invalidates everything after it. A timestamp in the system prompt, a UUID, an unsorted <code>json.dumps</code>,
+a tool list that varies by request — each silently drops your hit rate to zero with no error
+anywhere. The check is one line:</p>
+<pre><code class="language-python">print(response.usage.cache_read_input_tokens)   # zero across repeated calls =&gt; something is invalidating it
+</code></pre>
+<p><strong>And it is per-model.</strong> Each model keeps its own cache, which is the mechanism behind the router's
+extra cold starts — measured at 0.07% here, so small, but the reason the row exists.</p>
+<p><strong>Other providers have equivalents</strong>, with different ergonomics — some automatic, some opt-in like
+this. The portable lesson is not the syntax: it is that <strong>a repeated prefix is a cost lever you
+control</strong>, and that not checking <code>cache_read_input_tokens</code> is how teams pay full price for months.</p>
+<hr />
+<h3 id="so-where-does-routing-actually-live">So where does routing actually live?</h3>
+<p><strong>Not in the API, and not in Claude Code.</strong> There is no routing feature to switch on.</p>
+<ul>
+<li><strong>The Claude API</strong> takes a <code>model</code> string per request. That is the entire mechanism. Choosing which
+  string to send is <strong>your application's code</strong> — that is literally all <code>04_route.py</code> is.</li>
+<li><strong>Claude Code</strong> lets <em>you</em> pick a model (<code>/model</code>, or config) for your session. That is a developer
+  preference, not a request router.</li>
+<li><strong>Gateways</strong> (LiteLLM, OpenRouter) do offer routing as a product feature — rules, fallbacks, spend
+  caps — sitting in front of any SDK. If you want routing as infrastructure rather than application
+  code, that is the layer. See <a href="../../study-docs/ML_Study_13h_LLM_Gateways.md">ML Study 13h</a>.</li>
+</ul>
+<p>So: <code>02_three_tiers.py</code> shows the <em>mechanism</em> (same request, different <code>model</code> string, three results
+you can compare), and <code>04_route.py</code> shows the <em>policy</em> (a rule deciding which string to send). Both
+are ordinary code you own — which is exactly why this build can ask whether it earns its place.</p>
 <blockquote>
 <p><strong>The one-line frame:</strong> a price table tells you what a <strong>token</strong> costs. It does not tell you what the <strong>work</strong> costs, and those two numbers rank your options differently.</p>
 </blockquote>
