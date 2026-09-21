@@ -31,7 +31,12 @@ The machinery around the model: what it costs, how the loop is controlled, what 
   [build brief](builds/01-model-routing/BUILD.md) and the five
   [steps](builds/01-model-routing/steps/) or the [Colab notebook](notebooks/hello_model_selection.ipynb); the bench runs with no API key.
 
-*Builds 02–07 in progress.*
+- **02 — The Agent Loop** — [builds/02-agent-loop](builds/02-agent-loop/) — *Ship: a working agent in
+  ~20 lines, then the three bounds that make it safe to run.* Perceive-reason-act is a loop **you**
+  write around a model that answers once and stops. The reviewable question is not "does it work" but
+  "what stops it, and what does the worst case cost?"
+
+*Builds 03–07 in progress.*
 
 ---
 

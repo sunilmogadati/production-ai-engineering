@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build 02 — The Agent Loop: Who Decides When To Stop</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="build-02-the-agent-loop-who-decides-when-to-stop">Build 02 — The Agent Loop: Who Decides When To Stop</h1>
+<p><strong>Covers:</strong> the <strong>perceive → reason → act</strong> cycle everyone draws → what that actually is in the API (<strong><code>stop_reason</code></strong>) → the minimal loop, in about twenty lines → why the model <strong>cannot stop itself</strong> and the loop is therefore yours → <strong>bounding</strong> it: iteration cap, cost ceiling, wall clock → what happens when a tool fails, and the three mistakes that quietly train the model to behave worse.</p>
+<p><strong>Goal:</strong> be able to write the agentic loop from scratch, say exactly which condition ends it, and state what it costs in the worst case — before you run it.</p>
+<p><strong>Where this sits:</strong> second build of the Build Track. <a href="../01-model-routing/BUILD.md">Build 01</a> chose <em>which model</em>. This chooses <em>how many times you call it</em> — and that number, not the tier, is what turns a cents-per-request system into a surprise.</p>
+<hr />
+<h2 id="part-1-the-diagram-everyone-draws-and-what-it-leaves-out">Part 1 — The diagram everyone draws, and what it leaves out</h2>
+<p>Every introduction to agents draws the same cycle:</p>
+<div class="mermaid">flowchart LR
+    P[&quot;PERCEIVE&lt;br/&gt;gather the situation&quot;] --&gt; R[&quot;REASON&lt;br/&gt;decide the next step&quot;]
+    R --&gt; A[&quot;ACT&lt;br/&gt;use a tool&quot;]
+    A --&gt; F[&quot;feedback&lt;br/&gt;what happened&quot;]
+    F --&gt; P</div>
+<p>It is a true picture and a useless one, because it does not say <strong>who runs it</strong>.</p>
+<p>Read it naively and you picture the model looping — perceiving, thinking, acting, going round again. That is not what happens. <strong>The model answers once and stops.</strong> It has no memory of the last call, no ability to run your code, and no way to call itself again.</p>
+<p>Every arrow in that diagram is <strong>your code</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>The diagram says</th>
+<th>Your code actually does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>perceive</td>
+<td>assemble a <code>messages</code> array and send it</td>
+</tr>
+<tr>
+<td>reason</td>
+<td><em>(the model's single turn — the only part that is not yours)</em></td>
+</tr>
+<tr>
+<td>act</td>
+<td>read the tool request, <strong>run the function yourself</strong></td>
+</tr>
+<tr>
+<td>feedback</td>
+<td>append the result and <strong>send the whole thing again</strong></td>
+</tr>
+<tr>
+<td>loop</td>
+<td>a <code>while</code> statement you wrote, with a condition you chose</td>
+</tr>
+</tbody>
+</table>
+<p>The model is a <strong>pure function</strong> called repeatedly. The loop is the harness.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> perceive-reason-act is not something the model does. It is <strong>a loop you write around a function that answers once and stops.</strong></p>
+</blockquote>
+<hr />
+<h2 id="part-2-the-pattern-underneath-it-is-a-state-machine-with-a-remote-transition-function">Part 2 — The pattern underneath: it is a state machine with a remote transition function</h2>
+<p>Strip the AI vocabulary and this is a shape you have written before.</p>
+<p>You hold the state — the conversation. You call out to something that inspects the state and returns a <strong>transition</strong>: either a terminal value, or a request for work. If it is a request, you perform the side effect, fold the result back into the state, and call again.</p>
+<p>That is a <strong>state machine whose transition function lives on a network</strong>, and the familiar rules apply: the transition is not free, it is not instant, it can fail, and <strong>it cannot be trusted to terminate.</strong></p>
+<p>The transition is reported in one field:</p>
+<div class="mermaid">flowchart TD
+    CALL[&quot;messages.create(messages, tools)&quot;] --&gt; SR{&quot;response.stop_reason&quot;}
+    SR --&gt;|&quot;end_turn&quot;| DONE[&quot;Finished. Return the answer.&quot;]
+    SR --&gt;|&quot;tool_use&quot;| RUN[&quot;Run the tools.&lt;br/&gt;Append ALL results as ONE user message.&lt;br/&gt;Loop.&quot;]
+    SR --&gt;|&quot;max_tokens&quot;| TRUNC[&quot;Truncated mid-thought.&lt;br/&gt;NOT done. Raise the cap or re-ask.&quot;]
+    SR --&gt;|&quot;refusal&quot;| REF[&quot;Declined. Do not retry unchanged.&quot;]
+    RUN --&gt; CALL</div>
+<p><strong><code>stop_reason</code> is the whole mechanism.</strong> <code>end_turn</code> means finished; <code>tool_use</code> means it wants something from you and will continue when it has it.</p>
+<p>The two on the right are where naive loops break. A loop written as <code>while stop_reason == "tool_use"</code> treats <strong>every</strong> other value as success — so a response truncated at <code>max_tokens</code> gets returned to the user as a finished answer, silently. It is not finished. It stopped mid-sentence because it ran out of room.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the loop is a state machine over <code>stop_reason</code>. <strong>Handle every terminal value, not just the happy one</strong> — silence on the others looks exactly like success.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-architecture-the-loop-and-the-three-bounds-around-it">Part 3 — Architecture: the loop, and the three bounds around it</h2>
+<p>The loop itself is small. Roughly:</p>
+<pre><code class="language-python">while True:
+    response = client.messages.create(model=..., messages=messages, tools=TOOLS)
+    messages.append({&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: response.content})
+
+    if response.stop_reason != &quot;tool_use&quot;:
+        break                                   # end_turn, max_tokens, refusal -- all handled below
+
+    results = [run_tool(b) for b in response.content if b.type == &quot;tool_use&quot;]
+    messages.append({&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: results})   # ALL of them, ONE message
+</code></pre>
+<p>That is a working agent. It is also, as written, <strong>a system with no upper bound on what it can spend</strong>, and that is the part worth engineering.</p>
+<h3 id="three-bounds-because-they-fail-differently">Three bounds, because they fail differently</h3>
+<table>
+<thead>
+<tr>
+<th>Bound</th>
+<th>Catches</th>
+<th>What it looks like when it saves you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Iteration cap</strong></td>
+<td>a model that keeps calling tools without converging</td>
+<td>stops at turn 12 instead of turn 400</td>
+</tr>
+<tr>
+<td><strong>Cost ceiling</strong></td>
+<td>a few <em>huge</em> turns rather than many small ones</td>
+<td>stops at $2.00 spent, whatever the turn count</td>
+</tr>
+<tr>
+<td><strong>Wall clock</strong></td>
+<td>a slow tool, a hung request, a retry storm</td>
+<td>stops after 90s so a user is not waiting forever</td>
+</tr>
+</tbody>
+</table>
+<p>An iteration cap alone is the common mistake. Ten turns sounds safe until one of them carries a 400,000-token context, and ten <em>bounded iterations</em> is an <em>unbounded bill</em>. <strong>Cost is the bound that actually protects the invoice; iterations protect the logic.</strong></p>
+<h3 id="the-context-grows-every-single-turn">The context grows every single turn</h3>
+<p>Each pass appends the assistant message <em>and</em> the tool results, then resends <strong>everything</strong>. Turn 10 pays for turns 1 through 9 again. Cost per turn is not flat — it climbs, and roughly quadratically over the run. That is why Build 04 is about context strategy, and why the cost ceiling belongs here rather than there.</p>
+<h3 id="three-mistakes-that-make-the-model-behave-worse">Three mistakes that make the model behave worse</h3>
+<p><strong>Splitting parallel tool results across messages.</strong> One assistant turn may request several tools. Return <strong>all</strong> results in a <strong>single</strong> user message. Splitting them teaches the model, over the conversation, to stop making parallel calls — you lose the concurrency and never see an error.</p>
+<p><strong>Dropping a failed tool.</strong> If a tool raises, return a <code>tool_result</code> with <code>is_error: true</code>. Omitting it leaves a dangling <code>tool_use</code> with no result, which is an invalid conversation. Tell it the truth and it will usually adapt.</p>
+<p><strong>Assuming the tool ran once.</strong> A retried turn can re-execute a tool you already ran. If the tool books, charges, sends, or deletes, that is a real second side effect. <strong>Make tools idempotent, or make the loop remember.</strong></p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the loop is twenty lines. <strong>The engineering is the three bounds and the failure handling</strong> — and the bound that protects the invoice is cost, not iterations.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-the-decision-you-would-defend">Part 4 — The decision you would defend</h2>
+<p><em>"What stops this agent?"</em> is the question a design review should ask, and the answer is never "it finishes."</p>
+<ol>
+<li><strong>It ends on <code>end_turn</code></strong> — and we handle <code>max_tokens</code> and <code>refusal</code> as distinct outcomes, not as success.</li>
+<li><strong>It is bounded three ways</strong> — iterations, dollars, seconds — because those are three different failures.</li>
+<li><strong>We know the worst case.</strong> Max iterations × max context × output rate. We computed it before shipping, using <a href="../01-model-routing/BUILD.md">Build 01's</a> arithmetic.</li>
+<li><strong>Our tools are idempotent, or the loop deduplicates.</strong> We know which, per tool.</li>
+<li><strong>When a bound trips, a human sees it.</strong> A silent truncation is worse than a visible failure.</li>
+</ol>
+<blockquote>
+<p><strong>The one-line frame:</strong> <em>"what stops this agent, and what does the worst case cost?"</em> If those two have no answer, there is no agent — only a loop.</p>
+</blockquote>
+<hr />
+<h2 id="run-it">Run it</h2>
+<pre><code class="language-bash">export ANTHROPIC_API_KEY=sk-ant-...
+cd steps
+python3 01_single_turn.py    # the model answers once and stops
+python3 02_stop_reason.py    # the four terminal values, provoked deliberately
+python3 03_the_loop.py       # the minimal agent, ~20 lines
+python3 04_bounded.py        # the three bounds, and one of them tripping
+python3 05_failures.py       # a failing tool, and the errors that train it worse
+</code></pre>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>perceive-reason-act</strong></td>
+<td>the textbook cycle. Every arrow is your code; only "reason" is the model.</td>
+</tr>
+<tr>
+<td><code>stop_reason</code></td>
+<td>the transition value: <code>end_turn</code>, <code>tool_use</code>, <code>max_tokens</code>, <code>refusal</code>. The whole mechanism.</td>
+</tr>
+<tr>
+<td><strong>the loop</strong></td>
+<td>your <code>while</code>, with a condition you chose. The model cannot call itself.</td>
+</tr>
+<tr>
+<td><strong>iteration cap</strong></td>
+<td>protects the logic — stops a non-converging agent</td>
+</tr>
+<tr>
+<td><strong>cost ceiling</strong></td>
+<td>protects the invoice — the one that actually matters</td>
+</tr>
+<tr>
+<td><strong>wall clock</strong></td>
+<td>protects the user — stops an agent nobody is still waiting for</td>
+</tr>
+<tr>
+<td><code>is_error: true</code></td>
+<td>how a failed tool is reported. Never drop the result.</td>
+</tr>
+<tr>
+<td><strong>parallel tool use</strong></td>
+<td>several <code>tool_use</code> blocks in one turn; all results go back in <strong>one</strong> user message</td>
+</tr>
+<tr>
+<td><strong>idempotent tool</strong></td>
+<td>safe to run twice, because a retried turn may do exactly that</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Build 02 — perceive-reason-act is not something a model does; it is a loop you write around a function that answers once and stops. In the API that loop is a state machine over <code>stop_reason</code>, and the mistake that ships is handling only <code>tool_use</code> — so a <code>max_tokens</code> truncation is returned to a user as a finished answer. The loop itself is twenty lines; the engineering is everything around it. Bound it three ways, because iterations protect the logic, wall clock protects the user, and only a cost ceiling protects the invoice — ten bounded iterations of a growing context is still an unbounded bill. Return every tool result including the failures, keep parallel results in one message, and assume a retried turn may run a tool twice. The reviewable question is not "does it work" but </em><em>"what stops it, and what does the worst case cost?"</em>**</p>
+</body>
+</html>
