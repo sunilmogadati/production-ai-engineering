@@ -216,14 +216,19 @@ And the conditions under which the answer flips, stated in advance — because a
 Five steps, one idea each — see [`steps/README.md`](steps/README.md):
 
 ```bash
+# from the repo root, once:
+python3 -m venv .venv && source .venv/bin/activate && pip install anthropic
+
 export ANTHROPIC_API_KEY=sk-ant-...
-cd steps
+cd builds/01-model-routing/steps
 python3 01_one_call.py      # one call, and what it cost
 python3 02_three_tiers.py   # same work, three tiers
 python3 03_effort.py        # the lever inside one model
 python3 04_route.py         # a router that reports its rule
 python3 05_price_first.py   # price before you spend
 ```
+
+Already made the venv? `source .venv/bin/activate` from the repo root is all you need.
 
 No key? The full bench runs offline — cost is arithmetic:
 

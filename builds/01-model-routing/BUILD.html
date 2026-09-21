@@ -285,14 +285,18 @@ clock, not just to the bill — on an interactive path that may be the number th
 <hr />
 <h2 id="run-it">Run it</h2>
 <p>Five steps, one idea each — see <a href="steps/README.md"><code>steps/README.md</code></a>:</p>
-<pre><code class="language-bash">export ANTHROPIC_API_KEY=sk-ant-...
-cd steps
+<pre><code class="language-bash"># from the repo root, once:
+python3 -m venv .venv &amp;&amp; source .venv/bin/activate &amp;&amp; pip install anthropic
+
+export ANTHROPIC_API_KEY=sk-ant-...
+cd builds/01-model-routing/steps
 python3 01_one_call.py      # one call, and what it cost
 python3 02_three_tiers.py   # same work, three tiers
 python3 03_effort.py        # the lever inside one model
 python3 04_route.py         # a router that reports its rule
 python3 05_price_first.py   # price before you spend
 </code></pre>
+<p>Already made the venv? <code>source .venv/bin/activate</code> from the repo root is all you need.</p>
 <p>No key? The full bench runs offline — cost is arithmetic:</p>
 <pre><code class="language-bash">cd src &amp;&amp; python3 bench.py
 </code></pre>

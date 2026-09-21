@@ -171,14 +171,18 @@
 </blockquote>
 <hr />
 <h2 id="run-it">Run it</h2>
-<pre><code class="language-bash">export ANTHROPIC_API_KEY=sk-ant-...
-cd steps
+<pre><code class="language-bash"># from the repo root, once:
+python3 -m venv .venv &amp;&amp; source .venv/bin/activate &amp;&amp; pip install anthropic
+
+export ANTHROPIC_API_KEY=sk-ant-...
+cd builds/02-agent-loop/steps
 python3 01_single_turn.py    # the model answers once and stops
 python3 02_stop_reason.py    # the four terminal values, provoked deliberately
 python3 03_the_loop.py       # the minimal agent, ~20 lines
 python3 04_bounded.py        # the three bounds, and one of them tripping
 python3 05_failures.py       # a failing tool, and the errors that train it worse
 </code></pre>
+<p>Already made the venv? <code>source .venv/bin/activate</code> from the repo root is all you need.</p>
 <hr />
 <h2 id="quick-reference-glossary">Quick reference / glossary</h2>
 <table>

@@ -129,14 +129,19 @@ Each pass appends the assistant message *and* the tool results, then resends **e
 ## Run it
 
 ```bash
+# from the repo root, once:
+python3 -m venv .venv && source .venv/bin/activate && pip install anthropic
+
 export ANTHROPIC_API_KEY=sk-ant-...
-cd steps
+cd builds/02-agent-loop/steps
 python3 01_single_turn.py    # the model answers once and stops
 python3 02_stop_reason.py    # the four terminal values, provoked deliberately
 python3 03_the_loop.py       # the minimal agent, ~20 lines
 python3 04_bounded.py        # the three bounds, and one of them tripping
 python3 05_failures.py       # a failing tool, and the errors that train it worse
 ```
+
+Already made the venv? `source .venv/bin/activate` from the repo root is all you need.
 
 ---
 

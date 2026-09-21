@@ -11,9 +11,16 @@ Five standalone programs. Each runs on its own.
 | `05_failures.py` | a broken tool, `is_error`, and idempotency |
 
 ```bash
+# once, from the repo root:
+python3 -m venv .venv && source .venv/bin/activate && pip install anthropic
+
 export ANTHROPIC_API_KEY=sk-ant-...
+cd builds/02-agent-loop/steps
 python3 01_single_turn.py     # then 02, 03, 04, 05
 ```
+
+Prefer `uv`? It builds the environment itself, no activation needed:
+`uv run --with anthropic python 01_single_turn.py`
 
 `_tools.py` holds three synthetic tools over a fabricated incident. The data is
 deliberately **inconsistent** — the service reporting the problem has not deployed in

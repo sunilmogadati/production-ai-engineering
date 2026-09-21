@@ -93,7 +93,7 @@ uv run --with anthropic python 01_one_call.py
 | What | Command | Needs a key |
 |---|---|---|
 | The offline bench | `cd src && python3 bench.py` | no |
-| The five steps | `cd steps && python3 01_one_call.py` | yes |
+| The five steps | `source .venv/bin/activate` then `cd steps && python3 01_one_call.py` | yes |
 | The lesson | [LESSON.md](LESSON.md) | — |
 
 Total spend if you run every step in this lesson: **well under $1.**
