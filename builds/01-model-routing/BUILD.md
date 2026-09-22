@@ -258,6 +258,25 @@ Four readings, and the first one is the lesson:
 
 **4. The genuinely cheapest option was the least sophisticated.** One mid-tier model, no routing logic at all: **43.7% below** the naive baseline.
 
+### The number this build cannot compute: latency
+
+Everything on this page so far is arithmetic. Latency is not, and the spread between tiers is
+**larger than the cost spread** — commonly close to an order of magnitude from the small tier to the
+large one on the same task, because a more capable model generates more tokens and thinks before it
+does.
+
+That has a consequence the cost table cannot show you. On an interactive surface — a chat, a form, a
+support console — **the tier is often chosen by the response budget, not the bill.** If the large
+model takes twenty seconds and your budget is three, the cost comparison is irrelevant; you were
+never choosing between them.
+
+`steps/02_three_tiers.py` times every call and prints the ratio. Run it and **write your three numbers
+down** — they are the only latency evidence in this build, they come from your machine and your
+network, and they are the input to a decision the arithmetic cannot make.
+
+> Cost you can compute before you spend anything. **Latency you must measure, and it may be the
+> constraint that decides.**
+
 ### The two myths, and what our numbers actually say
 
 You will meet both of these in any introduction to a model family. Neither is wrong. Both are
