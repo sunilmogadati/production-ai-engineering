@@ -178,6 +178,43 @@ surface is a perfectly normal production shape.**
 
 ---
 
+## Part 3b — Python or TypeScript?
+
+Both SDKs exist, both are first-class, and the method names barely differ. So the choice is about
+your work, not about capability.
+
+**This track is Python-primary.** The reasons, in order:
+
+- **The rest of the curriculum is Python.** Thirty study docs, the notebooks, the labs. A second
+  language splits the material for no gain.
+- **Colab is Python.** That is the zero-install path — students click a link and run code. There is
+  no TypeScript equivalent with that little friction.
+- **The audience is backend engineers.** Java, C#, Python backgrounds crossing into AI. Python is
+  the shorter hop, and the data/ML/agent-service half of the industry runs on it.
+
+**TypeScript is where the app layer lives** — front-end tooling, streaming UIs, Node services. If
+that is your surface, use it; nothing in this track argues otherwise.
+
+**Both are provided for the steps where seeing both teaches something**, which is the hello-world
+and the model comparison:
+
+```bash
+python3 01_hello.py     # Python
+npx tsx 01_hello.ts     # TypeScript
+```
+
+Run them back to back. Same client construction, same message shape, same content blocks, same
+`usage` figures, same `stop_reason`. The imports and the casing moved; nothing else did.
+
+That is the argument for learning the **harness** rather than an SDK. A stop-reason loop, a tool
+schema, a context budget, a configuration hierarchy — each is one idea, expressible in either
+language. **If switching language changes your design, you learned the library, not the pattern.**
+
+> **The one-line frame:** pick the language your surface is written in. The harness is the same
+> either way — which is exactly why it is the thing worth learning.
+
+---
+
 ## Part 4 — What else is out there
 
 | Category | Options | Reach for it when |

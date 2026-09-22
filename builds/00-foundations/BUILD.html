@@ -287,6 +287,35 @@ surface is a perfectly normal production shape.</strong></p>
 <p><strong>The one-line frame:</strong> LangChain optimises for <strong>breadth across providers</strong>; the Claude stack optimises for <strong>depth on one</strong>. Harness engineering lives in the depth — so this track goes native, and you keep LangChain for the problems it is genuinely better at.</p>
 </blockquote>
 <hr />
+<h2 id="part-3b-python-or-typescript">Part 3b — Python or TypeScript?</h2>
+<p>Both SDKs exist, both are first-class, and the method names barely differ. So the choice is about
+your work, not about capability.</p>
+<p><strong>This track is Python-primary.</strong> The reasons, in order:</p>
+<ul>
+<li><strong>The rest of the curriculum is Python.</strong> Thirty study docs, the notebooks, the labs. A second
+  language splits the material for no gain.</li>
+<li><strong>Colab is Python.</strong> That is the zero-install path — students click a link and run code. There is
+  no TypeScript equivalent with that little friction.</li>
+<li><strong>The audience is backend engineers.</strong> Java, C#, Python backgrounds crossing into AI. Python is
+  the shorter hop, and the data/ML/agent-service half of the industry runs on it.</li>
+</ul>
+<p><strong>TypeScript is where the app layer lives</strong> — front-end tooling, streaming UIs, Node services. If
+that is your surface, use it; nothing in this track argues otherwise.</p>
+<p><strong>Both are provided for the steps where seeing both teaches something</strong>, which is the hello-world
+and the model comparison:</p>
+<pre><code class="language-bash">python3 01_hello.py     # Python
+npx tsx 01_hello.ts     # TypeScript
+</code></pre>
+<p>Run them back to back. Same client construction, same message shape, same content blocks, same
+<code>usage</code> figures, same <code>stop_reason</code>. The imports and the casing moved; nothing else did.</p>
+<p>That is the argument for learning the <strong>harness</strong> rather than an SDK. A stop-reason loop, a tool
+schema, a context budget, a configuration hierarchy — each is one idea, expressible in either
+language. <strong>If switching language changes your design, you learned the library, not the pattern.</strong></p>
+<blockquote>
+<p><strong>The one-line frame:</strong> pick the language your surface is written in. The harness is the same
+either way — which is exactly why it is the thing worth learning.</p>
+</blockquote>
+<hr />
 <h2 id="part-4-what-else-is-out-there">Part 4 — What else is out there</h2>
 <table>
 <thead>

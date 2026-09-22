@@ -38,33 +38,108 @@ uv run --with anthropic python builds/00-foundations/steps/01_hello.py
 
 ## 2. Node, with nvm
 
-`nvm` installs Node **per user, per version** — no `sudo`, no fighting a system Node, and a
-`.nvmrc` pins the version per project.
+**Why nvm and not a plain Node install.** `nvm` puts Node under your home directory, one copy per
+version. No `sudo`, no fighting a system Node another tool installed, and a `.nvmrc` file pins the
+version per project so two projects can want different Node versions and both get them.
+
+### 2.1 Install nvm
 
 ```bash
-# install nvm (macOS / Linux)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-
-# reopen the terminal, or:
-export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
-
-nvm install 22          # current LTS
-nvm use 22
-node --version
 ```
 
-Then, for the TypeScript sample:
+The installer appends a block to your shell profile. On macOS that is `~/.zshrc`; on most Linux
+shells `~/.bashrc`.
+
+### 2.2 Make the current shell see it
+
+The installer does not change the shell you are already in. Either **open a new terminal**, or:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+```
+
+Check it worked:
+
+```bash
+command -v nvm        # prints: nvm
+```
+
+**If that prints nothing**, the profile block did not land. Add it yourself to `~/.zshrc`:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+```
+
+then `source ~/.zshrc`.
+
+> `nvm` is a **shell function**, not a binary. `which nvm` will fail even when it is working —
+> use `command -v nvm`.
+
+### 2.3 Install Node and make it the default
+
+```bash
+nvm install --lts          # installs the current LTS and switches to it
+nvm alias default 'lts/*'  # every new terminal starts on it
+```
+
+Verify:
+
+```bash
+node --version             # v22.x or newer
+npm --version
+```
+
+### 2.4 Per-project version pinning
+
+Each of our Node folders carries a `.nvmrc` naming the version it expects:
 
 ```bash
 cd builds/00-foundations/steps
-npm install                       # installs @anthropic-ai/sdk and tsx locally
+cat .nvmrc                 # 22
+nvm use                    # reads .nvmrc and switches
 ```
 
-`npm install` writes to `node_modules/` inside that folder — nothing global.
+**Optional but worth it — switch automatically on `cd`.** Add to `~/.zshrc`:
 
-> **Do you need Node at all?** Only for the TypeScript sample. Every build in this track is Python.
-> Node is here because the wider ecosystem is split, and seeing the same harness pattern in two
-> languages is the fastest way to see that the pattern is not the syntax.
+```bash
+autoload -U add-zsh-hook
+load-nvmrc() { [ -f .nvmrc ] && nvm use --silent >/dev/null 2>&1; }
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc
+```
+
+Now `cd` into a project and the right Node is selected without you thinking about it.
+
+### 2.5 Install this folder's packages
+
+```bash
+cd builds/00-foundations/steps
+npm install                # writes ./node_modules -- nothing global
+npx tsx 01_hello.ts
+```
+
+`npx tsx` runs TypeScript directly, with no build step and no `tsc` output to manage.
+
+### Useful nvm commands
+
+| Command | Does |
+|---|---|
+| `nvm ls` | versions installed, and which is active |
+| `nvm ls-remote --lts` | what is available |
+| `nvm use 22` | switch this shell to 22 |
+| `nvm use` | switch to whatever `.nvmrc` says |
+| `nvm alias default 'lts/*'` | what new shells start with |
+| `nvm uninstall 20` | remove a version |
+
+### Do you need Node at all?
+
+**No — every build in this track is Python.** Node is here for the TypeScript twins of a couple of
+steps, so you can run the same harness pattern in both languages and see that the pattern is not the
+syntax. Skip it and you lose nothing but that demonstration.
 
 ## 3. Your API key
 
