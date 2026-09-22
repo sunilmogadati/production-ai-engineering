@@ -7,6 +7,8 @@ what it costs, and the decision you would defend in a design review.
 Companion to [CURRICULUM.md](CURRICULUM.md), the four-week Dev → AI Engineer path. That track builds
 the foundations. This one builds the systems.
 
+**Running the code:** [RUN.md](RUN.md) — every program, in order, on one page.
+
 **How to use it:** run the build first, read the write-up second. Every claim in a write-up is backed
 by something that ran, and every number is labelled **computed**, **measured**, or **unmeasured** —
 so you can tell what was proven from what is still owed a measurement.
