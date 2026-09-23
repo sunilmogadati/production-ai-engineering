@@ -156,9 +156,11 @@ python3 -c "import sys, os; print(sys.executable); print(os.environ.get('VIRTUAL
 
 Those two paths must agree. If `sys.executable` is not inside your `VIRTUAL_ENV`, the venv is broken.
 
-**Rebuild it properly** — from outside every venv, with an explicit interpreter:
+**Rebuild it properly** — from outside every venv, with an explicit interpreter. **Do this from the
+repository root**, not from inside `steps/` or `src/`, or `rm -rf .venv` deletes nothing:
 
 ```bash
+cd /path/to/production-ai-engineering     # the repo root -- this step matters
 deactivate                    # repeat until no (venv) prefix is left on your prompt
 rm -rf .venv
 $(brew --prefix)/bin/python3.12 -m venv .venv      # any python3.10+ you trust

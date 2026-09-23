@@ -19,6 +19,38 @@ from __future__ import annotations
 import os
 import sys
 
+def _mismatch_hint(venv: str) -> str:
+    """Say plainly if the package is installed in a SIBLING version tree.
+
+    This is the failure that looks impossible: pip reports success, python says
+    the module is missing, and the interpreter IS inside the venv you activated --
+    so "is your venv active?" checks all pass. The venv has two
+    lib/pythonX.Y/site-packages trees and the two tools disagree about which one
+    they serve. Naming the two versions turns a baffling error into an obvious one.
+    """
+    import glob
+    import os
+
+    if not venv or venv == "(none active)":
+        return ""
+
+    found = sorted(glob.glob(os.path.join(venv, "lib", "python*", "site-packages", "anthropic")))
+    if not found:
+        return ""
+
+    installed_under = os.path.basename(os.path.dirname(os.path.dirname(found[0])))
+    import sys
+    running = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    if installed_under == running:
+        return ""
+
+    return (
+        f"  >>> FOUND IT: anthropic IS installed, under {installed_under}, but you are\n"
+        f"      running {running}. Same venv, two site-packages trees -- pip wrote to one\n"
+        f"      and python reads the other. The venv is broken; reinstalling will not help.\n\n"
+    )
+
+
 def _import_anthropic():
     """Import the SDK, and on failure say something actually useful.
 
@@ -41,8 +73,9 @@ def _import_anthropic():
             f"  running python : {sys.executable}\n"
             f"  VIRTUAL_ENV    : {venv}\n"
             f"  looking in     : {[p for p in sys.path if 'site-packages' in p] or 'no site-packages on sys.path'}\n\n"
-            "If the interpreter above is NOT inside the venv you activated, the venv is broken --\n"
-            "usually from creating it while another venv was active, or from a pyenv shim.\n"
+            f"{_mismatch_hint(venv)}"
+            "A venv breaks this way when it is created while another venv is active, or when a\n"
+            "pyenv shim resolves `python3` to a different version than pyvenv.cfg records.\n"
             "Fix -- rebuild it with an EXPLICIT interpreter, from outside any active venv:\n"
             "    deactivate            # repeat until no (venv) prefix remains\n"
             "    rm -rf .venv\n"
@@ -68,8 +101,12 @@ def main() -> None:
 
     response = client.messages.create(
         model=MODEL,
-        max_tokens=200,
+        max_tokens=200,                   # hard ceiling on OUTPUT tokens -- a budget, not a target.
+                                          # Hit it and the reply is cut off (stop_reason="max_tokens").
+                                          # Required on every call. 200 is plenty for two sentences.
         system="You explain engineering ideas to experienced developers. Two sentences, no preamble.",
+        # A conversation is a LIST of messages; "role" says who is speaking (user | assistant).
+        # system= (above) sets HOW to behave; the user message is WHAT you're asking.
         messages=[{"role": "user", "content": "What does an LLM harness do that the model does not?"}],
     )
 
