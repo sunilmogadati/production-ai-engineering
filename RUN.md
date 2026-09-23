@@ -9,27 +9,49 @@ One page. Start at the top, work down. **~10 minutes for all of it, a few cents 
 ```bash
 git clone https://github.com/sunilmogadati/production-ai-engineering.git
 cd production-ai-engineering
+```
 
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+**Create the venv by naming the interpreter explicitly.** Do not rely on whatever `python3` happens
+to resolve to, and do not do this while another venv is active — both are how venvs end up broken in
+a way that is genuinely hard to diagnose:
+
+```bash
+$(brew --prefix)/bin/python3.12 -m venv .venv    # macOS. Any python3.10+ you trust.
+source .venv/bin/activate                        # Windows: .venv\Scripts\activate
 pip install anthropic
 ```
 
-Your prompt shows `(.venv)`. That is how you know it worked.
+Your prompt now shows `(.venv)`.
+
+> **Why name the interpreter?** `python3` may be a version manager's shim — a script that resolves at
+> call time to whatever the manager currently says. A venv needs a *fixed* binary. Point it at a shim
+> and `pip` and `python` can end up serving different Python versions inside the same venv, at which
+> point installs appear to succeed and then vanish. On macOS, `/usr/bin/python3` is also too old (3.9).
 
 **Your API key** — get one at [console.anthropic.com](https://console.anthropic.com) → API Keys, and
 set a spend cap while you are there:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-echo "key set: ${ANTHROPIC_API_KEY:+yes}"
 ```
 
 That lasts for this terminal window. Permanent: add the `export` line to `~/.zshrc`.
 
-> **New terminal later?** `cd` to the repo and run `source .venv/bin/activate` again, and re-export
-> the key if you did not put it in `~/.zshrc`. Those two are the cause of nearly every "it worked
-> yesterday".
+## Then: check it
+
+```bash
+python3 check_env.py
+```
+
+Eight checks, no API key needed, no network. It verifies the venv is coherent, the SDK imports, and
+the offline bench computes — and any failure prints what to do about it.
+
+**Run this first whenever anything is strange.** It is faster than reading an error message, and it
+catches the one failure that is impossible to diagnose unaided: a venv serving two Python versions,
+where `pip` writes to one tree and `python` reads the other.
+
+> **New terminal later?** `cd` to the repo, `source .venv/bin/activate`, and re-export the key if it
+> is not in `~/.zshrc`. Those two are the cause of nearly every "it worked yesterday".
 
 ---
 

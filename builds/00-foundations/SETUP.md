@@ -18,9 +18,15 @@ python3 --version                 # need 3.10 or newer
 git clone https://github.com/sunilmogadati/production-ai-engineering.git
 cd production-ai-engineering
 
-python3 -m venv .venv
+# Name the interpreter explicitly -- do NOT rely on bare `python3`, and do not
+# run this while another venv is active. Both break venvs in confusing ways.
+$(brew --prefix)/bin/python3.12 -m venv .venv     # macOS; any python3.10+ you trust
 source .venv/bin/activate         # Windows: .venv\Scripts\activate
 ```
+
+> `python3` may be a version manager's shim, which resolves at call time rather than pointing at a
+> fixed binary. A venv built on a shim can end up with `pip` and `python` serving different Python
+> versions — installs succeed, then the import fails. `/usr/bin/python3` on macOS is 3.9, too old.
 
 Your prompt now shows `(.venv)`. That is how you know you are inside it. New terminal later? Run
 `source .venv/bin/activate` again. Done for the day? `deactivate`.
@@ -191,7 +197,17 @@ import anthropic
 client = anthropic.Anthropic()     # that is the entire setup
 ```
 
-## 4. Verify
+## 4. Verify — one command
+
+```bash
+cd <repo root> && python3 check_env.py
+```
+
+Eight checks: Python version, venv active, interpreter inside it, a single site-packages tree, no
+shim in the chain, the SDK, your key, and the offline bench. No key or network required, and every
+failure prints its fix.
+
+## 5. Verify by running something
 
 ```bash
 python3 builds/00-foundations/steps/01_hello.py
