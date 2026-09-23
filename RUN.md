@@ -138,6 +138,41 @@ access).
 
 ---
 
+## If the venv misbehaves
+
+The single most common failure, and it does not look like what it is: **`pip` and `python` serving
+different interpreters.** You install a package successfully, then the very next command says it is
+not installed.
+
+It happens when a venv is created **while another venv is active**, or when a `pyenv` shim resolves
+`python3` to a different version than the one recorded in `pyvenv.cfg`. The venv ends up with two
+`lib/pythonX.Y/site-packages` trees — `pip` writes to one, `python` reads the other.
+
+**Check in one line:**
+
+```bash
+python3 -c "import sys, os; print(sys.executable); print(os.environ.get('VIRTUAL_ENV'))"
+```
+
+Those two paths must agree. If `sys.executable` is not inside your `VIRTUAL_ENV`, the venv is broken.
+
+**Rebuild it properly** — from outside every venv, with an explicit interpreter:
+
+```bash
+deactivate                    # repeat until no (venv) prefix is left on your prompt
+rm -rf .venv
+$(brew --prefix)/bin/python3.12 -m venv .venv      # any python3.10+ you trust
+source .venv/bin/activate
+pip install anthropic
+python3 -c "import anthropic; print(anthropic.__version__)"
+```
+
+Two rules that prevent it recurring: **never run `python -m venv` with a venv already active**, and
+**name the interpreter explicitly** rather than relying on whatever `python3` resolves to.
+
+> On macOS, `/usr/bin/python3` is the system Python and is usually too old (3.9). Use Homebrew's or
+> python.org's.
+
 ## When something breaks
 
 | Symptom | Cause |

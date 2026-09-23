@@ -13,10 +13,42 @@ import json
 import os
 import sys
 
-try:
-    import anthropic
-except ImportError:
-    sys.exit("pip install anthropic   (or: uv run --with anthropic python <step>.py)")
+def _import_anthropic():
+    """Import the SDK, and on failure say something actually useful.
+
+    A bare `except ImportError: print("pip install anthropic")` is wrong often
+    enough to be harmful: the commonest cause of this failure is a venv whose
+    `pip` and `python` disagree about which interpreter they serve (pyenv shims
+    and nested venvs both cause it). In that case the package IS installed and
+    the advice to install it again sends you in a circle.
+
+    So: report the real error, and show which interpreter is actually running.
+    """
+    try:
+        import anthropic
+        return anthropic
+    except ImportError as exc:
+        import sys, os
+        venv = os.environ.get("VIRTUAL_ENV", "(none active)")
+        sys.exit(
+            f"Could not import the Anthropic SDK: {exc}\n\n"
+            f"  running python : {sys.executable}\n"
+            f"  VIRTUAL_ENV    : {venv}\n"
+            f"  looking in     : {[p for p in sys.path if 'site-packages' in p] or 'no site-packages on sys.path'}\n\n"
+            "If the interpreter above is NOT inside the venv you activated, the venv is broken --\n"
+            "usually from creating it while another venv was active, or from a pyenv shim.\n"
+            "Fix -- rebuild it with an EXPLICIT interpreter, from outside any active venv:\n"
+            "    deactivate            # repeat until no (venv) prefix remains\n"
+            "    rm -rf .venv\n"
+            "    $(brew --prefix)/bin/python3.12 -m venv .venv    # or any python3.10+ you trust\n"
+            "    source .venv/bin/activate && pip install anthropic\n"
+            "  Do NOT create a venv while another one is active, and avoid a pyenv-shimmed\n"
+            "  `python3` -- a shim can resolve to a different version than pyvenv.cfg records.\n\n"
+            "If it IS the right interpreter, then it simply is not installed:  pip install anthropic"
+        )
+
+
+anthropic = _import_anthropic()
 
 MODEL = "claude-sonnet-5"          # complete as written -- no date suffix
 RATE_IN, RATE_OUT = 2.00, 10.00    # $ per MTok, verified 2026-09-16
