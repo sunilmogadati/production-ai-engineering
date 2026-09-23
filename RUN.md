@@ -77,6 +77,10 @@ nvm use && npm install && npx tsx 01_hello.ts
 
 ## Build 01 — Model Selection · 7 programs
 
+> **Reading the code?** [builds/01-model-routing/WALKTHROUGH.md](builds/01-model-routing/WALKTHROUGH.md)
+> explains every file and line, and why step 01 looks different from build 00's hello world.
+
+
 ```bash
 cd ../../01-model-routing
 ```

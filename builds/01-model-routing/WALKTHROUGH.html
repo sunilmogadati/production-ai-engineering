@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Walkthrough — what every file and line actually does</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="walkthrough-what-every-file-and-line-actually-does">Walkthrough — what every file and line actually does</h1>
+<p><strong>Read this before teaching. ~15 minutes, cold.</strong></p>
+<p><code>BUILD.md</code> makes the <em>argument</em> — why routing often loses. This makes no argument. It explains the
+mechanics, line by line, and pre-answers the questions people ask. If you can read this once and
+then talk through the code without opening it, it has done its job.</p>
+<hr />
+<h2 id="the-one-thing-to-understand-first">The one thing to understand first</h2>
+<p>Every step in this build makes <strong>the same API call</strong>. One function:</p>
+<pre><code class="language-python">client.messages.create(model=..., max_tokens=..., system=..., messages=[...])
+</code></pre>
+<p>That is the whole SDK surface used here. The steps differ in <em>which model</em>, <em>what prompt</em>, and
+<em>what they measure</em> — never in mechanism. If you can explain that one call, you can explain all five.</p>
+<h3 id="the-four-arguments">The four arguments</h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>which model, as a string. Choosing this string <em>is</em> the build.</td>
+</tr>
+<tr>
+<td><code>max_tokens</code></td>
+<td>a hard ceiling on <strong>output</strong> tokens. Not a target — the model stops when done.</td>
+</tr>
+<tr>
+<td><code>system</code></td>
+<td>standing instructions: how to behave. Sent once, applies to the whole exchange.</td>
+</tr>
+<tr>
+<td><code>messages</code></td>
+<td>the conversation itself: what you are actually asking.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="max_tokens-properly"><code>max_tokens</code>, properly</h3>
+<ul>
+<li><strong>Output only.</strong> Your input is priced separately and is not capped by this.</li>
+<li><strong>A ceiling, not a target.</strong> Ask for 1000 and get an 80-token answer, you pay for 80. Over-provisioning is nearly free.</li>
+<li><strong>Required on every call.</strong></li>
+<li><strong>When it is hit, the reply is cut off mid-sentence</strong> and <code>stop_reason</code> comes back as <code>"max_tokens"</code> instead of <code>"end_turn"</code>. <em>That</em> is why Build 02 cares about <code>stop_reason</code> — a loop that ignores it hands a truncated half-answer to a user.</li>
+<li><strong>It is a budget decision, not a lookup.</strong> A one-word classification wants 16. A long analysis wants thousands. Step 01 uses 16 deliberately.</li>
+</ul>
+<p><strong>"Can it be dynamic?"</strong> — a question you <em>will</em> get. Yes: you compute it in your own code before the call, e.g. by task type or input length. What it cannot be is changed by the model mid-generation. There is also a separate beta feature that gives the model a budget it can <em>see</em> and pace itself against — different mechanism, later build, not needed here.</p>
+<h3 id="messages-and-role"><code>messages</code> and <code>role</code></h3>
+<pre><code class="language-python">messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}]
+</code></pre>
+<p>A conversation is a <strong>list</strong>, and every entry says who is speaking:</p>
+<table>
+<thead>
+<tr>
+<th>role</th>
+<th>who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>user</code></td>
+<td>you — the questions</td>
+</tr>
+<tr>
+<td><code>assistant</code></td>
+<td>the model — its replies</td>
+</tr>
+<tr>
+<td><code>system</code></td>
+<td>standing instructions (passed as the separate <code>system=</code> argument)</td>
+</tr>
+</tbody>
+</table>
+<p>One turn here, so the list has one entry. In a multi-turn exchange you append the model's reply as
+<code>assistant</code> and your next question as <code>user</code>, and send the whole list again — the API remembers
+nothing between calls. <strong>That statelessness is what makes Build 02's loop necessary.</strong></p>
+<p><code>system</code> vs <code>user</code>: system is <em>how to behave</em>, user is <em>what you are asking</em>. Same call, two jobs.</p>
+<h3 id="the-response-is-a-list-of-typed-blocks-not-a-string">The response is a <strong>list of typed blocks</strong>, not a string</h3>
+<p>This surprises everyone, including experienced engineers.</p>
+<pre><code class="language-python">answer = &quot;&quot;.join(b.text for b in response.content if b.type == &quot;text&quot;)
+</code></pre>
+<p><code>response.content</code> is a list. Each item has a <code>.type</code>:</p>
+<table>
+<thead>
+<tr>
+<th><code>.type</code></th>
+<th>holds</th>
+<th>has <code>.text</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code></td>
+<td>the words of the answer</td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td><code>thinking</code></td>
+<td>internal reasoning, when enabled</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>tool_use</code></td>
+<td>a request to call a tool</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>So <code>response.content[0].text</code> will eventually crash on a <code>thinking</code> or <code>tool_use</code> block. The filter
+<code>if b.type == "text"</code> is the guard. Write it defensively now and the same line survives Build 02,
+where tool_use blocks genuinely appear.</p>
+<h3 id="responseusage-where-cost-comes-from"><code>response.usage</code> — where cost comes from</h3>
+<pre><code class="language-python">usage.input_tokens, usage.output_tokens
+</code></pre>
+<p>What the API says it <strong>actually consumed</strong>. Not an estimate. Every cost figure in this build
+multiplies those two numbers by a published rate. That is the entire "cost is arithmetic" claim.</p>
+<hr />
+<h2 id="_sharedpy-and-why-it-exists"><code>_shared.py</code> — and why it exists</h2>
+<p><strong>Read this section before students ask why step 01 looks different from build 00's hello world.</strong>
+They will, because it does.</p>
+<p><code>_shared.py</code> is <strong>a file in this folder, not a package.</strong> <code>from _shared import ...</code> loads it from
+disk next door. It still does <code>import anthropic</code> underneath — the same SDK, the same
+<code>messages.create()</code>. Nothing new.</p>
+<p>It holds five things:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OPUS</code> / <code>SONNET</code> / <code>HAIKU</code></td>
+<td>the three model-id strings</td>
+</tr>
+<tr>
+<td><code>RATES</code></td>
+<td>dollars per million tokens, per model</td>
+</tr>
+<tr>
+<td><code>client()</code></td>
+<td><code>anthropic.Anthropic()</code>, with a readable error if the key is missing</td>
+</tr>
+<tr>
+<td><code>cost_usd()</code></td>
+<td>tokens × rate ÷ 1,000,000</td>
+</tr>
+<tr>
+<td><code>call()</code></td>
+<td><strong>the <code>messages.create()</code> call</strong>, wrapped in a timer, returning a <code>Result</code></td>
+</tr>
+<tr>
+<td><code>Result</code></td>
+<td>a small record: model, text, seconds, tokens, cost</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>call()</code> is not a different API. It is <code>messages.create()</code> plus a stopwatch plus the cost maths.</strong>
+Line them up:</p>
+<table>
+<thead>
+<tr>
+<th>Build 00, written out</th>
+<th>Build 01, via the helper</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>anthropic.Anthropic()</code></td>
+<td><code>client()</code></td>
+</tr>
+<tr>
+<td><code>client.messages.create(...)</code></td>
+<td>inside <code>call()</code></td>
+</tr>
+<tr>
+<td>the <code>b.type == "text"</code> join</td>
+<td>inside <code>call()</code></td>
+</tr>
+<tr>
+<td>cost arithmetic</td>
+<td><code>cost_usd()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Say this aloud in class:</strong> <em>"Same call you saw yesterday. It moved into a helper so each step can
+be about one idea instead of re-typing the plumbing."</em></p>
+<blockquote>
+<p><strong>Honest note for you, not the room:</strong> this helper is a cost. It makes the steps short and the
+comparison clean, and it hides the API call that is the point of the lesson. Build 00 is
+self-contained for exactly that reason. If a student is confused, open <code>_shared.py</code> and show them
+<code>call()</code> — it is fifteen lines, and the confusion ends immediately.</p>
+</blockquote>
+<p><code>incidents.py</code> is three synthetic production incidents at genuinely different difficulties. The
+difficulty gap <strong>is</strong> the experiment — if all three were easy, every model would look identical and
+there would be nothing to decide.</p>
+<hr />
+<h2 id="step-by-step">Step by step</h2>
+<h3 id="01_one_callpy-the-baseline"><code>01_one_call.py</code> — the baseline</h3>
+<p>One Haiku call on the easy incident. <code>max_tokens=16</code>, because the system prompt demands exactly one
+word — a live example of sizing the ceiling to the task.</p>
+<p><strong>Prints:</strong> the answer, then latency, tokens, cost.
+<strong>The point:</strong> cost comes off <code>response.usage</code>. You are never guessing.</p>
+<p><strong>"Isn't this the same as <code>01_hello.py</code>?"</strong> — Mechanically yes, and say so plainly. The differences
+are deliberate: this one uses a task with a <strong>checkable right answer</strong> (severity classification), so
+models can be compared fairly — you cannot compare "explain something" across tiers. And it captures
+<strong>latency</strong>, which build 00 ignored, because choosing a model trades cost against speed.</p>
+<p><em><code>01_hello.py</code> proves the pipe works. <code>01_one_call.py</code> is the control in an experiment.</em></p>
+<h3 id="02_three_tierspy-the-method-lesson"><code>02_three_tiers.py</code> — the method lesson</h3>
+<p>Two halves, and <strong>the order is the whole point.</strong></p>
+<p><strong>Part A</strong> gives each tier the work the tier table says it is for: one-word triage → Haiku,
+structured analysis → Sonnet, multi-cause investigation → Opus. All three look good.</p>
+<p><strong>It is not a comparison.</strong> Two things moved at once — the task <em>and</em> the model — so nothing is
+isolated. It looks like evidence and proves nothing.</p>
+<p><strong>Part B</strong> holds the incident fixed and moves only the model. <em>Now</em> it is a comparison. It prints
+the cost spread and the latency spread.</p>
+<p><strong>Teach the difference explicitly.</strong> Part A is the flattering benchmark everyone reaches for; Part B
+is the controlled one. That distinction is worth more to a senior engineer than anything about
+model tiers.</p>
+<p>This is also the <strong>only place in the build with real latency numbers.</strong> Cost is arithmetic and the
+offline bench computes it for free; time must be measured.</p>
+<h3 id="03_effortpy-the-turn"><code>03_effort.py</code> — the turn</h3>
+<p>One model — Opus — at <code>effort</code> low, medium, high. Same prompt, same incident.</p>
+<p><code>effort</code> trades thoroughness against token spend <strong>inside one model</strong>. Thinking tokens bill as
+output, so lower effort costs less.</p>
+<p><strong>This is what the session exists for.</strong> The saving arrives with <strong>no router, no classifier, no
+second model, no second cache.</strong> One parameter.</p>
+<p>Set it up before you run it: <em>"There is an option that tier table never mentions."</em> Then run it, and
+leave silence.</p>
+<p><em>Note: not every tier accepts <code>effort</code> — the small tier rejects it. That is why this step uses Opus.</em></p>
+<h3 id="04_routepy-routing-with-its-reasoning-visible"><code>04_route.py</code> — routing, with its reasoning visible</h3>
+<p>Classify the incident (a cheap model call), pick a tier from a policy, run it.</p>
+<p>Two details that are the actual lesson:</p>
+<ol>
+<li><strong>The classifier is itself a model call</strong> — priced, and charged on <strong>every</strong> request, including
+   the ones that route to the expensive model anyway. The step prints it as its own line. Never fold
+   it into the routed call.</li>
+<li><strong>Every decision reports the rule that made it.</strong> A bare model name is an instruction; a model
+   name plus its rule is an <em>argument</em>, and an argument can be reviewed by the person whose budget
+   it is — someone who will never open the source.</li>
+</ol>
+<p><code>POLICY</code> is a <strong>list of dicts</strong> — data, not code. First match wins, so ordering is part of the
+policy. <strong>This is the file to edit live:</strong> change a rule, re-run, watch routing change with nothing
+else touched.</p>
+<h3 id="05_price_firstpy-the-assignment"><code>05_price_first.py</code> — the assignment</h3>
+<p>Uses <code>count_tokens</code> to price the <strong>input</strong> side before any generation happens. Free, instant, no
+guessing. For long-context work the input dominates, so a 200,000-token document sent to the wrong
+tier is a decision you can evaluate <em>before</em> making it.</p>
+<p>Only the output side needs measuring, because only the model decides that.</p>
+<hr />
+<h2 id="questions-you-will-get-with-answers">Questions you will get, with answers</h2>
+<p><strong>"Why is output 5× the price of input?"</strong> Generation is the expensive operation; reading is cheap.
+It is why <code>max_tokens</code> matters for cost and why <code>effort</code> (which moves output tokens) is such a
+strong lever.</p>
+<p><strong>"Why did you set <code>max_tokens=16</code>?"</strong> The prompt demands one word. Sizing the ceiling to the task
+is the habit; it also caps worst-case spend on a runaway input.</p>
+<p><strong>"Does the model remember the last call?"</strong> No. The API is stateless. You resend the whole
+conversation every time — which is why a long agent loop gets more expensive each turn.</p>
+<p><strong>"Can I use a different model mid-conversation?"</strong> Yes, you hold the history. But the cache goes
+cold (caches are per-model), thinking blocks get dropped, and window sizes differ. Portable, not free.</p>
+<p><strong>"Is caching automatic?"</strong> No — opt-in, via a <code>cache_control</code> breakpoint. Covered in <code>BUILD.md</code>.</p>
+<p><strong>"Where does the routing happen — is it an API feature?"</strong> There is none. The API takes a <code>model</code>
+string per request; choosing it is your application code. <code>04_route.py</code> <em>is</em> the router.</p>
+<hr />
+<h2 id="before-you-teach-10-minute-prep">Before you teach: 10-minute prep</h2>
+<ol>
+<li>Run <code>python3 check_env.py</code> from the repo root.</li>
+<li>Run <code>src/bench.py</code> — no key needed. Put the numbers on screen.</li>
+<li>Run steps 01, 02, 03. Watch the effort numbers yourself before the room does.</li>
+<li>Re-read the three lines above marked <strong>the point</strong> — one per step.</li>
+<li>Open <code>_shared.py</code> and look at <code>call()</code>. Fifteen lines. It is the answer to the commonest question.</li>
+</ol>
+<p>You do not need to have read <code>BUILD.md</code> end to end to teach the steps. Read Part 3's findings table
+and Part 5. The rest is the write-up students read afterwards.</p>
+</body>
+</html>
