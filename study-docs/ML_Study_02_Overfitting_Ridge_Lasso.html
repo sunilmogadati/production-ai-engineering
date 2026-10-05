@@ -137,7 +137,7 @@
 <h3 id="21-why-overfitting-is-a-steep-slope">2.1 Why overfitting <em>is</em> a steep slope</h3>
 <p>Look again at the red overfit line — it's <strong>steep.</strong> To thread every training point exactly, a model cranks its slopes up high. A steep slope means the prediction swings enormously for a small change in input — which is exactly why it flies off on new points.</p>
 <blockquote>
-<p><strong>The core idea, in one sentence:</strong> <em>a big slope is a symptom of overfitting, so let's make big slopes </em><em>expensive.</em><em><em> We add a penalty to the cost function that grows with the size of the slopes. Now gradient descent can't just chase a perfect fit — every unit of steepness </em>costs</em> it. It settles on a flatter, more generalized line.</p>
+<p><strong>The core idea, in one sentence:</strong> <em>a big slope is a symptom of overfitting, so let's make big slopes </em><em>expensive.</em>*<em> We add a penalty to the cost function that grows with the size of the slopes. Now gradient descent can't just chase a perfect fit — every unit of steepness </em>costs* it. It settles on a flatter, more generalized line.</p>
 </blockquote>
 <p>Recall the cost from Study 01 — the "badness score" we minimize:</p>
 <p>\[J = \frac{1}{2m}\sum_{i=1}^{m}\big(h_\theta(x^{(i)}) - y^{(i)}\big)^2\]</p>

@@ -16,13 +16,28 @@ text = open(SRC, encoding="utf-8").read()
 _tm = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
 TITLE = _tm.group(1).strip() if _tm else os.path.basename(SRC)
 
-mermaid_blocks, math_blocks = [], []
+mermaid_blocks, math_blocks, code_blocks = [], [], []
 
 # 1) Protect ```mermaid ... ``` fences
 def _grab_mermaid(m):
     mermaid_blocks.append(m.group(1))
     return f"\n\n@@MERMAID{len(mermaid_blocks)-1}@@\n\n"
 text = re.sub(r"```mermaid\n(.*?)```", _grab_mermaid, text, flags=re.DOTALL)
+
+# 1b) Protect every OTHER fenced block and inline-code span from the math passes.
+#
+# The math grabber below treats "$...$ on one line" as a candidate. Shell and
+# template syntax is full of dollar signs that are not math and never were:
+#   curl ".../ant_${VERSION}_${OS}_${ARCH}.tar.gz"   -> three $-pairs
+#   export AGENT_ID=... ; echo "$A $B"               -> one pair
+# Worse, ${VAR} carries the TeX markers { } _, so _looks_like_math() says yes
+# and the line is destroyed. Code is never math, so take it out of play first
+# and put it back after markdown has run.
+def _grab_code(m):
+    code_blocks.append(m.group(0))
+    return f"@@CODE{len(code_blocks)-1}@@"
+text = re.sub(r"```.*?```", _grab_code, text, flags=re.DOTALL)   # fenced blocks
+text = re.sub(r"`[^`\n]+`", _grab_code, text)                    # inline spans
 
 # 2) Protect display math $$ ... $$
 def _grab_display(m):
@@ -65,6 +80,9 @@ def _grab_inline(m):
 
 
 text = re.sub(r"\$([^\n$]+?)\$", _grab_inline, text)
+
+# 3b) Put code back before markdown runs, so fences still parse as fences.
+text = re.sub(r"@@CODE(\d+)@@", lambda m: code_blocks[int(m.group(1))], text)
 
 # 4) Markdown -> HTML
 body = markdown.markdown(text, extensions=["extra", "sane_lists", "toc"])

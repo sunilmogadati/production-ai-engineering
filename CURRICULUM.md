@@ -60,6 +60,14 @@ Make it something a team can run — then prove it on one real system.
 - **Ship it and run it** — Cloud, MLOps & Security — [19](study-docs/ML_Study_19_Deploying_AI_Cloud_MLOps_Security.md)
 - **The capstone** — an end-to-end system on real data, deployed on AWS — [wb-health-monitor](https://github.com/sunilmogadati/wb-health-monitor)
 
+## Claude track — building on the Anthropic stack
+
+The ML series above covers agents in the abstract. This track asks what the **vendor** hands you, and what you are still on the hook for.
+
+- **Agent or workflow? Whose harness, whose machine?** — Agent architecture & the Agent SDK — [Claude 01](study-docs/Claude_Study_01_Agent_Architecture_and_the_Agent_SDK.md) · [notebook](notebooks/Claude_Study_01_Agent_Architecture.ipynb)
+
+---
+
 ---
 
 *The tools are the easy part now. Which fix is right, and making it hold in production — that's the job.*

@@ -1,0 +1,1640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Study 01 — Agent Architecture, the Agent SDK, and Managed Agents</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="claude-study-01-agent-architecture-the-agent-sdk-and-managed-agents">Claude Study 01 — Agent Architecture, the Agent SDK, and Managed Agents</h1>
+<p><strong>Covers:</strong> what the <strong>CCDV-F</strong> certification actually tests (blueprint + weights) → <strong>agent architecture</strong> as a <em>dynamic policy</em>, not a state machine → <strong>workflow architecture</strong> as the state machine it is, and why the two are complements → <strong>multi-agent patterns</strong> and when subagents genuinely pay → the <strong>code harness</strong> → the <strong>four different ways</strong> to build an agent on Claude (the distinction the course blurs) → the <strong>Agent SDK</strong> (<code>claude_agent_sdk.query</code> + <code>ClaudeAgentOptions</code>) → <strong>PreToolUse / PostToolUse hooks</strong> → <strong>Managed Agents</strong> (agent · environment · session · deployment · credential vault) → one exam-style judgment call worked end to end.</p>
+<p><strong>Goal:</strong> be able to stand at a whiteboard and answer <em>"should this be an agent, a workflow, or neither — and if it's an agent, whose loop runs it and whose machine does the work?"</em> Everything else in this document is a consequence of that one question.</p>
+<p><strong>Series context:</strong> the <strong>first rung of the Claude track</strong>. The ML series got as far as agents in the abstract — <a href="ML_Study_13_LangChain_Agents.html">Study 13</a> (tools in the same file), <a href="ML_Study_13a_LangGraph.html">13a</a> (the loop as a governable graph), <a href="ML_Study_13b_MCP.html">13b</a> (tools from anywhere). This track asks the question those three deferred: <strong>when you are building on Claude specifically, what does the vendor hand you, and what are you still on the hook for?</strong> Built from the Claude Certified Developer — Foundations course (Andrew Brown / ExamPro, freeCodeCamp), chapters 1–9, cross-checked against the official Claude Platform docs because the course moves fast and the SDK has moved since.</p>
+<hr />
+<h2 id="part-0-what-the-certification-is-and-what-it-actually-tests">Part 0 — What the certification is, and what it actually tests</h2>
+<p>Before the engineering, the map. Anthropic's certification program is <strong>role-based</strong>, not tier-based — that is the first thing that trips up anyone coming from AWS or Azure, where you expect Foundations → Associate → Professional → Specialty on a single ladder.</p>
+<div class="mermaid">flowchart LR
+    CCE[&quot;Claude Code Essentials&lt;br/&gt;&lt;i&gt;(pre-req, informal)&lt;/i&gt;&quot;]
+    CCE --&gt; DEV[&quot;CCDV-F&lt;br/&gt;Developer — Foundations&lt;br/&gt;&lt;b&gt;software engineers&lt;/b&gt;&quot;]
+    CCE --&gt; ASC[&quot;CCAO-F&lt;br/&gt;Associate — Foundations&lt;br/&gt;&lt;b&gt;non-technical&lt;/b&gt;&quot;]
+    DEV --&gt; ARF[&quot;CCAR-F&lt;br/&gt;Architect — Foundations&lt;br/&gt;&lt;b&gt;solution architects&lt;/b&gt;&quot;]
+    ARF --&gt; ARP[&quot;CCAR-P&lt;br/&gt;Architect — Professional&lt;br/&gt;&lt;b&gt;senior architects&lt;/b&gt;&quot;]</div>
+<p>Four certifications, only <strong>one</strong> of which says "Professional". The others all say "Foundations" — and <em>Foundations here means role-scope, not difficulty</em>. The non-technical Associate is not an easy version of the Developer; it is a different job. Read the exam guide for the role you actually hold.</p>
+<p><strong>The exam mechanics</strong> (version 1, effective July 2026):</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+<th>What it means for you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Questions</td>
+<td><strong>53</strong></td>
+<td>An unusual number. Most exams use 60–65.</td>
+</tr>
+<tr>
+<td>Duration</td>
+<td><strong>120 min</strong> exam / <strong>150 min</strong> seat</td>
+<td>~2.2 min per question. Not tight.</td>
+</tr>
+<tr>
+<td>Pass mark</td>
+<td><strong>720 / 1000</strong>, scaled</td>
+<td>≈72%. You can afford roughly <strong>14 wrong</strong>.</td>
+</tr>
+<tr>
+<td>Penalty for wrong</td>
+<td>None</td>
+<td>Never leave one blank.</td>
+</tr>
+<tr>
+<td>Validity</td>
+<td><strong>12 months</strong></td>
+<td>Short. Budget for re-assessment.</td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td>Pearson VUE, proctored</td>
+<td>Test centre or online-proctored (desk sweep, screen share).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The blueprint</strong> — and this is where you decide where your study hours go:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Domain</th>
+<th>Weight</th>
+<th>≈ Questions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td><strong>Applications and Integration</strong></td>
+<td><strong>33.1%</strong></td>
+<td>~18</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Model Selection and Optimization</strong></td>
+<td><strong>16.8%</strong></td>
+<td>~9</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>Agents and Workflows</strong></td>
+<td><strong>14.7%</strong></td>
+<td>~8</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Prompt and Context Engineering</td>
+<td>11.0%</td>
+<td>~6</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Tools and MCPs</td>
+<td>10.6%</td>
+<td>~6</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Security and Safety</td>
+<td>8.1%</td>
+<td>~4</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Claude Code</td>
+<td>3.1%</td>
+<td>~2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Eval, Testing, and Debugging</td>
+<td>2.6%</td>
+<td>~1</td>
+</tr>
+</tbody>
+</table>
+<p>Two readings of that table, and they point in opposite directions.</p>
+<p>The <strong>exam-taker's</strong> reading: domains 2 + 5 + 1 are <strong>64.6% of the paper</strong>. Clear those three and you have passed before you reach the rest. Domain 3 (Claude Code) and domain 4 (evals) are worth <strong>three questions combined</strong> — do not spend a weekend there.</p>
+<p>The <strong>engineer's</strong> reading: that weighting is <em>wrong about the real world</em>. Evals are 2.6% of this exam and roughly half of what separates a system that works from a demo that once worked. The blueprint is a contract about what gets asked, not a claim about what matters. Pass the exam against the weights; build against reality.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> this is a <strong>role-scoped</strong> certification with a <strong>lopsided blueprint</strong> — two-thirds of the marks sit in three domains, and the domain that matters most in production (evals) is worth one question.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-agent-architecture-a-dynamic-policy-not-a-state-machine">Part 1 — Agent architecture: a dynamic policy, not a state machine</h2>
+<p>Here is the diagram everyone has seen, and because everyone has seen it, nobody looks at it.</p>
+<div class="mermaid">flowchart LR
+    U([&quot;User&quot;]) --&gt;|Start Turn| L[&quot;Agentic Loop&quot;]
+    L --&gt;|End Turn| U
+    L --&gt;|iterations| L</div>
+<p>The user sends a request, which <strong>starts a turn</strong>. The loop then iterates — reason, act, observe, reason again — against its own goal criteria, and when <em>it</em> decides it is satisfied, it <strong>ends the turn</strong> and hands back. Control crosses the boundary twice: once in, once out. Everything in between the agent decides.</p>
+<p>Which invites the natural-sounding description: <em>you define a state machine in the system prompt, and the agent manages its state from the message history.</em> That description <strong>feels</strong> right and is <strong>wrong</strong>, and the gap between those two is the single most useful idea in this chapter.</p>
+<h3 id="what-a-real-state-machine-in-a-prompt-looks-like">What a real state machine in a prompt looks like</h3>
+<p>Take the course's example: an agent playing a multi-user dungeon. You could genuinely write the states out:</p>
+<pre><code class="language-text">Role: You are an autonomous MUD-playing agent.
+Goal: Complete the assigned objective.
+
+EXPLORE
+  - Investigate rooms, navigate, and pursue the objective.
+  - Enemy appears          → COMBAT
+  - Health becomes low     → RECOVER
+  - Objective completed    → DONE
+COMBAT
+  - Fight the current enemy.
+  - Enemy defeated         → EXPLORE
+  - Health dangerously low → RECOVER
+RECOVER
+  - Heal, rest, or retreat as needed.
+  - Health restored        → EXPLORE
+DONE
+  - Return the final result and stop.
+</code></pre>
+<p>That works. You can draw it as boxes and arrows — Explore, Combat, Recover, Done — with labelled transitions. And <strong>that is exactly the problem.</strong> If the thing can be drawn as boxes and arrows, the boxes and arrows are code. You have paid model latency, model cost, and model non-determinism to execute a <code>switch</code> statement.</p>
+<p>The right move when you find yourself here: <strong>write the state machine in code, and call out to an agent from the one state that genuinely needs judgment.</strong> <code>EXPLORE</code> might be open-ended enough to deserve a model. <code>RECOVER</code> is an <code>if health &lt; threshold</code>. Do not buy an LLM to run an <code>if</code>.</p>
+<h3 id="what-agent-architecture-actually-is">What agent architecture actually is</h3>
+<p>Now the same game, written the other way:</p>
+<pre><code class="language-text">Role: You are an autonomous MUD-playing agent.
+Goal: Complete the assigned objective.
+
+Use the available tools to inspect the world, navigate, interact with
+characters and objects, manage resources, and overcome obstacles.
+
+At each turn:
+  - Evaluate the current situation and everything learned so far.
+  - Decide the most useful next action.
+  - Use tools as needed.
+  - Adapt your plan based on the results.
+  - Continue until the objective is complete or cannot reasonably be completed.
+
+Avoid unnecessary actions and do not repeat actions unless new information
+justifies it.
+</code></pre>
+<p>There are no states here. There is no diagram you can draw in advance. What you get at runtime is an <strong>execution path</strong>, and it is different every run:</p>
+<pre><code class="language-text">inspect room
+  → realize objective requires an item
+  → remember seeing a merchant
+  → navigate to merchant
+  → discover insufficient gold
+  → find another way to earn gold
+  → return
+  → purchase item
+  → navigate to objective
+  → encounter locked door
+  → investigate alternative route
+  → …
+</code></pre>
+<p>Look at the third step. <em>Remember seeing a merchant.</em> No transition table contains that edge, because the edge did not exist until the agent noticed the merchant three steps earlier and then needed one. The path is <strong>constructed</strong>, not <strong>traversed</strong>.</p>
+<p>What you wrote is not a state machine. It is a <strong>dynamic policy</strong>: a decision rule that chooses the next action <em>at runtime from the current context</em>, rather than following predefined transitions.</p>
+<div class="mermaid">flowchart TB
+    subgraph SM[&quot;Workflow / State Machine&quot;]
+        direction LR
+        A1[&quot;Step A&quot;] --&gt; B1[&quot;Step B&quot;] --&gt; C1[&quot;Step C&quot;]
+        B1 -.-&gt;|defined edge| A1
+    end
+    subgraph DP[&quot;Agent / Dynamic Policy&quot;]
+        direction LR
+        CTX[&quot;Current context&lt;br/&gt;(goal + history + tool results)&quot;] --&gt; POL{&quot;Policy:&lt;br/&gt;what is most useful now?&quot;}
+        POL --&gt; ACT[&quot;Next action&quot;]
+        ACT --&gt; CTX
+    end
+    SM ~~~ DP</div>
+<p>The practical test, and the one worth carrying into the exam and into design reviews:</p>
+<p><strong>Can you enumerate the transitions before the system runs?</strong>
+- <strong>Yes</strong> → it is a workflow. Build it in code. Cheaper, faster, deterministic, testable.
+- <strong>No</strong> → it is an agent. You are buying runtime judgment, and paying for it in cost, latency and variance.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> a workflow <strong>traverses</strong> a graph you drew; an agent <strong>constructs</strong> a path you could not have drawn. If you can draw it, don't buy a model to walk it.</p>
+</blockquote>
+<hr />
+<h2 id="part-2-workflow-architecture-and-why-it-isnt-the-enemy">Part 2 — Workflow architecture, and why it isn't the enemy</h2>
+<p><strong>Workflow architecture is where a developer defines a series of predetermined steps.</strong> n8n is the canonical visual example — drag nodes, connect them, each node does one thing: Email node → AI Agent node → output formatting → write to a sheet.</p>
+<p>And the key structural claim: <strong>a workflow architecture <em>is</em> a state machine.</strong> It doesn't need a visual tool. Code that decides which step runs next <em>is</em> the workflow. The nodes are incidental; the predetermination is the point.</p>
+<p>The relationship runs both ways, and both directions are worth knowing:</p>
+<div class="mermaid">flowchart LR
+    T[&quot;Trigger&lt;br/&gt;(email arrives)&quot;] --&gt; N1[&quot;Step: parse&quot;]
+    N1 --&gt; AG{{&quot;Step: AGENT&lt;br/&gt;&lt;i&gt;dynamic policy&lt;/i&gt;&quot;}}
+    AG --&gt; N2[&quot;Step: format&quot;]
+    N2 --&gt; N3[&quot;Step: write to sheet&quot;]
+    style AG fill:#ffe9d6,stroke:#d2691e,stroke-width:2px</div>
+<ul>
+<li><strong>An agent can be embedded in a workflow</strong> as a single step. This is the common, sane architecture: deterministic rails everywhere, judgment at the one node that needs it. That's the n8n "AI Agent" node, and it's also what you should be hand-rolling in code.</li>
+<li><strong>A workflow cannot host a capable outer agentic loop.</strong> You can approximate one — loop back, add branches — but the loop's whole value is that the <em>next step is chosen at runtime</em>. A predetermined graph cannot choose a step that isn't in it.</li>
+</ul>
+<p>So the choice is not agent <em>versus</em> workflow. It's <strong>which part of this system needs judgment, and which part needs a guarantee.</strong> You want workflows wherever you need a guarantee about exactly how something operates — that is a feature, not a limitation. Compliance paths, billing, anything you'll be asked to explain to an auditor: predetermined, every time.</p>
+<p>An aside with a sharp edge in it: the course notes the running joke that nobody uses n8n any more because the models got good enough to just <em>write you the workflow in code</em>. Treat that as the real lesson. Visual workflow tools sold <strong>authoring convenience</strong>, not capability. When authoring becomes free, the tool's moat is gone and you are left holding a less debuggable, less versionable, less testable representation of a program. Build the workflow in code.</p>
+<h3 id="putting-it-together-four-names-two-ideas-one-system">Putting it together: four names, two ideas, one system</h3>
+<p>Parts 1 and 2 use four terms, and they collapse to two ideas:</p>
+<table>
+<thead>
+<tr>
+<th>You'll hear</th>
+<th>It's the same thing as</th>
+<th>Who decides the next step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>state machine</strong></td>
+<td><strong>workflow architecture</strong></td>
+<td>your code — the transitions were written down before the system ran</td>
+</tr>
+<tr>
+<td><strong>dynamic policy</strong></td>
+<td><strong>agent architecture</strong></td>
+<td>the model — it picks the next action at runtime from what it has seen</td>
+</tr>
+</tbody>
+</table>
+<p>So "state machine vs dynamic policy" and "workflow vs agent" are the same question asked twice. And the answer is almost never one or the other for a whole system. <strong>They are layers, and real systems use both together:</strong></p>
+<ol>
+<li><strong>Outside:</strong> a workflow (code) owns the trigger, the order of stages, and anything with a rule — routing, thresholds, writes to systems of record.</li>
+<li><strong>Middle:</strong> an agent sits inside the one or two steps where the path can't be known in advance.</li>
+<li><strong>Inside the agent:</strong> hooks (Part 6) put small deterministic rules <em>back</em> around the agent's tool calls.</li>
+</ol>
+<p>A concrete system — an on-call incident assistant:</p>
+<div class="mermaid">flowchart LR
+    T[&quot;Alert fires&quot;] --&gt; D[&quot;Dedupe + enrich&lt;br/&gt;&lt;i&gt;code&lt;/i&gt;&quot;]
+    D --&gt; AG{{&quot;Investigate&lt;br/&gt;&lt;i&gt;AGENT&lt;/i&gt;: reads logs, metrics,&lt;br/&gt;recent deploys — chooses its own path&quot;}}
+    AG --&gt; S{&quot;Severity rule&lt;br/&gt;&lt;i&gt;code&lt;/i&gt;&quot;}
+    S --&gt;|sev 1| P[&quot;Page on-call&lt;br/&gt;&lt;i&gt;code&lt;/i&gt;&quot;]
+    S --&gt;|otherwise| TK[&quot;Open ticket&lt;br/&gt;&lt;i&gt;code&lt;/i&gt;&quot;]
+    style AG fill:#ffe9d6,stroke:#d2691e,stroke-width:2px</div>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Layer</th>
+<th>Why that layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dedupe and enrich the alert</td>
+<td>workflow</td>
+<td>Same logic every time. A model adds cost and variance and nothing else.</td>
+</tr>
+<tr>
+<td>Investigate the cause</td>
+<td><strong>agent</strong></td>
+<td>Where to look next depends on what the last query showed. You can't draw that path in advance.</td>
+</tr>
+<tr>
+<td>Decide whether to page</td>
+<td>workflow</td>
+<td>"Sev 1 pages a human" is a policy. Policies belong in code you can audit, not in a prompt.</td>
+</tr>
+<tr>
+<td>Block <code>kubectl delete</code> during the investigation</td>
+<td>hook inside the agent</td>
+<td>The agent stays free to explore; one specific action is never allowed.</td>
+</tr>
+</tbody>
+</table>
+<p>If someone asks "is this an agent or a workflow?", the useful answer is <em>"which step?"</em></p>
+<blockquote>
+<p><strong>The one-line frame:</strong> workflows are <strong>state machines you can audit</strong>; agents are <strong>policies you can only observe</strong>. Put the agent inside the workflow, not the workflow inside the agent.</p>
+</blockquote>
+<hr />
+<h2 id="part-3-multi-agent-architecture-and-subagents">Part 3 — Multi-agent architecture and subagents</h2>
+<h3 id="the-patterns">The patterns</h3>
+<p>There are more multi-agent shapes than "one orchestrator with helpers", and naming them is most of the battle:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Shape</th>
+<th>Use when</th>
+<th>Practical example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Router</strong></td>
+<td>send the task to the best agent/tool</td>
+<td>tasks are heterogeneous, each handled well by one specialist</td>
+<td>A support inbox: a cheap classifier sends billing questions to a billing agent (with invoice tools), outages to a technical agent (with log access), and account changes to an account agent.</td>
+</tr>
+<tr>
+<td><strong>Sequential pipeline</strong></td>
+<td>A → B → C</td>
+<td>stages are ordered and each consumes the last</td>
+<td>Contract intake: an extractor pulls parties, dates and amounts → a validator checks them against the CRM → a summarizer writes the one-paragraph brief.</td>
+</tr>
+<tr>
+<td><strong>Parallel / fan-out</strong></td>
+<td>many work independently, results combined</td>
+<td>work is independent and latency matters</td>
+<td>Pull-request review: security, test-coverage and style reviewers run at the same time on the same diff; their findings are merged into one review.</td>
+</tr>
+<tr>
+<td><strong>Planner–executor</strong></td>
+<td>one plans, another carries out</td>
+<td>planning and doing need different context or models</td>
+<td>A database migration: a strong model writes the ordered plan (with rollback per step); a cheaper executor runs each step with tools and reports back.</td>
+</tr>
+<tr>
+<td><strong>Reviewer / critic loop</strong></td>
+<td>one produces, another checks and returns for revision</td>
+<td>correctness matters more than latency</td>
+<td>A patient-visit summary is drafted, then a reviewer checks every claim against the source notes and sends back anything unsupported.</td>
+</tr>
+<tr>
+<td><strong>Peer-to-peer / handoff</strong></td>
+<td>agents pass control directly</td>
+<td>ownership genuinely changes hands</td>
+<td>A front-desk agent confirms the customer wants a refund, then hands the <em>whole conversation</em> to a refunds agent, which talks to the customer from then on.</td>
+</tr>
+<tr>
+<td><strong>Blackboard / shared memory</strong></td>
+<td>all contribute to a shared workspace</td>
+<td>many contributors, one evolving artifact</td>
+<td>An incident war-room document: a log analyst, a metrics analyst and a deploy-history analyst each write findings into the same doc; the timeline builds up from all three.</td>
+</tr>
+<tr>
+<td><strong>Swarm / decentralized</strong></td>
+<td>no central orchestrator</td>
+<td>loose coordination, emergent allocation</td>
+<td>Large-scale research: hundreds of sources sit in a queue, and worker agents claim the next unclaimed one, process it, and write results back — no one assigns work.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-patterns-drawn">The patterns, drawn</h3>
+<p>The examples from the table are reused below so each diagram has something concrete in it. Dashed arrows are optional or occasional paths.</p>
+<p><strong>1. Router.</strong> One classifier step picks <em>one</em> specialist per request. The specialists never talk to each other. The router can be a cheap model or plain code, such as keyword or category rules. Add specialists without touching the others.</p>
+<div class="mermaid">flowchart LR
+    Q([&quot;Customer message&quot;]) --&gt; R{&quot;Router&lt;br/&gt;&lt;i&gt;classify&lt;/i&gt;&quot;}
+    R --&gt;|billing| A1[&quot;Billing agent&lt;br/&gt;invoice tools&quot;]
+    R --&gt;|outage| A2[&quot;Technical agent&lt;br/&gt;log + status tools&quot;]
+    R --&gt;|account| A3[&quot;Account agent&lt;br/&gt;CRM tools&quot;]
+    A1 --&gt; OUT([&quot;Reply&quot;])
+    A2 --&gt; OUT
+    A3 --&gt; OUT</div>
+<p><strong>2. Sequential pipeline.</strong> A fixed order, where each stage's output is the next stage's input. There can be any number of stages, but every one adds latency, and an error early on flows through all the later stages. A validation stage that can <strong>reject</strong> the work, rather than just pass it along, is what keeps the pipeline honest.</p>
+<div class="mermaid">flowchart LR
+    IN([&quot;Contract PDF&quot;]) --&gt; S1[&quot;Extractor&lt;br/&gt;parties, dates, amounts&quot;]
+    S1 --&gt; S2[&quot;Validator&lt;br/&gt;check against CRM&quot;]
+    S2 --&gt;|valid| S3[&quot;Summarizer&lt;br/&gt;one-paragraph brief&quot;]
+    S2 -.-&gt;|mismatch| HUM([&quot;Human review queue&quot;])
+    S3 --&gt; OUT([&quot;Brief&quot;])</div>
+<p><strong>3. Parallel / fan-out.</strong> One dispatcher gives the <em>same input</em> (or one slice of it) to N independent workers at once, and an aggregator merges what they return. Total time is roughly the slowest worker's time, not the sum. The aggregator is the hard part: it has to de-duplicate findings and settle conflicts between workers.</p>
+<div class="mermaid">flowchart LR
+    PR([&quot;Pull request diff&quot;]) --&gt; D[&quot;Dispatcher&quot;]
+    D --&gt; W1[&quot;Security reviewer&quot;]
+    D --&gt; W2[&quot;Test-coverage reviewer&quot;]
+    D --&gt; W3[&quot;Style reviewer&quot;]
+    D -.-&gt; WN[&quot;…N more&quot;]
+    W1 --&gt; AG[&quot;Aggregator&lt;br/&gt;dedupe · rank · merge&quot;]
+    W2 --&gt; AG
+    W3 --&gt; AG
+    WN -.-&gt; AG
+    AG --&gt; OUT([&quot;One review&quot;])</div>
+<p><strong>4. Planner–executor.</strong> One agent decides <em>what</em> to do; others <em>do</em> it. <strong>Yes, there are usually several executors.</strong> The planner writes steps, independent steps go to executors in parallel, and dependent steps wait their turn. Each executor gets only its own step and the tools for it. Results go back to the planner, which can <strong>re-plan</strong> when a step fails or turns up something unexpected. That feedback arrow is what separates a planner–executor from a pipeline.</p>
+<div class="mermaid">flowchart TB
+    G([&quot;Goal: migrate the orders database&quot;]) --&gt; P[&quot;Planner&lt;br/&gt;&lt;i&gt;strong model&lt;/i&gt;&quot;]
+    P --&gt;|step 1| E1[&quot;Executor 1&lt;br/&gt;export schema&quot;]
+    P --&gt;|step 2| E2[&quot;Executor 2&lt;br/&gt;convert stored procedures&quot;]
+    P --&gt;|step 3| E3[&quot;Executor 3&lt;br/&gt;write rollback scripts&quot;]
+    E1 --&gt;|result| P
+    E2 --&gt;|result| P
+    E3 --&gt;|result| P
+    P -.-&gt;|re-plan on failure| P
+    P --&gt; DONE([&quot;Migration report&quot;])</div>
+<p><strong>Can there be multiple planners?</strong> Yes, in two quite different ways:</p>
+<ul>
+<li><strong>Hierarchical planning (a planner of planners).</strong> A top planner splits the goal into sub-goals and hands each one to a <strong>sub-planner</strong>, which plans its own part and runs its own executors. Use it when the goal is too big for one plan to hold in context, such as migrating ten services instead of one. It's the planner–executor pattern nested inside itself.</li>
+<li><strong>Competing planners (ensemble).</strong> N planners each write a complete plan for the <em>same</em> goal, possibly on different models or with different prompts. A judge then picks one, or merges the best parts of several. Use it when <strong>plan quality is the bottleneck</strong> and a bad plan is expensive. You pay for N plans to get one good one.</li>
+</ul>
+<div class="mermaid">flowchart TB
+    subgraph E[&quot;Ensemble: compete on the same goal&quot;]
+        direction TB
+        EG([&quot;Same goal&quot;]) --&gt; PA[&quot;Planner A&quot;]
+        EG --&gt; PB[&quot;Planner B&quot;]
+        EG --&gt; PC[&quot;Planner C&quot;]
+        PA --&gt; J{&quot;Judge&lt;br/&gt;pick or merge&quot;}
+        PB --&gt; J
+        PC --&gt; J
+        J --&gt; EX[&quot;Executors&quot;]
+    end
+    subgraph H[&quot;Hierarchical: split the goal&quot;]
+        direction TB
+        HG([&quot;Goal: migrate 10 services&quot;]) --&gt; TP[&quot;Top planner&quot;]
+        TP --&gt; SP1[&quot;Sub-planner&lt;br/&gt;services 1–5&quot;]
+        TP --&gt; SP2[&quot;Sub-planner&lt;br/&gt;services 6–10&quot;]
+        SP1 --&gt; X1[&quot;Executors&quot;]
+        SP2 --&gt; X2[&quot;Executors&quot;]
+        X1 --&gt;|status| SP1
+        X2 --&gt;|status| SP2
+        SP1 --&gt;|summary| TP
+        SP2 --&gt;|summary| TP
+    end</div>
+<p>What you don't want is several planners editing <em>one</em> shared plan at the same time with no judge. That's the blackboard pattern (7) without a controller, and the plans will conflict.</p>
+<p><strong>5. Reviewer / critic loop.</strong> A worker produces, a reviewer checks against explicit criteria, and the work goes back for revision until it passes or a round limit is hit. <strong>Multiple reviewers</strong> are common, each checking one thing, for example accuracy against the source and compliance wording. Then it passes only when <em>all</em> of them accept. Always cap the rounds, or a strict reviewer and a stubborn worker will loop forever.</p>
+<div class="mermaid">flowchart LR
+    SRC([&quot;Visit notes&quot;]) --&gt; W[&quot;Writer&lt;br/&gt;drafts summary&quot;]
+    W --&gt;|draft| R1[&quot;Accuracy reviewer&lt;br/&gt;every claim in the source?&quot;]
+    W --&gt;|draft| R2[&quot;Compliance reviewer&lt;br/&gt;required wording present?&quot;]
+    R1 --&gt;|issues| W
+    R2 --&gt;|issues| W
+    R1 --&gt;|pass| G{&quot;All passed?&quot;}
+    R2 --&gt;|pass| G
+    G --&gt;|yes| OUT([&quot;Approved summary&quot;])
+    G -.-&gt;|round limit hit| HUM([&quot;Human review&quot;])</div>
+<p><strong>6. Peer-to-peer / handoff.</strong> Control <em>moves</em> along a chain, and each agent owns the conversation while it holds it. There's no central coordinator, so each agent needs its own rule for when to hand off and to whom. A handoff back to an earlier agent is allowed, but watch for ping-pong.</p>
+<div class="mermaid">flowchart LR
+    U([&quot;Customer&quot;]) &lt;--&gt; T[&quot;Front-desk agent&lt;br/&gt;identify need&quot;]
+    T --&gt;|&quot;handoff: wants refund&quot;| RF[&quot;Refunds agent&lt;br/&gt;owns conversation now&quot;]
+    RF --&gt;|&quot;handoff: over $500&quot;| HUM[&quot;Human supervisor&quot;]
+    RF -.-&gt;|&quot;handoff: new question&quot;| T</div>
+<p><strong>7. Blackboard / shared memory.</strong> Agents don't message each other at all. They read from and write to one shared workspace, and they react to what others have posted. A <strong>controller</strong> decides who acts next, or when the board is "done", so it doesn't stay busy forever. Any number of contributors can join, because each only needs to know the board's format.</p>
+<div class="mermaid">flowchart TB
+    subgraph BB[&quot;Incident board (shared document)&quot;]
+        F[&quot;Findings · timeline · open questions&quot;]
+    end
+    L[&quot;Log analyst&quot;] &lt;--&gt;|read / write| F
+    M[&quot;Metrics analyst&quot;] &lt;--&gt;|read / write| F
+    D[&quot;Deploy-history analyst&quot;] &lt;--&gt;|read / write| F
+    C[&quot;Controller&lt;br/&gt;who acts next · are we done?&quot;] -.-&gt;|watches| F
+    C -.-&gt;|&quot;wakes&quot;| L
+    C -.-&gt;|&quot;wakes&quot;| M
+    C -.-&gt;|&quot;wakes&quot;| D</div>
+<p><strong>8. Swarm / decentralized.</strong> There's no orchestrator and no controller. Many identical workers pull the next unclaimed item from a shared queue, process it, and write the result. The work assigns itself. Add workers to go faster, and lose a worker without stopping the job. Each item must be independent, and claiming must be atomic so two workers never take the same item.</p>
+<div class="mermaid">flowchart LR
+    Q[(&quot;Work queue&lt;br/&gt;source 1 … source 500&quot;)] --&gt;|claim next| W1[&quot;Worker&quot;]
+    Q --&gt;|claim next| W2[&quot;Worker&quot;]
+    Q --&gt;|claim next| W3[&quot;Worker&quot;]
+    Q -.-&gt;|claim next| WN[&quot;…N workers&quot;]
+    W1 --&gt; RS[(&quot;Results store&quot;)]
+    W2 --&gt; RS
+    W3 --&gt; RS
+    WN -.-&gt; RS
+    W1 -.-&gt;|&quot;found new source&quot;| Q</div>
+<p><strong>Which ones scale out:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Where you add more agents</th>
+<th>What breaks first if you add too many</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Router</td>
+<td>more specialists</td>
+<td>the router's accuracy — too many look-alike categories</td>
+</tr>
+<tr>
+<td>Sequential pipeline</td>
+<td>more stages</td>
+<td>latency, and errors compounding stage to stage</td>
+</tr>
+<tr>
+<td>Parallel / fan-out</td>
+<td>more workers</td>
+<td>the aggregator, merging conflicting results</td>
+</tr>
+<tr>
+<td>Planner–executor</td>
+<td>more executors; more planners (hierarchical or ensemble)</td>
+<td>the planner's context, holding all the results</td>
+</tr>
+<tr>
+<td>Reviewer / critic</td>
+<td>more reviewers</td>
+<td>rounds — more reviewers means more chances to fail</td>
+</tr>
+<tr>
+<td>Handoff</td>
+<td>more peers</td>
+<td>routing clarity — who hands off to whom</td>
+</tr>
+<tr>
+<td>Blackboard</td>
+<td>more contributors</td>
+<td>the controller, deciding who acts next</td>
+</tr>
+<tr>
+<td>Swarm</td>
+<td>more workers</td>
+<td>the queue, and claiming items safely</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reviewer/critic deserves singling out</strong>, because it is the one that most reliably buys quality rather than just throughput. A concrete production pattern worth stealing: when an agent makes a <em>judgment</em> — a classification, a severity call, a routing decision — have it emit <strong>the decision, a confidence score, and the reasoning</strong>. Then have a <em>second</em> agent review that triple. The score is the handle the reviewer grabs. Self-review doesn't work for the same reason self-grading doesn't: the thing that produced the error is the thing you're asking to find it, and it is both biased and overconfident.</p>
+<h3 id="do-subagents-actually-improve-execution">Do subagents actually improve execution?</h3>
+<p>Yes, and for seven reasons that are worth separating because they argue for different designs:</p>
+<ol>
+<li><strong>Specialization</strong> — one focuses on research, another on coding, another on review. Each gets exactly the prompt it needs.</li>
+<li><strong>Parallelism</strong> — separate threads/processes means real wall-clock savings.</li>
+<li><strong>Better context management</strong> — each gets only what's relevant. Not "you're a coder" but <em>"you're a coder working on Android, on this project, on this task."</em></li>
+<li><strong>Reduced cognitive load</strong> — less to reason about per call. <strong>Atomize the work as far as you can and quality goes up.</strong></li>
+<li><strong>Independent verification</strong> — a reviewer catches what the author cannot.</li>
+<li><strong>Tool specialization</strong> — different subagents get different tools and permissions.</li>
+<li><strong>Isolation</strong> — a hard task is delegated without polluting the main agent's working context.</li>
+</ol>
+<p>Point 6 has a cost dimension people miss. <strong>Every tool you attach ships its full schema in every request.</strong> Tool definitions are input tokens, paid on <em>each</em> call in the conversation, not once. "Tool stuffing" — attaching forty tools because they might be useful — is a recurring per-call tax <em>and</em> a quality drag, because the model now chooses from forty options instead of six. Giving a subagent exactly the four tools its job needs is a cost optimization and an accuracy optimization at the same time.</p>
+<p>And the honest ledger on the other side: <strong>subagents add cost, latency, coordination overhead, and new failure modes in the communication between them.</strong> Three agents doing one job is at least three times the tokens and a serial dependency chain. The default should be <em>one</em> agent until you can name which of the seven benefits you're buying.</p>
+<h3 id="subagents-vs-multi-agent-and-is-subagent-a-claude-thing">Subagents vs multi-agent — and is "subagent" a Claude thing?</h3>
+<p><strong>Multi-agent</strong> is the umbrella: any system with more than one agent — all eight patterns above. <strong>Subagent</strong> is one specific shape inside that umbrella:</p>
+<ul>
+<li>a <strong>parent</strong> agent calls a <strong>child</strong> agent <strong>as if it were a tool</strong>;</li>
+<li>the child starts with a <strong>fresh context</strong> — it gets only the task the parent wrote for it, not the parent's conversation;</li>
+<li>it works, and <strong>only its final report comes back</strong>; its intermediate reads and tool calls never enter the parent's context;</li>
+<li>the <strong>parent stays in charge</strong> and decides what to do with the report.</li>
+</ul>
+<p>The contrast that matters is with <strong>handoff</strong>. In a handoff, control <em>moves</em>: the second agent takes over the conversation and the first one is done. With a subagent, control <em>returns</em>: the parent delegates, gets an answer, and carries on.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Subagent</th>
+<th>Handoff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who owns the conversation afterwards</td>
+<td>the parent, always</td>
+<td>the agent it was handed to</td>
+</tr>
+<tr>
+<td>What the child sees</td>
+<td>only the task text the parent wrote</td>
+<td>usually the conversation so far</td>
+</tr>
+<tr>
+<td>What comes back</td>
+<td>one final report</td>
+<td>nothing — it doesn't come back</td>
+</tr>
+<tr>
+<td>Typical use</td>
+<td>"go research X and summarize"</td>
+<td>"you're now talking to the refunds team"</td>
+</tr>
+</tbody>
+</table>
+<p>Some people use "subagent" loosely for <em>any</em> cooperating agent. Prefer the narrow meaning above, but expect both, and don't let a vocabulary dispute stall a design review.</p>
+<p><strong>It is not Claude-specific.</strong> It's a general pattern, and the LangChain ecosystem uses the same word:</p>
+<table>
+<thead>
+<tr>
+<th>Ecosystem</th>
+<th>What it's called</th>
+<th>How you get it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LangChain</strong></td>
+<td>"Subagents" — the first of its five documented multi-agent patterns: <em>a main agent coordinates subagents as tools</em>. The others are Handoffs, Skills, Router and Custom workflow.</td>
+<td>Wrap an agent as a tool for a main agent; or use <strong>Deep Agents</strong>, LangChain's higher-level harness, which ships subagents built in. LangGraph is where you build custom multi-agent graphs.</td>
+</tr>
+<tr>
+<td><strong>Claude Agent SDK</strong></td>
+<td>subagents</td>
+<td><code>ClaudeAgentOptions(agents={"name": AgentDefinition(description=..., prompt=..., tools=[...], model=...)})</code>. The main agent invokes them through the built-in <strong><code>Agent</code></strong> tool (shown as <code>"Task"</code> in older versions) — add <code>"Agent"</code> to <code>allowed_tools</code>. Subagents can spawn their own, up to a depth limit (default 3).</td>
+</tr>
+<tr>
+<td><strong>Claude Managed Agents</strong></td>
+<td>multiagent sessions: a coordinator plus agents, each in its own <strong>thread</strong></td>
+<td><code>multiagent: {type: "coordinator", agents: [...]}</code> on the agent config. Threads share one container and filesystem, but each has its own context.</td>
+</tr>
+<tr>
+<td><strong>Claude Code</strong> (the CLI)</td>
+<td>subagents</td>
+<td>Markdown files in <code>.claude/agents/</code> — the same mechanism the Agent SDK uses.</td>
+</tr>
+</tbody>
+</table>
+<p>So Claude didn't invent the idea; it gives you a ready-made implementation of it in each product.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> subagents buy <strong>focus, parallelism and verification</strong>; they cost <strong>tokens, latency and coordination</strong>. Name which of the seven you're buying before you add the second agent.</p>
+</blockquote>
+<hr />
+<h2 id="part-4-four-ways-to-build-an-agent-on-claude">Part 4 — Four ways to build an agent on Claude</h2>
+<p>This is the organizing frame the course never quite states, and without it the next three parts blur together. Two independent questions separate every option:</p>
+<ol>
+<li><strong>Who supplies the harness</strong> — the agent loop and context management?</li>
+<li><strong>Who supplies the deployment</strong> — the machine the tools actually run on?</li>
+</ol>
+<div class="mermaid">flowchart TB
+    Q1{&quot;Do you want to write&lt;br/&gt;the agent loop yourself?&quot;}
+    Q1 --&gt;|yes| M[&quot;&lt;b&gt;1. Manual loop&lt;/b&gt;&lt;br/&gt;Messages API + stop_reason&lt;br/&gt;&lt;i&gt;your harness · your infra&lt;/i&gt;&quot;]
+    Q1 --&gt;|no| Q2{&quot;Do you want Anthropic&lt;br/&gt;to host the sandbox&lt;br/&gt;the tools run in?&quot;}
+    Q2 --&gt;|no, my tools, my machine| TR[&quot;&lt;b&gt;2. Tool Runner&lt;/b&gt;&lt;br/&gt;beta.messages.tool_runner&lt;br/&gt;&lt;i&gt;SDK harness · your infra&lt;/i&gt;&quot;]
+    Q2 --&gt;|no, but give me a&lt;br/&gt;coding agent batteries-included| AS[&quot;&lt;b&gt;4. Agent SDK&lt;/b&gt;&lt;br/&gt;claude_agent_sdk.query&lt;br/&gt;&lt;i&gt;Claude Code harness · your infra&lt;/i&gt;&quot;]
+    Q2 --&gt;|yes| MA[&quot;&lt;b&gt;3. Managed Agents&lt;/b&gt;&lt;br/&gt;agent · environment · session&lt;br/&gt;&lt;i&gt;their harness · their infra&lt;/i&gt;&quot;]
+    style AS fill:#ffe9d6,stroke:#d2691e
+    style MA fill:#ffe9d6,stroke:#d2691e</div>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Approach</th>
+<th>You write</th>
+<th>Harness / deployment</th>
+<th>Tools you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Manual loop</strong> (Messages API)</td>
+<td>the <code>while stop_reason == "tool_use"</code> loop</td>
+<td>yours / yours</td>
+<td>only what you define</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Tool Runner</strong> (<code>beta.messages.tool_runner</code>)</td>
+<td>just the tool functions</td>
+<td>SDK's / yours</td>
+<td>only what you define</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Managed Agents</strong></td>
+<td>agent config</td>
+<td>Anthropic's / <strong>Anthropic's</strong></td>
+<td>hosted sandbox: bash, files, code exec + Skills + MCP</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Agent SDK</strong> (<code>claude-agent-sdk</code>)</td>
+<td>a prompt + options</td>
+<td>Claude Code's / yours</td>
+<td>built-in Read/Write/Edit/Bash/Glob/Grep/WebSearch + MCP + subagents</td>
+</tr>
+</tbody>
+</table>
+<p>The trap: options <strong>2 and 4 both "give you the loop"</strong>, so they get conflated constantly. The difference is <em>which</em> loop and <em>which</em> tools. The Tool Runner runs <strong>your</strong> tools. The Agent SDK ships <strong>Claude Code's</strong> tools — file reads, edits, bash — and is a coding/filesystem agent out of the box. Different products, different packages, different problems.</p>
+<p>And <strong>only Managed Agents takes the machine off your hands.</strong> That is the real line. Everything else, you deploy.</p>
+<h3 id="is-the-agent-loop-real-code-or-something-inside-the-model">Is the "agent loop" real code, or something inside the model?</h3>
+<p><strong>It is real code — an ordinary <code>while</code> loop — and it is never inside the model.</strong> The model does exactly one step per API call. It reads the conversation and returns one of two things:</p>
+<ul>
+<li><strong>"Run this tool with these inputs"</strong> (<code>stop_reason == "tool_use"</code>), or</li>
+<li><strong>"Here is my answer"</strong> (<code>stop_reason == "end_turn"</code>).</li>
+</ul>
+<p>The model cannot run a tool, and it cannot call itself again. <em>Something</em> has to run the tool, append the result to the conversation, and call the model again. That something is the agent loop. The four approaches differ only in <strong>who wrote that loop and where it runs</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Where the loop is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Manual loop</td>
+<td><strong>you write it</strong> — the code below</td>
+</tr>
+<tr>
+<td>Tool Runner</td>
+<td>inside the <code>anthropic</code> SDK on your machine (<code>runner.until_done()</code>)</td>
+</tr>
+<tr>
+<td>Agent SDK</td>
+<td>inside Claude Code's harness, on your machine</td>
+</tr>
+<tr>
+<td>Managed Agents</td>
+<td>on Anthropic's servers</td>
+</tr>
+</tbody>
+</table>
+<p>Here is the whole thing, hand-written with the Messages API:</p>
+<pre><code class="language-python">import anthropic
+
+client = anthropic.Anthropic()
+tools = [{
+    &quot;name&quot;: &quot;get_weather&quot;,
+    &quot;description&quot;: &quot;Current weather for a city.&quot;,
+    &quot;input_schema&quot;: {&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: {&quot;city&quot;: {&quot;type&quot;: &quot;string&quot;}}, &quot;required&quot;: [&quot;city&quot;]},
+}]
+messages = [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Should I bike to work in Denver today?&quot;}]
+
+while True:                                            # ← this is the agent loop
+    response = client.messages.create(
+        model=&quot;claude-opus-5-5&quot;, max_tokens=16000, tools=tools, messages=messages,
+    )
+    messages.append({&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: response.content})
+
+    if response.stop_reason != &quot;tool_use&quot;:            # the model says it's done
+        break
+
+    results = []
+    for block in response.content:
+        if block.type == &quot;tool_use&quot;:
+            output = run_tool(block.name, block.input)  # YOUR code runs the tool
+            results.append({&quot;type&quot;: &quot;tool_result&quot;, &quot;tool_use_id&quot;: block.id, &quot;content&quot;: output})
+    messages.append({&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: results})  # feed results back, go round again
+</code></pre>
+<p>Each trip round the <code>while</code> is one <strong>iteration</strong> from the Part 1 diagram, and the whole run from user message to final answer is one <strong>turn</strong>. The "dynamic policy" is the model choosing <em>which</em> tool to request at each pass; the loop itself is dumb plumbing. That is why a library can supply it for you — and why, when you do write it yourself, it is where you add the limits: maximum iterations, a spend cap, a timeout.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> harness and deployment are <strong>two separate purchases</strong>. Manual loop buys neither; Tool Runner and Agent SDK buy the harness only; Managed Agents buys both.</p>
+</blockquote>
+<hr />
+<h2 id="part-5-the-agent-sdk">Part 5 — The Agent SDK</h2>
+<h3 id="first-the-claude-sdk-is-two-different-packages">First: "the Claude SDK" is two different packages</h3>
+<p>People say "the Claude SDK" and mean either of two products. They are not the same thing, and only one of them is the Agent SDK:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Client SDK</strong> (the Anthropic SDK)</th>
+<th><strong>Agent SDK</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Install</td>
+<td><code>pip install anthropic</code></td>
+<td><code>pip install claude-agent-sdk</code></td>
+</tr>
+<tr>
+<td>What it is</td>
+<td>a wrapper over the Claude HTTP API</td>
+<td>Claude Code packaged as a library</td>
+</tr>
+<tr>
+<td>You call</td>
+<td><code>client.messages.create(...)</code></td>
+<td><code>query(prompt, options)</code></td>
+</tr>
+<tr>
+<td>The agent loop</td>
+<td>none by default — you write it (Part 4), or use the Tool Runner helper</td>
+<td>built in</td>
+</tr>
+<tr>
+<td>Built-in tools</td>
+<td>none — you define every tool</td>
+<td>Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch …</td>
+</tr>
+<tr>
+<td>Also covers</td>
+<td>Batches, Files, token counting, Models, and the Managed Agents API (<code>client.beta.agents</code>, <code>.sessions</code>, …)</td>
+<td>hooks, subagents, MCP, permissions, sessions</td>
+</tr>
+<tr>
+<td>Use it for</td>
+<td>anything that isn't a coding/filesystem agent: chat, extraction, classification, RAG, your own agents</td>
+<td>an agent that needs to work on files and run commands</td>
+</tr>
+</tbody>
+</table>
+<p>So: <strong>not all Claude SDK is Agent SDK.</strong> Most Claude applications — a RAG service, a classifier, a chatbot, a custom-tool agent — use only the client SDK. Reach for the Agent SDK when you want Claude Code's abilities inside your own program.</p>
+<h3 id="the-agent-sdk-itself">The Agent SDK itself</h3>
+<p><strong>The Agent SDK lets you run Claude Code programmatically</strong> — from the CLI, Python, or TypeScript. It was previously called the Claude Code SDK; the CLI form was previously called "headless mode" or "print mode". Same thing, three names, and you will meet all three.</p>
+<p>Via the <strong>CLI</strong>:</p>
+<pre><code class="language-bash">claude -p &quot;Find and fix the bug in auth.py&quot; --allowedTools &quot;Read,Edit,Bash&quot;
+</code></pre>
+<p>Via the <strong>Python SDK</strong>:</p>
+<pre><code class="language-python">import asyncio
+from claude_agent_sdk import query, ClaudeAgentOptions
+
+async def main():
+    async for message in query(
+        prompt=&quot;Find and fix the bug in auth.py&quot;,
+        options=ClaudeAgentOptions(allowed_tools=[&quot;Read&quot;, &quot;Edit&quot;, &quot;Bash&quot;]),
+    ):
+        print(message)   # Claude reads the file, finds the bug, edits it
+
+asyncio.run(main())
+</code></pre>
+<p>Setup is two steps:</p>
+<pre><code class="language-bash">pip install claude-agent-sdk
+export ANTHROPIC_API_KEY=your-api-key
+</code></pre>
+<p>It also authenticates through third-party providers — <code>CLAUDE_CODE_USE_BEDROCK=1</code> (Amazon Bedrock), <code>CLAUDE_CODE_USE_VERTEX=1</code> (Google Vertex AI), <code>CLAUDE_CODE_USE_FOUNDRY=1</code> (Microsoft Azure) — each with that cloud's own credentials configured. One standing caveat from the docs: <strong>Anthropic does not permit third-party developers to offer claude.ai login or rate limits for their products</strong>, including agents built on the Agent SDK. Use API-key authentication.</p>
+<p>A slightly fuller example, showing what you actually get back:</p>
+<pre><code class="language-python">import asyncio
+from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage
+
+async def main():
+    async for message in query(
+        prompt=&quot;Review utils.py for bugs that would cause crashes. Fix any issues you find.&quot;,
+        options=ClaudeAgentOptions(
+            allowed_tools=[&quot;Read&quot;, &quot;Edit&quot;, &quot;Glob&quot;],   # tools Claude may use
+            permission_mode=&quot;acceptEdits&quot;,            # auto-approve file edits
+        ),
+    ):
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if hasattr(block, &quot;text&quot;):
+                    print(block.text)                      # Claude's reasoning
+                elif hasattr(block, &quot;name&quot;):
+                    print(f&quot;Tool: {block.name}&quot;)           # tool being called
+        elif isinstance(message, ResultMessage):
+            print(f&quot;Done: {message.subtype}&quot;)              # final result
+
+asyncio.run(main())
+</code></pre>
+<p>Three things in that snippet carry real weight:</p>
+<ul>
+<li><strong><code>query()</code> is an async generator.</strong> You iterate the agent's work as it happens: reasoning blocks, tool calls, tool results, then a terminating <code>ResultMessage</code>. This is the observability surface — it is where logging, progress UI, and kill switches attach.</li>
+<li><strong><code>allowed_tools</code> is the blast radius.</strong> <code>["Read", "Glob", "Grep"]</code> is an agent that can analyze but cannot modify. Adding <code>"Edit"</code> and <code>"Bash"</code> is a different risk posture entirely. Choose deliberately; this list <em>is</em> your security boundary.</li>
+<li><strong><code>permission_mode="acceptEdits"</code></strong> removes the human from the loop for file edits. Correct for a sandboxed CI job. Dangerous in a working tree you care about.</li>
+</ul>
+<p>A real run prints something like:</p>
+<pre><code class="language-text">[Session] 1d7f1b81 | Model: claude-sonnet-4-6 | CWD: /…/pre-and-post-hooks
+          Tools: Task, TaskOutput, Bash, Glob, Grep, ExitPlanMode, Read, Edit …
+[Thinking] Let me find the hello_world.rb file first.
+[Tool: Glob] Input: {&quot;pattern&quot;: &quot;**/hello_world.rb&quot;}
+[Tool Result] No files found
+[Claude] I couldn't find a `hello_world.rb` file in the current directory …
+[Done] 2 turns | $0.0408 | 4997ms | stop: end_turn
+</code></pre>
+<p>Note the footer. <strong>Turns, cost, wall-clock, and stop reason, printed per run.</strong> Those four numbers are the bounds you will eventually enforce in production — and the SDK is handing them to you for free. Start reading them from day one.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the Agent SDK is <strong>Claude Code as a library</strong>. You supply a prompt and a permission surface; it supplies the loop, the built-in tools, hooks, subagents, MCP and sessions — running on <em>your</em> machine.</p>
+</blockquote>
+<hr />
+<h2 id="part-6-pretooluse-and-posttooluse-hooks">Part 6 — PreToolUse and PostToolUse hooks</h2>
+<p><strong>Hooks fire before and after a tool executes.</strong> They are the deterministic seam in a non-deterministic system — the place where you get to run <em>code</em>, not a prompt, at a known moment in the agent's life.</p>
+<div class="mermaid">sequenceDiagram
+    participant A as Agent loop
+    participant H as Hook
+    participant T as Tool
+    A-&gt;&gt;H: PreToolUse (tool_name, input, tool_use_id)
+    Note right of H: inspect · log · deny · rewrite
+    H-&gt;&gt;T: execute
+    T--&gt;&gt;H: result
+    H-&gt;&gt;A: PostToolUse (tool_name, result, tool_use_id)
+    Note right of H: audit · redact · verify</div>
+<p>The course demo (and the video) only <strong>prints</strong> a line before and after each tool call. It isn't doing anything useful — its job is to show you <em>when</em> the two hooks fire and that the same <code>tool_use_id</code> ties a <code>PRE</code> to its <code>POST</code>. The useful version follows straight after it.</p>
+<pre><code class="language-python">import asyncio
+from claude_agent_sdk import query, ClaudeAgentOptions, HookMatcher
+
+async def pre_tool_hook(input_data, tool_use_id, context):
+    tool = input_data.get(&quot;tool_name&quot;, &quot;unknown&quot;)
+    print(f&quot;[PRE ] Tool: {tool} | ID: {tool_use_id}&quot;)
+    return {}
+
+async def post_tool_hook(input_data, tool_use_id, context):
+    tool = input_data.get(&quot;tool_name&quot;, &quot;unknown&quot;)
+    print(f&quot;[POST] Tool: {tool} | ID: {tool_use_id}&quot;)
+    return {}
+
+async def main():
+    async for message in query(
+        prompt=&quot;Find and fix the bug in hello_world.rb&quot;,
+        options=ClaudeAgentOptions(
+            allowed_tools=[&quot;Read&quot;, &quot;Edit&quot;, &quot;Bash&quot;],
+            hooks={
+                &quot;PreToolUse&quot;:  [HookMatcher(matcher=&quot;.*&quot;, hooks=[pre_tool_hook])],
+                &quot;PostToolUse&quot;: [HookMatcher(matcher=&quot;.*&quot;, hooks=[post_tool_hook])],
+            },
+        ),
+    ):
+        print(message)
+
+asyncio.run(main())
+</code></pre>
+<p>Running it:</p>
+<pre><code class="language-text">[PRE ] Tool: Glob | ID: toolu_01XivqLhDvLD5XUgVJkjLXqF
+[POST] Tool: Glob | ID: toolu_01XivqLhDvLD5XUgVJkjLXqF
+</code></pre>
+<p><strong><code>matcher=".*"</code> catches every tool</strong> (leaving <code>matcher</code> out does the same). That is the demo setting. In production you narrow it — <code>matcher="Edit|Write"</code> to intercept only the file-modifying tools, <code>"Bash"</code> for shell commands, <code>"^mcp__"</code> for every MCP tool — and you register <em>different</em> hooks per tool. The matcher only ever sees the <strong>tool name</strong>; to filter on a file path or a command, check <code>input_data["tool_input"]</code> inside the hook.</p>
+<h3 id="what-a-hook-can-actually-do">What a hook can actually do</h3>
+<p>A hook returns a small dict, and that dict is the decision. Returning <code>{}</code> means "carry on unchanged". The fields that matter:</p>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Field (inside <code>hookSpecificOutput</code>)</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>permissionDecision: "deny"</code> + <code>permissionDecisionReason</code></td>
+<td>the tool does <strong>not</strong> run; the reason goes back to Claude so it can change approach instead of retrying</td>
+</tr>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>permissionDecision: "allow"</code></td>
+<td>runs without asking a human</td>
+</tr>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>permissionDecision: "ask"</code></td>
+<td>pauses for human approval</td>
+</tr>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>updatedInput: {...}</code></td>
+<td>rewrites the tool's arguments before it runs (for example, redirect a file path)</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td><code>additionalContext: "..."</code></td>
+<td>appends a note to the tool result that Claude reads next</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td><code>updatedToolOutput</code></td>
+<td>replaces what Claude sees as the tool's output (for example, a redacted version)</td>
+</tr>
+</tbody>
+</table>
+<p>If several hooks match, they all run, and the most restrictive answer wins: one <code>deny</code> blocks the call whatever the others return.</p>
+<h3 id="a-practical-example-guardrails-for-a-coding-agent">A practical example: guardrails for a coding agent</h3>
+<p>The job: let an agent fix failing tests in a repository unattended. <code>allowed_tools</code> includes <code>Bash</code> and <code>Edit</code>, so <strong>nothing but the hooks</strong> stands between the agent and a destructive command. Four hooks, four real jobs:</p>
+<ol>
+<li><strong>Block destructive shell commands</strong> (<code>PreToolUse</code> on <code>Bash</code>).</li>
+<li><strong>Never touch secrets</strong> (<code>PreToolUse</code> on <code>Write|Edit</code>).</li>
+<li><strong>Keep an audit trail</strong> of every tool call (<code>PostToolUse</code>, all tools).</li>
+<li><strong>Lint every edited Python file and tell Claude what's wrong</strong> (<code>PostToolUse</code> on <code>Write|Edit</code>) — so it fixes its own mistakes before moving on, instead of you finding them in review.</li>
+</ol>
+<pre><code class="language-python">import asyncio, json, re, subprocess
+from datetime import datetime, timezone
+from claude_agent_sdk import query, ClaudeAgentOptions, HookMatcher, ResultMessage
+
+DESTRUCTIVE = re.compile(r&quot;rm\s+-rf|git\s+push\s+.*--force|drop\s+table|terraform\s+destroy&quot;, re.I)
+
+
+def deny(input_data, reason):
+    return {&quot;hookSpecificOutput&quot;: {
+        &quot;hookEventName&quot;: input_data[&quot;hook_event_name&quot;],
+        &quot;permissionDecision&quot;: &quot;deny&quot;,
+        &quot;permissionDecisionReason&quot;: reason,
+    }}
+
+
+async def block_destructive_bash(input_data, tool_use_id, context):           # 1
+    command = input_data[&quot;tool_input&quot;].get(&quot;command&quot;, &quot;&quot;)
+    if DESTRUCTIVE.search(command):
+        return deny(input_data, f&quot;Blocked by policy: {command!r} is destructive. &quot;
+                                &quot;Describe the change you need instead of running it.&quot;)
+    return {}
+
+
+async def protect_secrets(input_data, tool_use_id, context):                  # 2
+    path = input_data[&quot;tool_input&quot;].get(&quot;file_path&quot;, &quot;&quot;)
+    if path.endswith((&quot;.env&quot;, &quot;.pem&quot;, &quot;.key&quot;)) or &quot;/secrets/&quot; in path:
+        return deny(input_data, f&quot;{path} holds secrets and is off-limits to the agent.&quot;)
+    return {}
+
+
+async def audit_log(input_data, tool_use_id, context):                        # 3
+    with open(&quot;agent_audit.jsonl&quot;, &quot;a&quot;) as f:
+        f.write(json.dumps({
+            &quot;at&quot;: datetime.now(timezone.utc).isoformat(),
+            &quot;tool&quot;: input_data[&quot;tool_name&quot;],
+            &quot;input&quot;: input_data[&quot;tool_input&quot;],
+            &quot;tool_use_id&quot;: tool_use_id,
+        }) + &quot;\n&quot;)
+    return {}
+
+
+async def lint_after_edit(input_data, tool_use_id, context):                  # 4
+    path = input_data[&quot;tool_input&quot;].get(&quot;file_path&quot;, &quot;&quot;)
+    if not path.endswith(&quot;.py&quot;):
+        return {}
+    lint = await asyncio.to_thread(
+        subprocess.run, [&quot;ruff&quot;, &quot;check&quot;, path], capture_output=True, text=True)
+    if lint.returncode != 0:
+        return {&quot;hookSpecificOutput&quot;: {
+            &quot;hookEventName&quot;: input_data[&quot;hook_event_name&quot;],
+            &quot;additionalContext&quot;: f&quot;ruff found problems in {path}:\n{lint.stdout}\n&quot;
+                                 &quot;Fix these before moving on.&quot;,
+        }}
+    return {}
+
+
+async def main():
+    options = ClaudeAgentOptions(
+        allowed_tools=[&quot;Read&quot;, &quot;Glob&quot;, &quot;Grep&quot;, &quot;Edit&quot;, &quot;Write&quot;, &quot;Bash&quot;],
+        permission_mode=&quot;acceptEdits&quot;,
+        hooks={
+            &quot;PreToolUse&quot;: [
+                HookMatcher(matcher=&quot;Bash&quot;, hooks=[block_destructive_bash]),
+                HookMatcher(matcher=&quot;Write|Edit&quot;, hooks=[protect_secrets]),
+            ],
+            &quot;PostToolUse&quot;: [
+                HookMatcher(hooks=[audit_log]),                       # no matcher = every tool
+                HookMatcher(matcher=&quot;Write|Edit&quot;, hooks=[lint_after_edit]),
+            ],
+        },
+    )
+    async for message in query(prompt=&quot;Run the test suite and fix whatever fails.&quot;, options=options):
+        if isinstance(message, ResultMessage):
+            print(f&quot;{message.subtype}: ${message.total_cost_usd}&quot;)
+
+asyncio.run(main())
+</code></pre>
+<p>What you'd see on a run: the agent tries <code>git push --force</code> to "clean up", the hook denies it, and Claude reads the reason and works around it. Every tool call lands in <code>agent_audit.jsonl</code>. And after each edit that leaves a lint error, Claude's next step is to fix that error — because the <code>additionalContext</code> told it to.</p>
+<p>One honest caveat on hook 1: a regex <strong>blocklist</strong> is a teaching example. Commands can be written many ways, so for real enforcement prefer an <strong>allowlist</strong> (only <code>pytest</code>, <code>ruff</code> and <code>git diff</code> may run) and run the agent in a sandbox. The hook is still the right place for that rule — it's the only place that gets a say before every command runs.</p>
+<h3 id="is-this-like-langchain-middleware">Is this like LangChain middleware?</h3>
+<p>Yes — same idea, different shape. Both are <strong>deterministic code wrapped around a probabilistic agent loop</strong>. LangChain v1 agents take middleware with hooks such as <code>before_model</code>, <code>after_model</code>, <code>wrap_model_call</code> and <code>wrap_tool_call</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Claude Agent SDK</th>
+<th>LangChain v1 middleware</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>wrap_tool_call</code> — code <em>before</em> calling the handler</td>
+<td>inspect, block or rewrite a tool call</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td><code>wrap_tool_call</code> — code <em>after</em> the handler returns</td>
+<td>audit, redact or annotate the result</td>
+</tr>
+<tr>
+<td><code>UserPromptSubmit</code> / <code>Stop</code></td>
+<td><code>before_agent</code> / <code>after_agent</code></td>
+<td>once per run, at the start and the end</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>before_model</code> / <code>after_model</code> / <code>wrap_model_call</code></td>
+<td>the Agent SDK has no hook around each model call</td>
+</tr>
+</tbody>
+</table>
+<p>The difference in shape: LangChain middleware <strong>wraps</strong> the call — you're handed a <code>handler</code> and decide whether and how to call it, so you can retry or short-circuit. A Claude hook is a <strong>callback that returns a decision</strong> (<code>allow</code>, <code>deny</code>, <code>ask</code>, rewritten input, extra context), and the SDK enforces it. It's also matched by tool name for you, rather than you branching on the tool inside one wrapper.</p>
+<p>Why this matters more than it looks:</p>
+<p><strong>Prompts request; hooks enforce.</strong> "Never write to production config" in a system prompt is a strong suggestion to a probabilistic system. A <code>PreToolUse</code> hook that inspects the <code>Write</code> tool's path argument and refuses is a guarantee. For anything compliance-shaped — audit logging, PII redaction, path allow-lists, spend caps — the hook is the control and the prompt is documentation.</p>
+<p>This is also where the <strong>hand-rolled version dies</strong>, and good riddance. Before hooks existed you built your own interception layer around the loop: wrap the tool dispatcher, thread a context object through, maintain it. It worked and it was a lot of code that wasn't your product. The SDK version is a dict literal.</p>
+<p>One honest note from the walkthrough worth carrying: the instructor initially believed hooks weren't in the Agent SDK, asked an assistant, got told they weren't, pushed back, and <em>then</em> got the correct answer. <strong>They are in the SDK.</strong> The lesson isn't about hooks — it's that on a surface this new, your assistant's prior is stale and the first answer is not the last word. Check the docs. Push back twice.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> hooks are the <strong>deterministic control plane</strong> around a probabilistic agent. A prompt asks; a <code>PreToolUse</code> hook decides.</p>
+</blockquote>
+<hr />
+<h2 id="part-7-managed-agents">Part 7 — Managed Agents</h2>
+<p>Everything so far runs on <strong>your</strong> machine. Managed Agents is the option where Anthropic runs the loop <em>and</em> hosts the sandbox the tools execute in. It is the only one of the four approaches that takes deployment off your plate.</p>
+<h3 id="where-does-it-actually-run-not-on-claudeai">Where does it actually run? (Not on claude.ai)</h3>
+<p>A common mix-up: a managed agent does <strong>not</strong> live on the claude.ai website, and your users never open claude.ai to use it. claude.ai is Anthropic's chat app for people. Managed Agents is part of the <strong>Claude Platform</strong> — the developer API — and three places are involved:</p>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Where it lives</th>
+<th>How you reach it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The agent loop (the model deciding each step)</td>
+<td>Anthropic's servers</td>
+<td>nothing to manage</td>
+</tr>
+<tr>
+<td>The tools (bash, files, code execution)</td>
+<td>a fresh <strong>container per session</strong> in Anthropic's cloud — or your own infrastructure if you choose a self-hosted environment</td>
+<td>nothing to manage</td>
+</tr>
+<tr>
+<td>Your control and your app</td>
+<td>your laptop, CI, or backend</td>
+<td>the <code>ant</code> CLI and the API / SDK</td>
+</tr>
+<tr>
+<td>Watching runs</td>
+<td>the <strong>Console</strong> at <code>platform.claude.com</code> (developer dashboard)</td>
+<td>a browser — every session has a live trace with tool calls, timings and cost</td>
+</tr>
+</tbody>
+</table>
+<p>So "deploying" a managed agent means <strong>registering its configuration with the API</strong>. Your own application starts sessions through the API, or a schedule starts them. Nothing gets hosted on a website.</p>
+<h3 id="the-object-model">The object model</h3>
+<p>Five objects, created in order. Getting this sequence straight is most of what the hands-on chapter teaches, because the quickstart does not make the dependency chain obvious:</p>
+<div class="mermaid">flowchart TB
+    AG[&quot;&lt;b&gt;Agent&lt;/b&gt;&lt;br/&gt;model · system prompt&lt;br/&gt;tools · MCP servers · skills&quot;]
+    EN[&quot;&lt;b&gt;Environment&lt;/b&gt;&lt;br/&gt;where sessions run:&lt;br/&gt;cloud sandbox or self-hosted&quot;]
+    SE[&quot;&lt;b&gt;Session&lt;/b&gt;&lt;br/&gt;a running instance:&lt;br/&gt;one task, generating events&quot;]
+    DE[&quot;&lt;b&gt;Deployment&lt;/b&gt;&lt;br/&gt;trigger (manual | schedule)&lt;br/&gt;+ environment + credentials&quot;]
+    CV[&quot;&lt;b&gt;Credential Vault&lt;/b&gt;&lt;br/&gt;secrets the run may use&quot;]
+    AG --&gt; SE
+    EN --&gt; SE
+    AG --&gt; DE
+    EN --&gt; DE
+    CV --&gt; DE
+    DE --&gt;|fires| SE</div>
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Agent</strong></td>
+<td>the model, system prompt, tools, MCP servers, and skills — a stored, versioned config</td>
+</tr>
+<tr>
+<td><strong>Environment</strong></td>
+<td>configuration for <em>where</em> sessions run: an Anthropic-managed cloud sandbox, or a self-hosted sandbox on your own infrastructure</td>
+</tr>
+<tr>
+<td><strong>Session</strong></td>
+<td>a running agent instance inside an environment, performing a specific task and generating events</td>
+</tr>
+<tr>
+<td><strong>Deployment</strong></td>
+<td>binds an agent + environment + credentials to a <strong>trigger</strong> — <code>Manual</code> (Console button or <code>POST /v1/deployments/:id/run</code>) or <code>Schedule</code></td>
+</tr>
+<tr>
+<td><strong>Credential vault</strong></td>
+<td>stored secrets the agent gets access to — for MCP servers and other tools</td>
+</tr>
+</tbody>
+</table>
+<p>The two that surprise people:</p>
+<p><strong>Environment is not environment variables.</strong> It is the <em>machine</em>: name, description, networking policy, installed packages. The sandbox itself.</p>
+<p><strong>Deployment is just a trigger binding.</strong> The name suggests shipping to production; it actually means "run this agent on a schedule, or on demand via API." If you were expecting Kubernetes, recalibrate — it's cron plus a webhook.</p>
+<h3 id="worked-example-a-nightly-dependency-audit-agent-start-to-finish">Worked example: a nightly dependency-audit agent, start to finish</h3>
+<p><strong>The use case.</strong> Every night, check a Python repository for vulnerable or outdated dependencies and leave a short report. It's an agent rather than a script because the repos differ — some use <code>requirements.txt</code>, some <code>pyproject.toml</code>, some both — and the agent has to work out which upgrades matter. It suits Managed Agents because it runs unattended on a schedule and needs a machine with Python and a package manager. You don't want to host that.</p>
+<p><strong>The steps at a glance:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What you run</th>
+<th>What it creates</th>
+<th>Where it lives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Install the CLI and log in</td>
+<td><code>ant auth login</code></td>
+<td>a local login profile</td>
+<td>your laptop</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Define the agent</td>
+<td>write <code>agents/dep-auditor.md</code>, then <code>ant apply</code></td>
+<td><strong>Agent</strong> <code>agent_…</code> (versioned)</td>
+<td>Anthropic</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Define the environment</td>
+<td>write <code>environments/audit-env.yaml</code> (same <code>ant apply</code>)</td>
+<td><strong>Environment</strong> <code>env_…</code></td>
+<td>Anthropic</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Test one run by hand</td>
+<td>the Python below</td>
+<td><strong>Session</strong> <code>sesn_…</code> + its container</td>
+<td>Anthropic's cloud sandbox</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Watch it</td>
+<td>open the Console link the script prints</td>
+<td>—</td>
+<td>your browser</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Collect the report</td>
+<td><code>files.list</code> / <code>files.download</code></td>
+<td><code>dependency-report.md</code></td>
+<td>from <code>/mnt/session/outputs/</code> to your disk</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Put it on a schedule</td>
+<td><code>client.beta.deployments.create(...)</code></td>
+<td><strong>Deployment</strong> (cron)</td>
+<td>Anthropic; it starts a new session every night</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Run it now / check history</td>
+<td><code>POST /v1/deployments/{id}/run</code>; list deployment runs</td>
+<td>a deployment run → a session</td>
+<td>Anthropic</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 1 — the agent</strong>, as a version-controlled file. The YAML frontmatter is the config; the Markdown body is the system prompt:</p>
+<pre><code class="language-markdown">---
+# agents/dep-auditor.md
+name: Dependency auditor
+model: claude-opus-5-5
+tools:
+  - type: agent_toolset_20260401      # bash, file read/write, search, web fetch
+---
+
+You audit Python projects. Find the dependency files, run pip-audit and check for
+outdated pins, then write /mnt/session/outputs/dependency-report.md: what is
+vulnerable, what is outdated, and the three upgrades to do first, with reasons.
+</code></pre>
+<p><strong>Step 2 — the environment</strong>, meaning the machine. This one is a cloud sandbox whose network allows package managers, so <code>pip install pip-audit</code> works:</p>
+<pre><code class="language-yaml"># environments/audit-env.yaml
+name: audit-env
+config: {type: cloud, networking: {type: limited, allow_package_managers: true}}
+</code></pre>
+<pre><code class="language-bash">ant apply agents/dep-auditor.md environments/audit-env.yaml   # shows the plan, asks y/n
+# → creates both, writes their IDs to claude-lock.json (commit that file)
+</code></pre>
+<p><strong>Steps 3–5 — one test run</strong>, from Python with the client SDK. The repository is attached to the session as a resource. Its token is used by an Anthropic-side git proxy and never enters the container:</p>
+<pre><code class="language-python">import json, os
+import anthropic
+
+client = anthropic.Anthropic()
+ids = json.load(open(&quot;claude-lock.json&quot;))[&quot;resources&quot;]
+AGENT_ID = ids[&quot;./agents/dep-auditor.md&quot;][&quot;id&quot;]
+ENV_ID = ids[&quot;./environments/audit-env.yaml&quot;][&quot;id&quot;]
+
+session = client.beta.sessions.create(
+    agent=AGENT_ID,
+    environment_id=ENV_ID,
+    resources=[{
+        &quot;type&quot;: &quot;github_repository&quot;,
+        &quot;url&quot;: &quot;https://github.com/your-org/your-repo&quot;,
+        &quot;authorization_token&quot;: os.environ[&quot;GITHUB_TOKEN&quot;],   # read-only token is enough
+    }],
+)
+print(f&quot;Watch live: https://platform.claude.com/workspaces/default/sessions/{session.id}&quot;)
+
+with client.beta.sessions.events.stream(session_id=session.id) as stream:
+    client.beta.sessions.events.send(          # send the task after the stream is open
+        session_id=session.id,
+        events=[{&quot;type&quot;: &quot;user.message&quot;,
+                 &quot;content&quot;: [{&quot;type&quot;: &quot;text&quot;, &quot;text&quot;: &quot;Audit the mounted repository.&quot;}]}],
+    )
+    for event in stream:
+        if event.type == &quot;agent.message&quot;:
+            for block in event.content:
+                if block.type == &quot;text&quot;:
+                    print(block.text, end=&quot;&quot;, flush=True)
+        elif event.type == &quot;agent.tool_use&quot;:
+            print(f&quot;\n[tool: {event.name}]&quot;)
+        elif event.type == &quot;session.status_terminated&quot;:
+            break
+        elif event.type == &quot;session.status_idle&quot; and event.stop_reason.type != &quot;requires_action&quot;:
+            break   # finished; &quot;requires_action&quot; means it is waiting on you, so keep going
+
+# Step 5 — download what the agent wrote to /mnt/session/outputs/
+for f in client.beta.files.list(scope_id=session.id, betas=[&quot;managed-agents-2026-04-01&quot;]).data:
+    client.beta.files.download(f.id).write_to_file(f.filename)
+    print(&quot;saved&quot;, f.filename)
+</code></pre>
+<p>Two details in that loop are easy to get wrong:</p>
+<ul>
+<li><strong>Open the stream before sending the message.</strong> Otherwise you can miss the first events.</li>
+<li><strong>Don't stop on "idle" alone.</strong> A session also goes idle while it waits for you, for example for a tool approval. Stop only when the idle reason is something other than <code>requires_action</code>. If the file list comes back empty, wait a second and retry; output files take a moment to index.</li>
+</ul>
+<p><strong>Step 6 — the schedule.</strong> A deployment takes the same pieces as a session: the agent, the environment and the repo resource. On top of those it adds a cron schedule and the message that starts each run. Create it from code so the GitHub token comes from the environment and never gets written into a committed file:</p>
+<pre><code class="language-python">deployment = client.beta.deployments.create(
+    name=&quot;Nightly dependency audit&quot;,
+    agent=AGENT_ID,
+    environment_id=ENV_ID,
+    resources=[{
+        &quot;type&quot;: &quot;github_repository&quot;,
+        &quot;url&quot;: &quot;https://github.com/your-org/your-repo&quot;,
+        &quot;authorization_token&quot;: os.environ[&quot;GITHUB_TOKEN&quot;],
+    }],
+    initial_events=[{&quot;type&quot;: &quot;user.message&quot;,
+                     &quot;content&quot;: [{&quot;type&quot;: &quot;text&quot;, &quot;text&quot;: &quot;Audit the mounted repository.&quot;}]}],
+    schedule={&quot;type&quot;: &quot;cron&quot;, &quot;expression&quot;: &quot;0 2 * * *&quot;, &quot;timezone&quot;: &quot;America/Denver&quot;},
+)
+</code></pre>
+<p>From then on, Anthropic starts a fresh session at 2 a.m. Denver time every night. Each run shows up in the Console with its own trace and cost, and <code>POST /v1/deployments/{id}/run</code> fires one immediately when you want to test.</p>
+<p>The mapping back to the object model: <strong>agent</strong> = what it is, <strong>environment</strong> = the machine, <strong>session</strong> = one run, <strong>deployment</strong> = when runs start, <strong>vault</strong> = secrets for MCP servers and APIs (not needed here, because the repo token travels with the resource).</p>
+<h3 id="the-courses-quickstart-walkthrough">The course's quickstart walkthrough</h3>
+<p>Install the CLI — it's called <code>ant</code>:</p>
+<pre><code class="language-bash"># Linux / WSL
+VERSION=1.30.0
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+case $(uname -m) in
+  x86_64)  ARCH=amd64 ;;
+  aarch64) ARCH=arm64 ;;
+esac
+curl -fsSL &quot;https://github.com/anthropics/anthropic-cli/releases/download/v${VERSION}/ant_${VERSION}_${OS}_${ARCH}.tar.gz&quot; \
+  | sudo tar -xz -C /usr/local/bin ant
+
+ant --version
+</code></pre>
+<p>Authenticate — and note this is a <strong>separate</strong> login from Claude Code:</p>
+<pre><code class="language-bash">ant auth login     # opens a browser, returns a code to paste back
+</code></pre>
+<p>Define the agent as a markdown file (<code>coding-assistant.md</code>) with the model, system prompt and tools, then apply it:</p>
+<pre><code class="language-bash">ant apply coding-assistant.md
+</code></pre>
+<p>That writes <strong><code>claude-lock.json</code></strong> locally and creates the agent server-side. If you've used Terraform, the shape is familiar — a declarative file, an <code>apply</code>, a lock file holding the resulting IDs, and <code>+ 1 created · 1 unchanged</code> in the output.</p>
+<p>Define the environment (<code>environment.yaml</code>):</p>
+<pre><code class="language-yaml">name: quickstart-env
+config:
+  type: cloud
+  networking:
+    type: unrestricted
+</code></pre>
+<pre><code class="language-bash">ant apply environment.yaml
+# + ./environment.yaml  created   env_01PrCYeEPHvQyFQVbQbQ8dX7
+# Resources  + 1 created · 1 unchanged
+# State written to ./claude-lock.json
+</code></pre>
+<p>Create a session, referencing both:</p>
+<pre><code class="language-bash">export AGENT_ID=agent_01BSES69hAGcGxa9LtVuKAxq
+export ENVIRONMENT_ID=env_01PrCYeEPHvQyFQVbQbQ8dX7
+
+SESSION_ID=$(ant beta:sessions create \
+  --agent &quot;$AGENT_ID&quot; \
+  --environment-id &quot;$ENVIRONMENT_ID&quot; \
+  --title &quot;Quickstart session&quot; \
+  --transform id --raw-output)
+
+echo &quot;Session ID: $SESSION_ID&quot;
+</code></pre>
+<p>Then send a message and stream the response — this step <strong>does not translate to a one-off shell command</strong>, so you move to an SDK. Ruby, since the docs offer it:</p>
+<pre><code class="language-ruby">stream = client.beta.sessions.events.stream_events(session.id)
+
+# Send the user message after the stream opens
+client.beta.sessions.events.send_(
+  session.id,
+  events: [{
+    type: &quot;user.message&quot;,
+    content: [{ type: &quot;text&quot;, text: &quot;Create a Python script that generates the first 20 Fibonacci numbers&quot; }]
+  }]
+)
+
+# Process streaming events
+stream.each do |event|
+  case event.type
+  in &quot;agent.message&quot;
+    event.content.each { print it.text if it.type == :text }
+  in &quot;agent.tool_use&quot;
+    puts &quot;\n[Using tool: #{event.name}]&quot;
+  in &quot;session.status_idle&quot;
+    puts &quot;\nAgent finished.&quot;
+    break
+  else
+    # ignore other event types
+  end
+end
+</code></pre>
+<p>The Console then shows the full trace, which is the part worth lingering on:</p>
+<pre><code class="language-text">Session running
+  Thread  Coding Assistant running
+    Create a Python script that generates the first 20 Fibonacci numbers and saves …
+    I'll create that script for you.                                     +1.9s
+    Tool bash      →  Result bash
+    Thinking                                                             +1.3s
+    Tool write     →  Result write                                       +2.5s
+    Tool bash      →  Result bash                                        +1.4s
+    Done. Two files are in /mnt/session/outputs: fibonacci.py — the script. It u… +3.4s
+  Thread  Coding Assistant idle
+Session idle
+</code></pre>
+<p>Every tool call, every result, every timing, every status transition — with per-session <strong>cost and token counts</strong> in the sessions list. This is the strongest argument for Managed Agents and it isn't the hosting: <strong>you get agent observability you would otherwise have to build.</strong></p>
+<h3 id="two-field-notes-from-the-walkthrough">Two field notes from the walkthrough</h3>
+<p><strong>The quickstart's dependency chain is undocumented.</strong> Following the CLI tabs gets you an agent, an environment and a session; then the streaming step hands you SDK code that <em>creates its own session</em>. Which means the SDK sample doesn't continue from where the CLI left you — it starts over. The fix is to <strong>retrieve</strong> the existing resources rather than create new ones (<code>client.beta.agents.retrieve</code>, and likewise for sessions). Worth knowing before you burn twenty minutes, and worth remembering as a general property of brand-new product docs: each tab is written standalone.</p>
+<p><strong>Agent-written code runs.</strong> Partway through, the instructor found sessions in the Console he hadn't knowingly created — an assistant had executed the code while he was reading it. His own comment is the right one: <em>"you've got to be careful here."</em> On a surface where every run costs money and creates server-side resources, the gap between "show me the code" and "run the code" has a bill attached. Know which mode you're in.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> Managed Agents is <strong>agent + environment + session</strong>, optionally triggered by a <strong>deployment</strong> and fed by a <strong>vault</strong>. You give up control of the machine; you get the trace for free.</p>
+</blockquote>
+<hr />
+<h2 id="part-8-the-code-harness">Part 8 — The code harness</h2>
+<p>One piece of vocabulary, because it will appear in the exam and in every architecture conversation this year.</p>
+<p>A <strong>code harness</strong> (also <em>agentic harness</em>, <em>agent harness</em>) is <strong>the surrounding program that turns an LLM into an agent</strong>: engineered prompts, tools, sandboxes, permission systems, context management — and harnesses typically interact across multiple surfaces (terminal, IDE, CI, web).</p>
+<p><strong>Most agentic coding tools are code harnesses:</strong> Claude Code, Aider, Cursor, OpenAI Codex, Continue, Cline, Devin, Sweep, Smol Developer, Open Interpreter, AutoGPT, LangChain, CrewAI.</p>
+<p>The reason this term earns its keep: it names the thing you are either <strong>building or buying</strong> in every one of the four approaches from Part 4. The manual loop means you're building a harness. The Tool Runner means you're buying a minimal one. The Agent SDK means you're buying Claude Code's. Managed Agents means you're buying one and the machine under it. "Harness" is the unit of that purchase decision — and the definition drifts between vendors, so pin it down when someone uses it at you.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> the model is the engine; the <strong>harness</strong> is the car. Every agent decision is a decision about how much of the car you build.</p>
+</blockquote>
+<hr />
+<h2 id="part-9-one-exam-question-worked-properly">Part 9 — One exam question, worked properly</h2>
+<blockquote>
+<p>A developer must process 10,000 documents overnight to produce a non-urgent analytics report. Cost is the primary concern, and results are not needed until the following morning. Which approach best fits the requirement?</p>
+<p><strong>A.</strong> Send every request synchronously through the Messages API in parallel to finish as quickly as possible.
+<strong>B.</strong> Use the Message Batches API, which processes large asynchronous workloads within a 24-hour window at reduced cost.
+<strong>C.</strong> Lower <code>max_tokens</code> on synchronous calls to minimize cost.
+<strong>D.</strong> Switch to the smallest available model regardless of output quality.</p>
+</blockquote>
+<p><strong>Answer: B.</strong></p>
+<p>The reasoning the exam wants, in order: <em>cost is the primary concern</em> and <em>results aren't needed until morning</em> together describe exactly the workload the Batches API exists for — high volume, latency-tolerant, discounted. A is optimizing for speed, which the question explicitly deprioritizes. C saves pennies on output and ignores the structural saving. D trades quality for cost with no quality justification in the scenario.</p>
+<p><strong>The objection, which is a good one.</strong> Batches guarantee a <strong>24-hour maximum</strong> turnaround; most finish far faster, but <em>most</em> isn't a guarantee. If "the following morning" is a hard deadline eight hours out, you've accepted a window that can legitimately overrun it — and if it overruns, you re-run the job and pay twice. So in a genuinely critical pipeline, the engineering answer is "batch it with a monitored deadline and a synchronous fallback", which is not an available option.</p>
+<p>Hold both. <strong>For the exam, take the horse.</strong> Certification questions test whether you know what a feature is <em>for</em>; the scenario was written to match the Batches API's description, and over-reading it costs you a mark. <strong>For production, keep the objection</strong> — "the exam's answer" and "the answer I'd defend in a design review" come apart often enough that knowing <em>which room you're in</em> is itself a skill.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> exam questions reward <strong>canonical fit</strong>; production rewards <strong>failure-mode thinking</strong>. Don't outsmart the exam, and don't let the exam flatten your engineering.</p>
+</blockquote>
+<hr />
+<h2 id="where-this-lands">Where this lands</h2>
+<p>The whole document collapses to two decisions, asked in order.</p>
+<p><strong>First: is this an agent at all?</strong> Can you enumerate the transitions before it runs? If yes, it's a workflow — build it in code, deterministic and testable, and call an agent from the one step that needs judgment. If no, you're buying a dynamic policy and paying in cost, latency and variance.</p>
+<p><strong>Second: whose harness and whose machine?</strong> Manual loop (neither), Tool Runner (harness only, your tools), Agent SDK (Claude Code's harness and tools, your machine), Managed Agents (both theirs). Four answers to one question that most people never articulate.</p>
+<p>Everything else is instrumentation on those two choices: <strong>hooks</strong> make the non-deterministic part auditable, <strong>subagents</strong> trade tokens for focus and verification, and the Console <strong>trace</strong> tells you what actually happened — which, with an agent, is never quite what you designed.</p>
+<hr />
+<h2 id="quick-reference-glossary">Quick reference / glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>agent architecture</strong></td>
+<td>the agent drives the next step via an agentic loop</td>
+</tr>
+<tr>
+<td><strong>agentic loop</strong></td>
+<td>start turn → iterate (reason · act · observe) → end turn</td>
+</tr>
+<tr>
+<td><strong>dynamic policy</strong></td>
+<td>a decision rule choosing the next action at runtime from current context, rather than following predefined transitions</td>
+</tr>
+<tr>
+<td><strong>workflow architecture</strong></td>
+<td>predetermined steps defined by a developer; <strong>is</strong> a state machine</td>
+</tr>
+<tr>
+<td><strong>execution path</strong></td>
+<td>the trace an agent actually took this run — constructed, not traversed</td>
+</tr>
+<tr>
+<td><strong>code harness</strong></td>
+<td>the surrounding program (prompts, tools, sandbox, permissions) that turns an LLM into an agent</td>
+</tr>
+<tr>
+<td><strong>subagent</strong></td>
+<td>an agent under an orchestrator (narrow sense); any cooperating agent (loose sense)</td>
+</tr>
+<tr>
+<td><strong>handoff</strong></td>
+<td>control moves to another agent and doesn't come back (contrast: a subagent reports back to its parent)</td>
+</tr>
+<tr>
+<td><strong>multi-agent</strong></td>
+<td>umbrella term for any system with more than one agent; subagents are one shape of it</td>
+</tr>
+<tr>
+<td><code>AgentDefinition</code></td>
+<td>Agent SDK subagent config: <code>description</code>, <code>prompt</code>, <code>tools</code>, <code>model</code>; passed via <code>agents={...}</code></td>
+</tr>
+<tr>
+<td><code>Agent</code> tool</td>
+<td>how the Agent SDK's main agent invokes a subagent (<code>"Task"</code> in older versions)</td>
+</tr>
+<tr>
+<td><strong>client SDK</strong></td>
+<td><code>anthropic</code> package — Messages API, Tool Runner, Batches, Files, Managed Agents API; not the Agent SDK</td>
+</tr>
+<tr>
+<td><strong>reviewer / critic loop</strong></td>
+<td>one agent produces, another checks and returns for revision</td>
+</tr>
+<tr>
+<td><strong>tool stuffing</strong></td>
+<td>attaching too many tools; every schema is input tokens on every call</td>
+</tr>
+<tr>
+<td><strong>Agent SDK</strong></td>
+<td><code>claude-agent-sdk</code> — run Claude Code programmatically (CLI, Python, TypeScript)</td>
+</tr>
+<tr>
+<td><code>query(prompt, options)</code></td>
+<td>Agent SDK entry point; an <strong>async generator</strong> of messages</td>
+</tr>
+<tr>
+<td><code>ClaudeAgentOptions</code></td>
+<td><code>allowed_tools</code>, <code>permission_mode</code>, <code>hooks</code>, …</td>
+</tr>
+<tr>
+<td><code>allowed_tools</code></td>
+<td>the agent's blast radius — Read/Glob/Grep is read-only; +Edit/Bash is not</td>
+</tr>
+<tr>
+<td><code>permission_mode="acceptEdits"</code></td>
+<td>auto-approve file edits (no human in the loop)</td>
+</tr>
+<tr>
+<td><code>AssistantMessage</code> / <code>ResultMessage</code></td>
+<td>streamed reasoning + tool blocks / terminating result</td>
+</tr>
+<tr>
+<td><strong>headless / print mode</strong></td>
+<td>older names for the Agent SDK's CLI form (<code>claude -p</code>)</td>
+</tr>
+<tr>
+<td><strong>PreToolUse / PostToolUse</strong></td>
+<td>hooks firing before/after each tool execution</td>
+</tr>
+<tr>
+<td><code>HookMatcher(matcher, hooks)</code></td>
+<td>pattern over the <strong>tool name</strong> → hook list; omit (or <code>".*"</code>) to match all</td>
+</tr>
+<tr>
+<td><code>permissionDecision</code></td>
+<td><code>PreToolUse</code> output: <code>"allow"</code> / <code>"deny"</code> / <code>"ask"</code> / <code>"defer"</code>; deny wins over everything</td>
+</tr>
+<tr>
+<td><code>updatedInput</code> / <code>additionalContext</code></td>
+<td>rewrite a tool's arguments (Pre) / append a note to its result for Claude (Post)</td>
+</tr>
+<tr>
+<td><code>wrap_tool_call</code></td>
+<td>LangChain v1 middleware hook — the closest equivalent of Pre + PostToolUse</td>
+</tr>
+<tr>
+<td><strong>Console</strong></td>
+<td><code>platform.claude.com</code> — developer dashboard where Managed Agents sessions are traced; not claude.ai</td>
+</tr>
+<tr>
+<td><strong>Managed Agents</strong></td>
+<td>Anthropic runs the loop <em>and</em> hosts the sandbox</td>
+</tr>
+<tr>
+<td><code>ant</code></td>
+<td>the Anthropic CLI (<code>ant auth login</code>, <code>ant apply</code>, <code>ant beta:sessions create</code>)</td>
+</tr>
+<tr>
+<td><code>claude-lock.json</code></td>
+<td>local state file of created Managed Agents resource IDs</td>
+</tr>
+<tr>
+<td><strong>Agent</strong> (CMA)</td>
+<td>stored, versioned config: model, system prompt, tools, MCP, skills</td>
+</tr>
+<tr>
+<td><strong>Environment</strong> (CMA)</td>
+<td>the sandbox itself — cloud or self-hosted; networking, packages</td>
+</tr>
+<tr>
+<td><strong>Session</strong> (CMA)</td>
+<td>a running agent instance performing one task, emitting events</td>
+</tr>
+<tr>
+<td><strong>Deployment</strong> (CMA)</td>
+<td>agent + environment + credentials bound to a trigger (manual or schedule)</td>
+</tr>
+<tr>
+<td><strong>Credential vault</strong></td>
+<td>stored secrets a run may use (MCP servers, other tools)</td>
+</tr>
+<tr>
+<td><strong>Message Batches API</strong></td>
+<td>asynchronous, discounted, ≤24h turnaround for latency-tolerant volume</td>
+</tr>
+<tr>
+<td><strong>CCDV-F</strong></td>
+<td>Claude Certified Developer — Foundations. 53 Q · 120 min · 720/1000 · 12-month validity</td>
+</tr>
+</tbody>
+</table>
+<p><em>Claude Study 01 — An </em><em>agent</em><em> is a </em><em>dynamic policy</em><em> (next action chosen at runtime), a </em><em>workflow</em><em> is a </em><em>state machine</em><em> (transitions enumerable in advance); if you can draw it, don't buy a model to walk it, and put the agent </em><em>inside</em><em> the workflow at the one step needing judgment. Building one is two purchases — </em><em>harness</em><em> and </em><em>deployment</em><em>: manual loop buys neither, Tool Runner and </em><em>Agent SDK</em><em> (<code>query</code> + <code>ClaudeAgentOptions</code>, Claude Code as a library) buy the harness, </em><em>Managed Agents</em><em> (agent · environment · session · deployment · vault) buys both and hands you the trace. </em><em>Hooks</em><em> (<code>PreToolUse</code>/<code>PostToolUse</code>) are the deterministic control plane — prompts request, hooks enforce — and </em><em>subagents</em><em> buy focus, parallelism and independent verification at the price of tokens, latency and coordination.</em></p>
+</body>
+</html>
