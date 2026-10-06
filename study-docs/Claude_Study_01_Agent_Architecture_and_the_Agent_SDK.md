@@ -628,7 +628,16 @@ asyncio.run(main())
 Three things in that snippet carry real weight:
 
 - **`query()` is an async generator.** You iterate the agent's work as it happens: reasoning blocks, tool calls, tool results, then a terminating `ResultMessage`. This is the observability surface — it is where logging, progress UI, and kill switches attach.
-- **`allowed_tools` is the blast radius.** `["Read", "Glob", "Grep"]` is an agent that can analyze but cannot modify. Adding `"Edit"` and `"Bash"` is a different risk posture entirely. Choose deliberately; this list *is* your security boundary.
+- **`tools` is the blast radius — `allowed_tools` is not.** This is the trap, and it was found the hard way: a run configured with only `allowed_tools=["Read", "Glob", "Grep"]` printed `[tool] Bash`. `ClaudeAgentOptions` carries three separate settings:
+
+  | Option | Question | Effect |
+  |---|---|---|
+  | **`tools`** | *which tools exist at all?* | **the availability set — the real boundary** |
+  | `allowed_tools` | *which run without asking?* | auto-approve (a permission rule) |
+  | `disallowed_tools` | *which are refused outright?* | auto-deny |
+
+  `allowed_tools` is a **pre-approval list, not an allowlist.** Leaving `Bash` out of it never removed `Bash`; it only routed it through the permission path, and unattended it still ran. To build an agent that genuinely *cannot* modify anything, set `tools=["Read", "Glob", "Grep"]`. The CLI draws the same line: `--tools` sets availability, `--allowedTools` sets pre-approval.
+- **The bounds are parameters here.** `max_turns` and `max_budget_usd` are fields on `ClaudeAgentOptions`. Where the raw Messages API made you write your own turn counter, the SDK gives you two of the three bounds; wall-clock is still yours.
 - **`permission_mode="acceptEdits"`** removes the human from the loop for file edits. Correct for a sandboxed CI job. Dangerous in a working tree you care about.
 
 A real run prints something like:
@@ -1198,7 +1207,10 @@ Everything else is instrumentation on those two choices: **hooks** make the non-
 | **Agent SDK** | `claude-agent-sdk` — run Claude Code programmatically (CLI, Python, TypeScript) |
 | `query(prompt, options)` | Agent SDK entry point; an **async generator** of messages |
 | `ClaudeAgentOptions` | `allowed_tools`, `permission_mode`, `hooks`, … |
-| `allowed_tools` | the agent's blast radius — Read/Glob/Grep is read-only; +Edit/Bash is not |
+| `tools` | **the availability set — the real blast radius**; omit Bash/Edit/Write and the agent cannot reach them |
+| `allowed_tools` | **pre-approval, not restriction** — which tools run without prompting |
+| `disallowed_tools` | auto-deny list |
+| `max_turns` / `max_budget_usd` | bounds built into `ClaudeAgentOptions` |
 | `permission_mode="acceptEdits"` | auto-approve file edits (no human in the loop) |
 | `AssistantMessage` / `ResultMessage` | streamed reasoning + tool blocks / terminating result |
 | **headless / print mode** | older names for the Agent SDK's CLI form (`claude -p`) |

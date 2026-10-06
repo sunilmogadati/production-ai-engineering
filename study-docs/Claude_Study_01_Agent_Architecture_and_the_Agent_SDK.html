@@ -875,9 +875,37 @@ asyncio.run(main())
 <p>Three things in that snippet carry real weight:</p>
 <ul>
 <li><strong><code>query()</code> is an async generator.</strong> You iterate the agent's work as it happens: reasoning blocks, tool calls, tool results, then a terminating <code>ResultMessage</code>. This is the observability surface — it is where logging, progress UI, and kill switches attach.</li>
-<li><strong><code>allowed_tools</code> is the blast radius.</strong> <code>["Read", "Glob", "Grep"]</code> is an agent that can analyze but cannot modify. Adding <code>"Edit"</code> and <code>"Bash"</code> is a different risk posture entirely. Choose deliberately; this list <em>is</em> your security boundary.</li>
-<li><strong><code>permission_mode="acceptEdits"</code></strong> removes the human from the loop for file edits. Correct for a sandboxed CI job. Dangerous in a working tree you care about.</li>
+<li><strong><code>tools</code> is the blast radius — <code>allowed_tools</code> is not.</strong> This is the trap, and it was found the hard way: a run configured with only <code>allowed_tools=["Read", "Glob", "Grep"]</code> printed <code>[tool] Bash</code>. <code>ClaudeAgentOptions</code> carries three separate settings:</li>
 </ul>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Question</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>tools</code></strong></td>
+<td><em>which tools exist at all?</em></td>
+<td><strong>the availability set — the real boundary</strong></td>
+</tr>
+<tr>
+<td><code>allowed_tools</code></td>
+<td><em>which run without asking?</em></td>
+<td>auto-approve (a permission rule)</td>
+</tr>
+<tr>
+<td><code>disallowed_tools</code></td>
+<td><em>which are refused outright?</em></td>
+<td>auto-deny</td>
+</tr>
+</tbody>
+</table>
+<p><code>allowed_tools</code> is a <strong>pre-approval list, not an allowlist.</strong> Leaving <code>Bash</code> out of it never removed <code>Bash</code>; it only routed it through the permission path, and unattended it still ran. To build an agent that genuinely <em>cannot</em> modify anything, set <code>tools=["Read", "Glob", "Grep"]</code>. The CLI draws the same line: <code>--tools</code> sets availability, <code>--allowedTools</code> sets pre-approval.
+- <strong>The bounds are parameters here.</strong> <code>max_turns</code> and <code>max_budget_usd</code> are fields on <code>ClaudeAgentOptions</code>. Where the raw Messages API made you write your own turn counter, the SDK gives you two of the three bounds; wall-clock is still yours.
+- <strong><code>permission_mode="acceptEdits"</code></strong> removes the human from the loop for file edits. Correct for a sandboxed CI job. Dangerous in a working tree you care about.</p>
 <p>A real run prints something like:</p>
 <pre><code class="language-text">[Session] 1d7f1b81 | Model: claude-sonnet-4-6 | CWD: /…/pre-and-post-hooks
           Tools: Task, TaskOutput, Bash, Glob, Grep, ExitPlanMode, Read, Edit …
@@ -1554,8 +1582,20 @@ Session idle
 <td><code>allowed_tools</code>, <code>permission_mode</code>, <code>hooks</code>, …</td>
 </tr>
 <tr>
+<td><code>tools</code></td>
+<td><strong>the availability set — the real blast radius</strong>; omit Bash/Edit/Write and the agent cannot reach them</td>
+</tr>
+<tr>
 <td><code>allowed_tools</code></td>
-<td>the agent's blast radius — Read/Glob/Grep is read-only; +Edit/Bash is not</td>
+<td><strong>pre-approval, not restriction</strong> — which tools run without prompting</td>
+</tr>
+<tr>
+<td><code>disallowed_tools</code></td>
+<td>auto-deny list</td>
+</tr>
+<tr>
+<td><code>max_turns</code> / <code>max_budget_usd</code></td>
+<td>bounds built into <code>ClaudeAgentOptions</code></td>
 </tr>
 <tr>
 <td><code>permission_mode="acceptEdits"</code></td>
