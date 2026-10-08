@@ -169,6 +169,25 @@ The practical test, and the one worth carrying into the exam and into design rev
 
 ---
 
+### Does the model *decide* to call a tool, or did we tell it to?
+
+It decides. This is worth pinning down because it is the moment the abstract phrase "dynamic policy" becomes something you can watch happen.
+
+When you attach tools, the **name, description and input schema** of each are serialized into the request alongside the prompt — that is why tool definitions cost input tokens on every call, and why over-attaching is a recurring tax. The model therefore reads the task and the catalogue of available tools *together*.
+
+Give it an incident ticket and a `get_deploy_info` tool and it will emit a `tool_use` block — having both **selected the tool** and **extracted the argument**. In the loop example later, `"payments-svc"` is never passed as a parameter; the model pulls it out of prose. Nothing in your code says *"if the ticket mentions an outage, check recent deploys."* That mapping is the model's.
+
+Is that "reasoning"? Keep the engineering claim and leave the philosophy: these models are post-trained specifically on tool use, so it is a well-practised behaviour rather than an emergent surprise. What you can defend in a design review is narrower and more useful — **you did not write the branch, and you cannot predict it.** Which is the definition of a dynamic policy from Part 1, arriving in your terminal. If you *could* enumerate "outage → check deploys", you would write a dict and skip the model entirely.
+
+Two consequences follow immediately, and both cost people real money:
+
+- **The `description` field is the API.** The model chooses on description and schema. A vague description gets the wrong tool called, and no amount of surrounding prompt fixes it. It is prompt engineering wearing a JSON schema.
+- **It is probabilistic.** It can pick the wrong tool, invent an argument, or decline to call one at all. That is precisely why reviewer loops (Part 3) and hooks (Part 6) exist: you cannot *assert* the choice was right, you can only check it or constrain it.
+
+> **The one-line frame:** you supply the catalogue; the **model** picks from it. Tool selection is the dynamic policy, running.
+
+---
+
 ## Part 2 — Workflow architecture, and why it isn't the enemy
 
 **Workflow architecture is where a developer defines a series of predetermined steps.** n8n is the canonical visual example — drag nodes, connect them, each node does one thing: Email node → AI Agent node → output formatting → write to a sheet.
@@ -564,6 +583,14 @@ People say "the Claude SDK" and mean either of two products. They are not the sa
 
 So: **not all Claude SDK is Agent SDK.** Most Claude applications — a RAG service, a classifier, a chatbot, a custom-tool agent — use only the client SDK. Reach for the Agent SDK when you want Claude Code's abilities inside your own program.
 
+### Two small things that confuse everyone early
+
+**`client.messages.create()` creates a *Message*, not a client and not an agent.** Three layers hide behind that one line: `anthropic.Anthropic()` is the **client** (holds the key and the connection pool), `client.messages` is a **resource namespace** (the `/v1/messages` endpoint), and `.create(...)` is **one POST** returning one `Message`. It is ordinary REST/CRUD naming.
+
+What matters is that **nothing persists.** The `Message` has an id, but it is a receipt for your logs — you cannot fetch it back. Continuity exists only because *you* resend the whole `messages=[...]` list every turn. Contrast Part 7, where the same verb means the opposite: `client.beta.sessions.create()` makes a real server-side object you can retrieve, archive, and be billed for. Same `.create()`, opposite lifetimes.
+
+**`citations=None`** appears on every text block you will ever print, and is almost always empty. `TextBlock` has exactly three fields — `citations`, `text`, `type`. Citations are *provenance*: send a document with `citations: {"enabled": True}` and the response's text blocks come back carrying pointers into the source — `CitationPageLocation` for a PDF page, `CitationCharLocation` for a character range, and so on. On a plain text call there is nothing to point at, so it is `None`. It is opt-in, exactly like `cache_control`. Worth knowing it exists before you hand-roll chunk ids and offsets for a grounded-answer feature.
+
 ### The Agent SDK itself
 
 **The Agent SDK lets you run Claude Code programmatically** — from the CLI, Python, or TypeScript. It was previously called the Claude Code SDK; the CLI form was previously called "headless mode" or "print mode". Same thing, three names, and you will meet all three.
@@ -655,6 +682,58 @@ A real run prints something like:
 Note the footer. **Turns, cost, wall-clock, and stop reason, printed per run.** Those four numbers are the bounds you will eventually enforce in production — and the SDK is handing them to you for free. Start reading them from day one.
 
 > **The one-line frame:** the Agent SDK is **Claude Code as a library**. You supply a prompt and a permission surface; it supplies the loop, the built-in tools, hooks, subagents, MCP and sessions — running on *your* machine.
+
+---
+
+### What "harness" actually means here
+
+Part 8 defines a harness as *the surrounding program that turns an LLM into an agent.* In the Agent SDK's case that is not a metaphor — **it is the `claude` CLI, running as a subprocess.** The Python package spawns it and talks to it over stdio, which is why a Python-only install is not enough and you also need the Node package.
+
+The clearest definition is a diff against the hand-rolled loop:
+
+| Harness responsibility | Hand-rolled loop | Agent SDK |
+|---|---|---|
+| the agent loop | your `while` on `stop_reason` | supplied |
+| tool **schemas** | your `TOOLS` list | supplied |
+| tool **implementations** | one function reading a dict | ~15 tools that really touch a filesystem |
+| permission system | none | `tools` / `allowed_tools` / `disallowed_tools` |
+| context compaction | none — you blow the window eventually | supplied |
+| system prompt, sessions, hooks, subagents, MCP | none | supplied |
+
+Forty lines bought you one tool that read a dictionary. A prompt bought you a filesystem agent with a permission model. **The harness is everything in that gap** — and Part 4's question "whose harness?" is asking who writes that column.
+
+### Why is everything `async`?
+
+Because `query()` **streams.** The agent runs for seconds to minutes and emits events as it goes — reasoning, tool call, result, more reasoning. `async for` hands you each one *as it arrives*; a synchronous call would hand you everything after it finished, which is useless for a progress UI and worse for a kill switch.
+
+Underneath, the SDK is reading lines from that subprocess: I/O-bound waiting. Async makes the wait non-blocking, which is what lets an agent sit behind a web request or lets several run at once without threads.
+
+And it is the same machinery as the event loop: `async def` defines a coroutine, and something has to drive it. In a script that is `asyncio.run(main())`, which creates a loop, runs, and closes it. In a notebook a loop is **already running** — the kernel is a server multiplexing sockets — so `asyncio.run()` raises `RuntimeError: cannot be called from a running event loop` and you write `await main()` instead, which schedules onto the existing loop. Same code, different owner of the thread. This is the single most common first error when pasting the snippet above into a notebook.
+
+### What comes out of `query()` — five message types, not two
+
+Each iteration yields one complete event. The five:
+
+| Message | Carries | Use it for |
+|---|---|---|
+| `SystemMessage` | `subtype`, `data` — the `init` one lists the live tool set | discovering what your version actually has |
+| `AssistantMessage` | `content`, `model`, `usage`, `stop_reason` | Claude's output |
+| `UserMessage` | `content`, `tool_use_result` | tool results going back in |
+| `ResultMessage` | `num_turns`, `total_cost_usd`, `stop_reason`, `duration_ms` | the bookkeeping, at the end |
+| `StreamEvent` | token-level deltas | only with `include_partial_messages` |
+
+Most example code handles two of the five and silently drops the rest. That is fine for a demo, as long as you know it is a filter and not the whole set.
+
+**Inside `AssistantMessage.content` are blocks**, and here the Agent SDK differs from the Messages API in a way that trips people: its block classes carry **no `.type` field**. You tell them apart by their attributes:
+
+| Block | Attributes | Means |
+|---|---|---|
+| `TextBlock` | `text` | prose for the human |
+| `ToolUseBlock` | `id`, `name`, `input` | a tool being invoked |
+| `ThinkingBlock` | `thinking`, `signature` | extended-thinking output |
+| `ToolResultBlock` | `tool_use_id`, `content`, `is_error` | what a tool returned |
+
+Hence `hasattr(block, "text")` versus `hasattr(block, "name")` — duck-typing, not style. **Has `.text` → print it; has `.name` → a tool is being called.** Note the gap this leaves: a `ThinkingBlock` has neither, so it falls through both branches and disappears. If you turn thinking on and wonder where the reasoning went, that is the line.
 
 ---
 
@@ -823,6 +902,59 @@ What you'd see on a run: the agent tries `git push --force` to "clean up", the h
 
 One honest caveat on hook 1: a regex **blocklist** is a teaching example. Commands can be written many ways, so for real enforcement prefer an **allowlist** (only `pytest`, `ruff` and `git diff` may run) and run the agent in a sandbox. The hook is still the right place for that rule — it's the only place that gets a say before every command runs.
 
+### Why the hook output is `PRE · PRE · POST · POST`
+
+Run the two-hook example and the output rarely alternates. A real run:
+
+```text
+[PRE ] Glob  | toolu_01UhKMJVNkgH5rh5A3DXeRMt
+[PRE ] Read  | toolu_01TRnJZojTaoc9obEsRJjQf1
+[POST] Read  | toolu_01TRnJZojTaoc9obEsRJjQf1
+[POST] Glob  | toolu_01UhKMJVNkgH5rh5A3DXeRMt
+```
+
+That is not two passes of the loop. **Two `PRE`s before any `POST` proves both tools were in flight at once** — if execution were serial, the second tool could not be dispatched until the first had returned, and you would see `PRE·POST·PRE·POST`.
+
+What produced it is two decisions by two different parties:
+
+| Who | Decides |
+|---|---|
+| **the model** | these calls are *independent* — emits both `tool_use` blocks in one turn |
+| **the harness** | independent calls are *dispatched concurrently* |
+
+The model never says "run these in parallel." It says "I need Glob and Read, and I can specify both now" — possible only because forming the `Read` call does not require seeing `Glob`'s output. That independence is the model's judgement; turning it into concurrency is the harness's policy. Had the model needed Glob's results to know *which* file to read, it would have emitted `Glob` alone, waited, and emitted `Read` on the next turn — and the output would have alternated.
+
+Note that a hand-rolled loop iterating the blocks with a plain `for` dispatches the same parallel request **serially**. Same model behaviour, different harness policy — another concrete line in what the harness buys.
+
+**The consequence that bites in production: under concurrency, ordering tells you nothing.** `tool_use_id` is the only thing pairing a `POST` with its `PRE`. This is correct serially and silently wrong in production:
+
+```python
+last_tool = None
+async def pre_tool_hook(input_data, tool_use_id, context):
+    last_tool = input_data.get("tool_name")        # clobbered by the next PRE
+async def post_tool_hook(input_data, tool_use_id, context):
+    print(f"done {last_tool}")                     # reports the wrong tool
+```
+
+Key by id instead, which also gives you per-tool timing for free:
+
+```python
+started = {}
+
+async def pre_tool_hook(input_data, tool_use_id, context):
+    started[tool_use_id] = (input_data.get("tool_name"), time.monotonic())
+    return {}
+
+async def post_tool_hook(input_data, tool_use_id, context):
+    name, t0 = started.pop(tool_use_id, ("?", None))
+    print(f"[POST] {name} took {time.monotonic() - t0:.2f}s")
+    return {}
+```
+
+Same correlation-key lesson as `tool_result.tool_use_id` in the hand-rolled loop — but there you could get away with ignoring it, and here you cannot.
+
+---
+
 ### Is this like LangChain middleware?
 
 Yes — same idea, different shape. Both are **deterministic code wrapped around a probabilistic agent loop**. LangChain v1 agents take middleware with hooks such as `before_model`, `after_model`, `wrap_model_call` and `wrap_tool_call`:
@@ -897,6 +1029,61 @@ The two that surprise people:
 **Environment is not environment variables.** It is the *machine*: name, description, networking policy, installed packages. The sandbox itself.
 
 **Deployment is just a trigger binding.** The name suggests shipping to production; it actually means "run this agent on a schedule, or on demand via API." If you were expecting Kubernetes, recalibrate — it's cron plus a webhook.
+
+### Agent · Environment · Session — what each one actually is
+
+The five names sound interchangeable and are not. The cleanest way in is to ask **what each one would still be if you deleted the others.**
+
+| Object | Analogy | Lifetime | What it holds |
+|---|---|---|---|
+| **Agent** | a **class** — or a container *image* | permanent, versioned | model, system prompt, tools, MCP servers, skills |
+| **Environment** | the **machine** the class runs on | permanent | sandbox type (cloud/self-hosted), networking policy, installed packages |
+| **Session** | an **instance** — one running process | minutes; archived after | one task, its event stream, its cost |
+| **Deployment** | **cron plus a webhook** | permanent | agent + environment + credentials bound to a trigger |
+| **Credential vault** | a **secret store** | permanent | secrets a run may use (MCP servers, other tools) |
+
+An **Agent** is a *definition*, not something running. Creating one spends nothing — you are saving a config server-side and getting an id back. It is versioned, so a session pins the version it started with and your edits don't retroactively change history.
+
+An **Environment** is the *machine*, and this is the name that misleads everyone: **it is not environment variables.** It is the sandbox — what OS image, what packages, whether the thing can reach the public internet. Two agents can share one environment; one agent can run in several.
+
+A **Session** is where the money goes. Agent + environment + a task = a running instance that emits events and reports its own cost. It is the only one of the five that *does* anything. Agents and environments are inert until a session binds them — which is why creating a session needs **both** ids, and why the dependency chain breaks if you follow a quickstart tab out of order.
+
+A **Deployment** binds agent + environment + credentials to a **trigger**: `Manual` (a Console button, or `POST /v1/deployments/:id/run`) or `Schedule`. Despite the name it is not Kubernetes — it is the thing that starts sessions for you, on a clock or on demand, so nothing on your side has to stay awake.
+
+```mermaid
+flowchart LR
+    AG["Agent<br/><i>definition</i>"] -.->|inert| X1(( ))
+    EN["Environment<br/><i>machine</i>"] -.->|inert| X1
+    AG --> SE["<b>Session</b><br/><i>the only thing that runs</i>"]
+    EN --> SE
+    DE["Deployment<br/><i>trigger</i>"] -->|starts| SE
+    CV["Vault<br/><i>secrets</i>"] --> DE
+    SE --> EV["events · cost · trace"]
+    style SE fill:#ffe9d6,stroke:#d2691e,stroke-width:2px
+    style X1 fill:none,stroke:none
+```
+
+> **The one-line frame:** **Agent = what to run · Environment = where · Session = the actual run.** Deployment decides *when*, vault decides *with which secrets*.
+
+### What does the agent we deploy actually *do*?
+
+Worth asking bluntly, because the quickstart-shaped agent does almost nothing and it is easy to mistake the ceremony for the capability.
+
+A minimal agent — a model, a one-line system prompt, no explicit tools — still inherits the **sandbox's built-in toolset**: a shell, file read/write, code execution. So handed *"write a Python script that generates the first 20 Fibonacci numbers"*, it will write the file, run it, check the output, and report back. The trace shows exactly that: `Tool bash → Result bash → Thinking → Tool write → Result write → Tool bash`.
+
+That is the honest description of a demo agent: **it proves the object chain works, not that the agent is useful.** Its value is that you now have a place to put something real. The nightly dependency-audit agent above is the same five objects with a job worth doing — a system prompt with an actual procedure, a scheduled deployment, and a vault holding the token it needs.
+
+### Can I see it in the Console — and run it from there?
+
+Yes to both, and this is the strongest practical argument for Managed Agents.
+
+Everything you create through the API appears at **platform.claude.com** under **Managed Agents**, with a section per object: Agents, Sessions, Deployments, Environments, Credential vaults. Open an agent and you see its system prompt and its built-in tools. Open a session and you get the full trace — every tool call, every result, thinking steps, per-step timings, and **cost and token counts per session**.
+
+You can also work in the other direction. The Console will **create an agent in place**, start a session with **Create session**, and fire a deployment with **Run now**. So the API and the Console are two front doors onto the same objects, not separate worlds — build it in a notebook, hand the Console to someone who will never open a terminal.
+
+This is why the trace matters more than the hosting. Self-hosting an agent is not hard. Building the event store, the per-session cost attribution, and a UI that makes a failed run legible at 2am **is** hard, and it is the part teams reliably under-build. Here you get it as a side effect of creating a session.
+
+**One caution that follows from the same property:** because the objects are real and server-side, a script that dies halfway leaves them behind. Creating an agent and then failing to create the environment leaves an orphan agent in your account. Archive what you create, and sweep before you re-run.
 
 ### Worked example: a nightly dependency-audit agent, start to finish
 
@@ -1229,6 +1416,13 @@ Everything else is instrumentation on those two choices: **hooks** make the non-
 | **Deployment** (CMA) | agent + environment + credentials bound to a trigger (manual or schedule) |
 | **Credential vault** | stored secrets a run may use (MCP servers, other tools) |
 | **Message Batches API** | asynchronous, discounted, ≤24h turnaround for latency-tolerant volume |
+| `citations` | field on every `TextBlock`; populated only when a document was sent with `citations: {enabled: true}` — provenance back to page or character ranges |
+| `client.messages.create()` | creates **a Message** — one request, one response. The id is a receipt; nothing is stored server-side |
+| `client.beta.*` | pre-GA APIs; shapes can change and many need a dated `anthropic-beta` header. Features graduate out (Files, Skills) |
+| `anthropic-beta` header | dated capability flag, e.g. `managed-agents-2026-04-01`. The date is exact — a near-miss is rejected |
+| `SystemMessage` / `UserMessage` / `StreamEvent` | the other three Agent SDK message types besides `AssistantMessage` and `ResultMessage` |
+| `hasattr(block, "text")` vs `"name"` | Agent SDK blocks carry no `.type`; duck-type them — `.text` is prose, `.name` is a tool call |
+| parallel tool use | one assistant turn can request several tools; the harness may dispatch them concurrently, so hook output interleaves |
 | **CCDV-F** | Claude Certified Developer — Foundations. 53 Q · 120 min · 720/1000 · 12-month validity |
 
 *Claude Study 01 — An **agent** is a **dynamic policy** (next action chosen at runtime), a **workflow** is a **state machine** (transitions enumerable in advance); if you can draw it, don't buy a model to walk it, and put the agent **inside** the workflow at the one step needing judgment. Building one is two purchases — **harness** and **deployment**: manual loop buys neither, Tool Runner and **Agent SDK** (`query` + `ClaudeAgentOptions`, Claude Code as a library) buy the harness, **Managed Agents** (agent · environment · session · deployment · vault) buys both and hands you the trace. **Hooks** (`PreToolUse`/`PostToolUse`) are the deterministic control plane — prompts request, hooks enforce — and **subagents** buy focus, parallelism and independent verification at the price of tokens, latency and coordination.*
