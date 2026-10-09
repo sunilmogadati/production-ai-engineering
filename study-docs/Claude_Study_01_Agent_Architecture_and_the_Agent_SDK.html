@@ -1475,8 +1475,29 @@ async def post_tool_hook(input_data, tool_use_id, context):
 </blockquote>
 <h3 id="what-does-the-agent-we-deploy-actually-do">What does the agent we deploy actually <em>do</em>?</h3>
 <p>Worth asking bluntly, because the quickstart-shaped agent does almost nothing and it is easy to mistake the ceremony for the capability.</p>
-<p>A minimal agent — a model, a one-line system prompt, no explicit tools — still inherits the <strong>sandbox's built-in toolset</strong>: a shell, file read/write, code execution. So handed <em>"write a Python script that generates the first 20 Fibonacci numbers"</em>, it will write the file, run it, check the output, and report back. The trace shows exactly that: <code>Tool bash → Result bash → Thinking → Tool write → Result write → Tool bash</code>.</p>
-<p>That is the honest description of a demo agent: <strong>it proves the object chain works, not that the agent is useful.</strong> Its value is that you now have a place to put something real. The nightly dependency-audit agent above is the same five objects with a job worth doing — a system prompt with an actual procedure, a scheduled deployment, and a vault holding the token it needs.</p>
+<p>A minimal agent — a model, a system prompt, <strong>and no <code>tools</code></strong> — has <strong>no tools at all.</strong> This is worth stating plainly because the failure mode is deceptive: asked to use a shell, such an agent emits tool-call syntax <em>as plain text</em> —</p>
+<pre><code class="language-text">MSG: &lt;function_calls&gt;&lt;invoke name=&quot;shell&quot;&gt;
+     &lt;parameter name=&quot;command&quot;&gt;python3 fib.py&lt;/parameter&gt;&lt;/invoke&gt;&lt;/function_calls&gt;
+</code></pre>
+<p>— and nothing executes. No <code>agent.tool_use</code> event, no sandbox activity. It reads like a tool call in the transcript and is just a string. Verified against a live account: the same prompt that produced that text produced real <code>write</code> and <code>bash</code> calls once tools were switched on.</p>
+<p>The line that makes it an agent:</p>
+<pre><code class="language-python">agent = client.beta.agents.create(
+    name=&quot;demo-tools&quot;,
+    model=&quot;claude-haiku-4-5&quot;,
+    system=&quot;You are terse. Use the shell to do real work, then report.&quot;,
+    tools=[{&quot;type&quot;: &quot;agent_toolset_20260401&quot;}],    # &lt;- the built-in sandbox tools
+    betas=[&quot;managed-agents-2026-04-01&quot;],
+)
+</code></pre>
+<p>With that in place, <em>"create fib.py printing the first 15 Fibonacci numbers, run it, and report the output"</em> produces exactly what you would hope:</p>
+<pre><code class="language-text">TOOL   write {'content': 'def fibonacci(n): ...'}
+RESULT File created: /mnt/session/outputs/fib.py
+MSG    Now let me run it:
+TOOL   bash  {'command': 'cd /mnt/session/outputs &amp;&amp; python fib.py'}
+RESULT 0 1 1 2 3 5 8 13 21 34 55 89 144 233 377
+</code></pre>
+<p>The <code>tools</code> union accepts three kinds: the <strong>built-in toolset</strong> (<code>agent_toolset_20260401</code> — shell, file read/write, code execution), <strong>MCP toolsets</strong>, and <strong>custom tools</strong>, up to 256 across all of them. <code>configs</code> and <code>default_config</code> narrow individual tools — the same availability-versus-approval split as Part 5.</p>
+<p>So the honest description of a quickstart agent is: <strong>it proves the object chain works, not that the agent is capable.</strong> Capability is one parameter away, and that parameter is not on by default. Its value is that you now have a place to put something real — the nightly dependency-audit agent above is the same five objects with a job worth doing.</p>
 <h3 id="can-i-see-it-in-the-console-and-run-it-from-there">Can I see it in the Console — and run it from there?</h3>
 <p>Yes to both, and this is the strongest practical argument for Managed Agents.</p>
 <p>Everything you create through the API appears at <strong>platform.claude.com</strong> under <strong>Managed Agents</strong>, with a section per object: Agents, Sessions, Deployments, Environments, Credential vaults. Open an agent and you see its system prompt and its built-in tools. Open a session and you get the full trace — every tool call, every result, thinking steps, per-step timings, and <strong>cost and token counts per session</strong>.</p>

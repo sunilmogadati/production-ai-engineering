@@ -1069,9 +1069,40 @@ flowchart LR
 
 Worth asking bluntly, because the quickstart-shaped agent does almost nothing and it is easy to mistake the ceremony for the capability.
 
-A minimal agent — a model, a one-line system prompt, no explicit tools — still inherits the **sandbox's built-in toolset**: a shell, file read/write, code execution. So handed *"write a Python script that generates the first 20 Fibonacci numbers"*, it will write the file, run it, check the output, and report back. The trace shows exactly that: `Tool bash → Result bash → Thinking → Tool write → Result write → Tool bash`.
+A minimal agent — a model, a system prompt, **and no `tools`** — has **no tools at all.** This is worth stating plainly because the failure mode is deceptive: asked to use a shell, such an agent emits tool-call syntax *as plain text* —
 
-That is the honest description of a demo agent: **it proves the object chain works, not that the agent is useful.** Its value is that you now have a place to put something real. The nightly dependency-audit agent above is the same five objects with a job worth doing — a system prompt with an actual procedure, a scheduled deployment, and a vault holding the token it needs.
+```text
+MSG: <function_calls><invoke name="shell">
+     <parameter name="command">python3 fib.py</parameter></invoke></function_calls>
+```
+
+— and nothing executes. No `agent.tool_use` event, no sandbox activity. It reads like a tool call in the transcript and is just a string. Verified against a live account: the same prompt that produced that text produced real `write` and `bash` calls once tools were switched on.
+
+The line that makes it an agent:
+
+```python
+agent = client.beta.agents.create(
+    name="demo-tools",
+    model="claude-haiku-4-5",
+    system="You are terse. Use the shell to do real work, then report.",
+    tools=[{"type": "agent_toolset_20260401"}],    # <- the built-in sandbox tools
+    betas=["managed-agents-2026-04-01"],
+)
+```
+
+With that in place, *"create fib.py printing the first 15 Fibonacci numbers, run it, and report the output"* produces exactly what you would hope:
+
+```text
+TOOL   write {'content': 'def fibonacci(n): ...'}
+RESULT File created: /mnt/session/outputs/fib.py
+MSG    Now let me run it:
+TOOL   bash  {'command': 'cd /mnt/session/outputs && python fib.py'}
+RESULT 0 1 1 2 3 5 8 13 21 34 55 89 144 233 377
+```
+
+The `tools` union accepts three kinds: the **built-in toolset** (`agent_toolset_20260401` — shell, file read/write, code execution), **MCP toolsets**, and **custom tools**, up to 256 across all of them. `configs` and `default_config` narrow individual tools — the same availability-versus-approval split as Part 5.
+
+So the honest description of a quickstart agent is: **it proves the object chain works, not that the agent is capable.** Capability is one parameter away, and that parameter is not on by default. Its value is that you now have a place to put something real — the nightly dependency-audit agent above is the same five objects with a job worth doing.
 
 ### Can I see it in the Console — and run it from there?
 
