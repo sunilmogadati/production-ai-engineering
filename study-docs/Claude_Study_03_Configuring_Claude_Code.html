@@ -304,11 +304,15 @@ PRECTEST=LOCAL_WINS
 </tr>
 <tr>
 <td><code>availableModelsMatch</code></td>
-<td><code>"prefix"</code> (default) lets an entry allow any ID extending it — <code>"claude-opus-5"</code> allows <code>"claude-opus-5-5"</code>. <code>"exact"</code> stops that</td>
+<td><code>"prefix"</code> (default) lets an entry allow any ID extending it — <code>"claude-opus-5"</code> allows <code>"claude-opus-5-5"</code>. <code>"exact"</code> stops that, <strong>and also constrains Default</strong>. Managed settings only</td>
 </tr>
 <tr>
 <td><code>enforceAvailableModels</code></td>
 <td><strong>when true, the Default picker entry is constrained too</strong></td>
+</tr>
+<tr>
+<td><code>deniedModels</code></td>
+<td>models users cannot select <strong>even when <code>availableModels</code> allows them</strong>. Blocks a version in <strong>every spelling</strong> — dates, <code>-fast</code>, provider prefixes</td>
 </tr>
 <tr>
 <td><code>modelOverrides</code></td>
@@ -329,7 +333,35 @@ PRECTEST=LOCAL_WINS
 <div class="mermaid">flowchart LR
     AM[&quot;&lt;code&gt;availableModels&lt;/code&gt;&lt;br/&gt;restricts the explicit picks:&lt;br/&gt;/model · --model · ANTHROPIC_MODEL&quot;] --&gt; GAP[&quot;Default still resolves&lt;br/&gt;to the tier default —&lt;br/&gt;possibly outside the allowlist&quot;]
     GAP --&gt; EAM[&quot;&lt;code&gt;enforceAvailableModels: true&lt;/code&gt;&lt;br/&gt;→ Default resolves to the first&lt;br/&gt;allowed entry instead&quot;]</div>
-<p><code>enforceAvailableModels</code> has no effect when <code>availableModels</code> is unset or empty. Both are, as the build says, <em>"typically set in managed settings by enterprise administrators."</em></p>
+<p>There are in fact <strong>three</strong> ways Default gets constrained, which matters if you are the administrator doing the locking:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Effect on Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>availableModels</code> alone</td>
+<td><strong>none</strong> — this is what the slide is describing</td>
+</tr>
+<tr>
+<td><code>enforceAvailableModels: true</code></td>
+<td>Default resolves to the first allowed entry. No effect if <code>availableModels</code> is unset or empty</td>
+</tr>
+<tr>
+<td><code>availableModelsMatch: "exact"</code> + a non-empty list</td>
+<td>Default also uses only a listed model — and <strong>if none can be used, Claude Code will not start</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Two further details from the build that no slide mentions:</p>
+<ul>
+<li><strong><code>deniedModels</code> beats <code>availableModels</code>.</strong> It blocks a model <em>even when the allowlist permits it</em>, and it blocks a version <strong>in every spelling</strong> — dated IDs, <code>-fast</code> variants, provider prefixes. That is the key to reach for when you must guarantee a model is never used, because an allowlist alone can be widened by a prefix match.</li>
+<li><strong>Not everything is restrictable.</strong> Haiku background models, and hooks and other helper requests that choose their own model, are <strong>not</strong> covered by <code>availableModels</code> — <code>deniedModels</code> covers them, and <code>allowManagedHooksOnly</code> limits hooks.</li>
+</ul>
+<p>All of these are read from <strong>managed settings only</strong>.</p>
 <h3 id="output-and-language">Output and language</h3>
 <table>
 <thead>

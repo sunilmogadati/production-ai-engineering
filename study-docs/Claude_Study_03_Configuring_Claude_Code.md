@@ -241,8 +241,9 @@ Note also that `--no-session-persistence` **only works with `--print`** — the 
 |---|---|
 | `model` | override the default model for all sessions |
 | `availableModels` | allowlist of selectable models. Accepts **family aliases** (`"opus"`), **version prefixes** (`"opus-4-5"`), and full IDs. Undefined = all available; **empty array = only the default** |
-| `availableModelsMatch` | `"prefix"` (default) lets an entry allow any ID extending it — `"claude-opus-5"` allows `"claude-opus-5-5"`. `"exact"` stops that |
+| `availableModelsMatch` | `"prefix"` (default) lets an entry allow any ID extending it — `"claude-opus-5"` allows `"claude-opus-5-5"`. `"exact"` stops that, **and also constrains Default**. Managed settings only |
 | `enforceAvailableModels` | **when true, the Default picker entry is constrained too** |
+| `deniedModels` | models users cannot select **even when `availableModels` allows them**. Blocks a version in **every spelling** — dates, `-fast`, provider prefixes |
 | `modelOverrides` | map an Anthropic model ID to a provider-specific ID (e.g. a Bedrock inference-profile ARN) |
 | `alwaysThinkingEnabled` | extended thinking on by default (usually set via `/config`) |
 | `fastModePerSessionOptIn` | when true, fast mode **does not persist**; each session starts with it off |
@@ -257,7 +258,20 @@ flowchart LR
     GAP --> EAM["<code>enforceAvailableModels: true</code><br/>→ Default resolves to the first<br/>allowed entry instead"]
 ```
 
-`enforceAvailableModels` has no effect when `availableModels` is unset or empty. Both are, as the build says, *"typically set in managed settings by enterprise administrators."*
+There are in fact **three** ways Default gets constrained, which matters if you are the administrator doing the locking:
+
+| Mechanism | Effect on Default |
+|---|---|
+| `availableModels` alone | **none** — this is what the slide is describing |
+| `enforceAvailableModels: true` | Default resolves to the first allowed entry. No effect if `availableModels` is unset or empty |
+| `availableModelsMatch: "exact"` + a non-empty list | Default also uses only a listed model — and **if none can be used, Claude Code will not start** |
+
+Two further details from the build that no slide mentions:
+
+- **`deniedModels` beats `availableModels`.** It blocks a model *even when the allowlist permits it*, and it blocks a version **in every spelling** — dated IDs, `-fast` variants, provider prefixes. That is the key to reach for when you must guarantee a model is never used, because an allowlist alone can be widened by a prefix match.
+- **Not everything is restrictable.** Haiku background models, and hooks and other helper requests that choose their own model, are **not** covered by `availableModels` — `deniedModels` covers them, and `allowManagedHooksOnly` limits hooks.
+
+All of these are read from **managed settings only**.
 
 ### Output and language
 
