@@ -256,6 +256,26 @@ Three things to carry out of that toy:
 | `pause_turn` | a **server-tool** loop hit its iteration limit; resume by sending the response back |
 | `refusal` | Claude declined — check `stop_details` for the category |
 
+**`stop_reason` is the agentic loop's branch point.** Study 01 drew the loop as a `while`; this is the field the `while` actually tests. Everything in the loop hinges on one of these six values:
+
+```mermaid
+flowchart TB
+    REQ["messages.create()"] --> RESP["Response"]
+    RESP --> SR{"<b>stop_reason</b>"}
+    SR -->|<b>tool_use</b>| T["run the tool →<br/>append tool_result →<br/><b>loop</b>"]
+    T --> REQ
+    SR -->|<b>pause_turn</b>| P["server-tool loop hit its limit →<br/>send the response back →<br/><b>loop</b>"]
+    P --> REQ
+    SR -->|<b>end_turn</b>| D(["done — natural finish"])
+    SR -->|<b>max_tokens</b>| X(["⚠️ <b>truncated</b> — output is incomplete<br/><i>looks finished; isn't</i>"])
+    SR -->|<b>stop_sequence</b>| Y(["halted on one of your<br/>stop_sequences strings"])
+    SR -->|<b>refusal</b>| Z(["Claude declined —<br/>check stop_details"])
+    RESP -.->|<i>never reaches here</i>| E["❌ 429 / 5xx / network<br/><b>raises an exception</b><br/>there is no stop_reason"]
+```
+
+**Only two of the six continue the loop.** `tool_use` is the one people know; `pause_turn` is the one that silently ends an agent early if you don't handle it — the model wanted to keep going and your code treated the response as final.
+
+
 **Two corrections to the course's list**, both verified against the installed SDK:
 
 **`model_context_window_exceeded` is not in the standard set.** It exists, but only on the beta message surface (alongside `compaction`), behind a beta header. Teaching it as a value you'll see on a plain `messages.create()` will have someone writing a branch that never fires. It means the conversation filled the window — the fix is compaction or pruning history, not a bigger `max_tokens`, which is a different number entirely.

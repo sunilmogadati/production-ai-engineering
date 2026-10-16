@@ -296,6 +296,20 @@ messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Explai
 </tr>
 </tbody>
 </table>
+<p><strong><code>stop_reason</code> is the agentic loop's branch point.</strong> Study 01 drew the loop as a <code>while</code>; this is the field the <code>while</code> actually tests. Everything in the loop hinges on one of these six values:</p>
+<div class="mermaid">flowchart TB
+    REQ[&quot;messages.create()&quot;] --&gt; RESP[&quot;Response&quot;]
+    RESP --&gt; SR{&quot;&lt;b&gt;stop_reason&lt;/b&gt;&quot;}
+    SR --&gt;|&lt;b&gt;tool_use&lt;/b&gt;| T[&quot;run the tool →&lt;br/&gt;append tool_result →&lt;br/&gt;&lt;b&gt;loop&lt;/b&gt;&quot;]
+    T --&gt; REQ
+    SR --&gt;|&lt;b&gt;pause_turn&lt;/b&gt;| P[&quot;server-tool loop hit its limit →&lt;br/&gt;send the response back →&lt;br/&gt;&lt;b&gt;loop&lt;/b&gt;&quot;]
+    P --&gt; REQ
+    SR --&gt;|&lt;b&gt;end_turn&lt;/b&gt;| D([&quot;done — natural finish&quot;])
+    SR --&gt;|&lt;b&gt;max_tokens&lt;/b&gt;| X([&quot;⚠️ &lt;b&gt;truncated&lt;/b&gt; — output is incomplete&lt;br/&gt;&lt;i&gt;looks finished; isn&#x27;t&lt;/i&gt;&quot;])
+    SR --&gt;|&lt;b&gt;stop_sequence&lt;/b&gt;| Y([&quot;halted on one of your&lt;br/&gt;stop_sequences strings&quot;])
+    SR --&gt;|&lt;b&gt;refusal&lt;/b&gt;| Z([&quot;Claude declined —&lt;br/&gt;check stop_details&quot;])
+    RESP -.-&gt;|&lt;i&gt;never reaches here&lt;/i&gt;| E[&quot;❌ 429 / 5xx / network&lt;br/&gt;&lt;b&gt;raises an exception&lt;/b&gt;&lt;br/&gt;there is no stop_reason&quot;]</div>
+<p><strong>Only two of the six continue the loop.</strong> <code>tool_use</code> is the one people know; <code>pause_turn</code> is the one that silently ends an agent early if you don't handle it — the model wanted to keep going and your code treated the response as final.</p>
 <p><strong>Two corrections to the course's list</strong>, both verified against the installed SDK:</p>
 <p><strong><code>model_context_window_exceeded</code> is not in the standard set.</strong> It exists, but only on the beta message surface (alongside <code>compaction</code>), behind a beta header. Teaching it as a value you'll see on a plain <code>messages.create()</code> will have someone writing a branch that never fires. It means the conversation filled the window — the fix is compaction or pruning history, not a bigger <code>max_tokens</code>, which is a different number entirely.</p>
 <p><strong><code>stop_sequence</code> is both a parameter and a stop reason.</strong> The course says <em>"this is not stop reason, it's its own parameter."</em> Half right, and the half that's missing is the useful half. <code>stop_sequences</code> is a <strong>request parameter</strong> — an array of strings that force generation to halt immediately on contact. When one fires, <code>stop_reason</code> comes back as <strong><code>stop_sequence</code></strong> and the <code>stop_sequence</code> field names which one. Request param and response value, same name, two jobs.</p>

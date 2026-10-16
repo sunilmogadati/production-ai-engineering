@@ -66,6 +66,7 @@ The ML series above covers agents in the abstract. This track asks what the **ve
 
 - **Agent or workflow? Whose harness, whose machine?** — Agent architecture & the Agent SDK — [Claude 01](study-docs/Claude_Study_01_Agent_Architecture_and_the_Agent_SDK.md) · [notebook](notebooks/Claude_Study_01_Agent_Architecture.ipynb)
 - **What every request costs you** — The Messages API & the cost levers — [Claude 02](study-docs/Claude_Study_02_Messages_API_and_the_Cost_Levers.md) · [notebook](notebooks/Claude_Study_02_Messages_API.ipynb)
+- **Enforced config vs. persuasion** — Settings, CLAUDE.md, plugins & surfaces — [Claude 03](study-docs/Claude_Study_03_Configuring_Claude_Code.md) · [notebook](notebooks/Claude_Study_03_Configuring_Claude_Code.ipynb)
 
 ---
 
