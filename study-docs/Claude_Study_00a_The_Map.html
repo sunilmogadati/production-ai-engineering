@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Study 00a — The Map</title>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+                      svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1.2rem;
+         font: 16px/1.65 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; background: #fff; }
+  @media (prefers-color-scheme: dark) { body { color:#e6e6e6; background:#1a1a1a; }
+     table, th, td { border-color:#444 !important; } th { background:#2a2a2a !important; }
+     blockquote { background:#202830 !important; } code { background:#2a2a2a !important; } }
+  h1, h2, h3 { line-height: 1.25; margin-top: 1.8rem; }
+  h1 { border-bottom: 2px solid #d0d0d0; padding-bottom: .3rem; }
+  h2 { border-bottom: 1px solid #e0e0e0; padding-bottom: .2rem; }
+  img { max-width: 100%; height: auto; display: block; margin: 1rem auto;
+        border: 1px solid #e0e0e0; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display:block; overflow-x:auto; }
+  th, td { border: 1px solid #ccc; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  blockquote { background: #f5f8fc; border-left: 4px solid #4a90d9; margin: 1rem 0;
+               padding: .6rem 1rem; border-radius: 0 6px 6px 0; }
+  code { background: #f0f0f0; padding: .1rem .35rem; border-radius: 4px; font-size: 92%; }
+  .mermaid { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+             padding: 1rem; margin: 1.2rem 0; text-align: center; }
+  em, i { color: inherit; }
+</style>
+</head>
+<body>
+<h1 id="claude-study-00a-the-map">Claude Study 00a — The Map</h1>
+<p><strong>Covers:</strong> <strong>one analogy for the whole stack</strong> — a brilliant contractor with no memory — mapped term by term to the code → then the whole Claude stack at <strong>10,000 feet</strong>, before any detail — the <strong>four altitudes</strong> (model → request → loop → product) and which study lives at each → <strong>what a message actually is</strong>, and why "the Messages API" is a worse name than it sounds → the one question that decides whether you are <strong>building an agent or making a call</strong> → <strong>"the Claude SDK" is two different packages</strong>, and which one you want → the <strong>four ways</strong> to build an agent, as a single table → where <strong>Claude Code</strong> sits (a product, not an SDK) → and a <strong>settled vocabulary</strong> for the eight words the material uses loosely.</p>
+<p><strong>Read this before Studies 01–03.</strong> It contains no new material. Everything here is stated in more depth later; this page exists so you know what you are looking at when you get there.</p>
+<p><strong>Series context:</strong> the <strong>ground floor of the Claude track</strong>. The source course (Claude Certified Developer — Foundations, Andrew Brown / ExamPro, freeCodeCamp) is built bottom-up: concepts arrive in the order the API documents them, and the organizing frame arrives after the parts it organizes. That order works if you already know the shape. If you don't, you spend the first hour unable to tell whether a thing you just learned is a product, a package, a protocol, or a field in a JSON body. This page is the shape.</p>
+<hr />
+<h2 id="start-here-one-analogy-for-the-whole-stack">Start here: one analogy for the whole stack</h2>
+<p>Before any term, one picture. Everything in this track is a variation on it, and when a concept stops making sense, come back here.</p>
+<blockquote>
+<p><strong>You have hired a brilliant, very fast contractor. You pay them by the word. And every single time they walk into your office, they have no memory of ever having met you.</strong></p>
+</blockquote>
+<p>That is the model. Not a metaphor for marketing — a working mental model that predicts the system's real behaviour, including the parts that seem perverse.</p>
+<p>Because they remember nothing, <strong>every visit you hand them the entire file folder again</strong>: the engagement letter on top, then the whole back-and-forth so far. They read it, write exactly one reply, hand the folder back, and forget everything. If you want them to continue, you walk back in with the folder — now one page thicker.</p>
+<p>They are also, strictly, <strong>a desk worker</strong>. They cannot open a filing cabinet, phone a vendor, or touch a system. What they <em>can</em> do is fill out a request form: <em>"please pull invoice 4471 and tell me what it says."</em> You take the form, do the thing yourself, write the answer on a new page, and put it in the folder. That exchange — form out, answer in — is the whole of what people call "tool use," and the walking back and forth is the whole of what people call "the agent loop."</p>
+<h3 id="the-analogy-the-term-and-where-the-code-lives">The analogy, the term, and where the code lives</h3>
+<p>This is the table to keep next to you. Left column is what is actually happening. Middle is what the material calls it. Right is where it shows up in code.</p>
+<table>
+<thead>
+<tr>
+<th>In the office</th>
+<th>The term</th>
+<th>In code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The contractor</td>
+<td>the <strong>model</strong></td>
+<td><code>model="claude-opus-5-5"</code></td>
+</tr>
+<tr>
+<td>One page in the folder</td>
+<td>a <strong>message</strong></td>
+<td><code>{"role": "user", "content": ...}</code></td>
+</tr>
+<tr>
+<td>The whole folder, handed over again</td>
+<td>the <strong>conversation history</strong></td>
+<td>the <code>messages[]</code> array</td>
+</tr>
+<tr>
+<td>The engagement letter clipped on top</td>
+<td>the <strong>system prompt</strong></td>
+<td><code>system="..."</code></td>
+</tr>
+<tr>
+<td>A photo, a contract, a PDF in the folder</td>
+<td><strong>content blocks</strong></td>
+<td><code>{"type": "image" / "document"}</code></td>
+</tr>
+<tr>
+<td>The blank request forms they're allowed to use</td>
+<td><strong>tools</strong></td>
+<td><code>tools=[...]</code></td>
+</tr>
+<tr>
+<td>A filled-out request form</td>
+<td>a <strong><code>tool_use</code> block</strong></td>
+<td><code>stop_reason == "tool_use"</code></td>
+</tr>
+<tr>
+<td>Your answer, written on a new page</td>
+<td>a <strong><code>tool_result</code> block</strong></td>
+<td>appended to <code>messages[]</code></td>
+</tr>
+<tr>
+<td>You walking to the cabinet and back</td>
+<td>the <strong>agent loop</strong></td>
+<td><code>while stop_reason == "tool_use":</code></td>
+</tr>
+<tr>
+<td>"Here's my answer, I'm done"</td>
+<td><strong><code>end_turn</code></strong></td>
+<td><code>stop_reason == "end_turn"</code></td>
+</tr>
+<tr>
+<td>How many pages fit on their desk at once</td>
+<td>the <strong>context window</strong></td>
+<td>tokens, counted per call</td>
+</tr>
+<tr>
+<td>Leaving the same first 50 pages permanently on the desk</td>
+<td><strong>prompt caching</strong></td>
+<td><code>cache_control</code></td>
+</tr>
+<tr>
+<td>The hours and spend you authorized</td>
+<td><strong>termination budgets</strong></td>
+<td><code>max_turns</code>, <code>max_budget_usd</code></td>
+</tr>
+<tr>
+<td>Which cabinets their badge opens</td>
+<td><strong>permissions</strong></td>
+<td><code>allow</code> / <code>ask</code> / <code>deny</code></td>
+</tr>
+<tr>
+<td>The staff handbook you hope they read</td>
+<td><strong><code>CLAUDE.md</code></strong></td>
+<td>a markdown file in the repo</td>
+</tr>
+<tr>
+<td>The badge reader on the door</td>
+<td><strong><code>settings.json</code></strong></td>
+<td>enforced configuration</td>
+</tr>
+<tr>
+<td>Spot-checking a sample of their work against a rubric</td>
+<td>an <strong>eval</strong></td>
+<td>a test suite with a score</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-the-analogy-earns-its-place">Why the analogy earns its place</h3>
+<p>A good analogy is not a teaching decoration; it is a predictive model. This one predicts the behaviours that surprise people most:</p>
+<table>
+<thead>
+<tr>
+<th>The thing that surprises people</th>
+<th>What the analogy already told you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Why does a long session cost so much?"</td>
+<td>You re-hand them the whole folder every visit. Visit 40 means re-reading 40 visits' worth of pages.</td>
+</tr>
+<tr>
+<td>"Why did it stop halfway?"</td>
+<td>You authorized four hours. They used four hours.</td>
+</tr>
+<tr>
+<td>"Why won't it stop?"</td>
+<td><strong>You never said how many hours.</strong></td>
+</tr>
+<tr>
+<td>"Why does it give a different answer each time?"</td>
+<td>They are a person, not a lookup table. Ask twice, get two wordings.</td>
+</tr>
+<tr>
+<td>"Why did it do something I told it not to?"</td>
+<td>You wrote it in the handbook. Handbooks are not badge readers.</td>
+</tr>
+<tr>
+<td>"Why did it leak a file after reading that document?"</td>
+<td><strong>Someone slipped a forged instruction into the folder, and they cannot tell your pages from a planted one.</strong></td>
+</tr>
+<tr>
+<td>"Why can't I just unit-test it?"</td>
+<td>You don't unit-test a contractor. You sample their work against a rubric.</td>
+</tr>
+</tbody>
+</table>
+<p>That last-but-one row is the one to sit with, because it is the security model of the entire field in one sentence. The contractor works <em>only</em> from what is in the folder, and has no way to know which pages you wrote. Anything that gets into the folder — a web page, a support ticket, a PDF a customer uploaded — speaks with your voice.</p>
+<blockquote>
+<p><strong>Where the analogy breaks, and it matters.</strong> A human contractor would phone you about a strange instruction, notice that the numbers look wrong, and refuse an obviously illegal request. <strong>Do not import that part.</strong> This contractor has no judgment about the engagement, no suspicion, and no instinct for self-preservation. They are brilliant inside the folder and blind outside it. Every safeguard a real contractor's judgment would have provided, you now build.</p>
+</blockquote>
+<hr />
+<h2 id="part-0-the-four-altitudes">Part 0 — The four altitudes</h2>
+<p>Everything in this track sits at one of four altitudes. Confusion in this subject is almost always an altitude error: two people using the same word about different layers.</p>
+<div class="mermaid">flowchart TB
+    subgraph L0[&quot;ALTITUDE 0 — the model&quot;]
+        M[&quot;Claude&lt;br/&gt;&lt;i&gt;a stateless function&lt;/i&gt;&lt;br/&gt;text in → text out&lt;br/&gt;&lt;b&gt;runs no code, remembers nothing&lt;/b&gt;&quot;]
+    end
+    subgraph L1[&quot;ALTITUDE 1 — the request&quot;]
+        A[&quot;Messages API&lt;br/&gt;&lt;i&gt;one HTTP call&lt;/i&gt;&lt;br/&gt;(system, messages[], tools[]) → one assistant message&lt;br/&gt;&lt;b&gt;Study 02&lt;/b&gt;&quot;]
+    end
+    subgraph L2[&quot;ALTITUDE 2 — the loop&quot;]
+        B[&quot;The agent loop&lt;br/&gt;&lt;i&gt;ordinary while-loop, written in code&lt;/i&gt;&lt;br/&gt;call → run tool → append result → call again&lt;br/&gt;&lt;b&gt;Study 01&lt;/b&gt;&quot;]
+    end
+    subgraph L3[&quot;ALTITUDE 3 — the product&quot;]
+        C[&quot;Claude Code · Agent SDK · Managed Agents&lt;br/&gt;&lt;i&gt;a loop someone already wrote, plus tools and policy&lt;/i&gt;&lt;br/&gt;you configure it rather than build it&lt;br/&gt;&lt;b&gt;Study 03&lt;/b&gt;&quot;]
+    end
+    L0 --&gt; L1 --&gt; L2 --&gt; L3
+    style M fill:#eef5ff,stroke:#3b6ea5
+    style C fill:#ffe9d6,stroke:#d2691e</div>
+<p>Read it downward and each layer is built from the one above it. Three consequences are worth having in hand before anything else:</p>
+<table>
+<thead>
+<tr>
+<th>Altitude</th>
+<th>The thing that surprises people</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 — model</td>
+<td>The model <strong>cannot run a tool and cannot call itself.</strong> It can only say <em>"run this tool"</em> and stop.</td>
+</tr>
+<tr>
+<td>1 — request</td>
+<td>There is <strong>no conversation on Anthropic's side.</strong> You resend the entire history every call.</td>
+</tr>
+<tr>
+<td>2 — loop</td>
+<td>The agent loop is <strong>your code, not a model behaviour.</strong> If nothing loops, you do not have an agent.</td>
+</tr>
+<tr>
+<td>3 — product</td>
+<td>At this altitude you stop writing the loop and start <strong>constraining</strong> one. The skills are different.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>In plain terms.</strong> Altitudes 0–1 are a vending machine: coins in, one item out, no memory of you. Altitude 2 is you standing there feeding it coins in a pattern. Altitude 3 is someone selling you the whole arrangement with the coin-feeding already automated, and your job becomes deciding what it is allowed to buy.</p>
+</blockquote>
+<hr />
+<h2 id="part-1-what-a-message-actually-is">Part 1 — What a message actually is</h2>
+<p><strong>A message is one turn in a transcript.</strong> It is a two-field object: a <code>role</code> (<code>"user"</code> or <code>"assistant"</code>) and <code>content</code>.</p>
+<pre><code class="language-python">{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Summarize this visit note.&quot;}
+</code></pre>
+<p><code>content</code> is either a plain string or — the form that matters — a <strong>list of blocks</strong>. A block has a <code>type</code>. The common ones:</p>
+<table>
+<thead>
+<tr>
+<th>Block type</th>
+<th>Appears in</th>
+<th>Carries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code></td>
+<td>both roles</td>
+<td>words</td>
+</tr>
+<tr>
+<td><code>image</code></td>
+<td>user</td>
+<td>base64 bytes, a URL, or a <code>file_id</code></td>
+</tr>
+<tr>
+<td><code>document</code></td>
+<td>user</td>
+<td>a PDF</td>
+</tr>
+<tr>
+<td><code>tool_use</code></td>
+<td>assistant</td>
+<td><em>"run this tool, with these inputs"</em></td>
+</tr>
+<tr>
+<td><code>tool_result</code></td>
+<td>user</td>
+<td>what your code got back when it ran it</td>
+</tr>
+<tr>
+<td><code>thinking</code></td>
+<td>assistant</td>
+<td>reasoning, when extended thinking is on</td>
+</tr>
+</tbody>
+</table>
+<p>Two things follow, and both are routinely misread.</p>
+<p><strong>A message is not a request.</strong> One HTTP request carries the <em>whole</em> <code>messages</code> array and returns <em>one</em> new assistant message. Ten messages is still one call.</p>
+<div class="mermaid">flowchart LR
+    subgraph REQ[&quot;ONE request&quot;]
+        S[&quot;system&lt;br/&gt;&lt;i&gt;your standing instructions&lt;/i&gt;&quot;]
+        H[&quot;messages[]&lt;br/&gt;user · assistant · user · assistant · user&lt;br/&gt;&lt;i&gt;the entire history, resent&lt;/i&gt;&quot;]
+        T[&quot;tools[]&lt;br/&gt;&lt;i&gt;what it is allowed to ask for&lt;/i&gt;&quot;]
+    end
+    REQ --&gt; API((&quot;Messages&lt;br/&gt;API&quot;))
+    API --&gt; RESP[&quot;ONE assistant message&lt;br/&gt;+ stop_reason&lt;br/&gt;+ usage&quot;]
+    style API fill:#eef5ff,stroke:#3b6ea5
+    style RESP fill:#ffe9d6,stroke:#d2691e</div>
+<p><strong>"The Messages API" is a worse name than it sounds.</strong> It suggests a messaging product — something that holds your conversation, like a chat service. It does not. It is a single stateless function:</p>
+<blockquote>
+<p><code>(system, messages, tools) → one assistant message</code></p>
+</blockquote>
+<p>Everything else in this track — chat, workflows, agents, Claude Code itself — is that one function, called repeatedly, with the result appended to the array each time. There is no second mechanism. When you later read that a 400-turn coding session costs what it costs, this is why: turn 400 resends turns 1–399.</p>
+<blockquote>
+<p><strong>In plain terms.</strong> The transcript is a whiteboard you photograph and send in full every time you want a reply. Anthropic reads the photograph, writes one line, and forgets. You keep the whiteboard.</p>
+</blockquote>
+<p><strong>Study 02</strong> is this altitude in full: blocks, the system prompt as a privilege level, <code>max_tokens</code>, every <code>stop_reason</code>, streaming, caching, and batch.</p>
+<hr />
+<h2 id="part-2-am-i-building-an-agent-or-making-a-call">Part 2 — Am I building an agent, or making a call?</h2>
+<p>This is the question the course leaves vague for an hour, and it has a one-line test.</p>
+<p><strong>Who decides what happens next — you, or the model?</strong></p>
+<div class="mermaid">flowchart TB
+    Q{&quot;Who decides the&lt;br/&gt;next step?&quot;}
+    Q --&gt;|&quot;I do, and there is only one step&quot;| ONE[&quot;&lt;b&gt;Single call&lt;/b&gt;&lt;br/&gt;classify · extract · summarize · answer&lt;br/&gt;&lt;i&gt;one request, done&lt;/i&gt;&quot;]
+    Q --&gt;|&quot;I do, for every step,&lt;br/&gt;in code I wrote&quot;| WF[&quot;&lt;b&gt;Workflow&lt;/b&gt;&lt;br/&gt;a state machine that calls Claude at some states&lt;br/&gt;&lt;i&gt;predictable, testable, cheap&lt;/i&gt;&quot;]
+    Q --&gt;|&quot;The model does,&lt;br/&gt;repeatedly, until it stops&quot;| AG[&quot;&lt;b&gt;Agent&lt;/b&gt;&lt;br/&gt;a loop driven by stop_reason&lt;br/&gt;&lt;i&gt;flexible, unpredictable, expensive&lt;/i&gt;&quot;]
+    style ONE fill:#eef5ff,stroke:#3b6ea5
+    style WF fill:#eef5ff,stroke:#3b6ea5
+    style AG fill:#ffe9d6,stroke:#d2691e</div>
+<p><strong>The marker is the loop, and the loop is visible in your own source code.</strong> An agent is code shaped like this:</p>
+<pre><code class="language-python">while response.stop_reason == &quot;tool_use&quot;:
+    result = run_the_tool(response)          # your code does this
+    messages.append(result)                  # the transcript grows
+    response = client.messages.create(...)   # ask again
+</code></pre>
+<p>No <code>while</code>, no agent. A single call with <code>tools=[...]</code> defined is <strong>not</strong> an agent — it is one call that may come back asking for a tool. Whether anything happens next is entirely up to code you wrote.</p>
+<p>This matters because the three answers have different costs, different failure modes, and different things that can go wrong in production. Most things people build as agents are workflows that would be cheaper, more testable and more reliable as workflows. <strong>Start at the top of that diagram and move down only when forced.</strong></p>
+<p><strong>Study 01</strong> is this altitude: agent architecture as a <em>dynamic policy</em> rather than a state machine, workflow architecture as the state machine it is, when subagents actually pay, and the four ways to get a loop.</p>
+<hr />
+<h2 id="part-3-the-claude-sdk-is-two-different-packages">Part 3 — "The Claude SDK" is two different packages</h2>
+<p>People say <em>"the Claude SDK"</em> and mean either of two unrelated products. This is the single most common early confusion, and it is a naming problem, not a conceptual one.</p>
+<div class="mermaid">flowchart TB
+    N[&quot;&lt;b&gt;&amp;quot;the Claude SDK&amp;quot;&lt;/b&gt;&quot;]
+    N --&gt; C[&quot;&lt;b&gt;pip install anthropic&lt;/b&gt;&lt;br/&gt;the Client SDK&lt;br/&gt;&lt;i&gt;a wrapper over the HTTP API&lt;/i&gt;&quot;]
+    N --&gt; A[&quot;&lt;b&gt;pip install claude-agent-sdk&lt;/b&gt;&lt;br/&gt;the Agent SDK&lt;br/&gt;&lt;i&gt;Claude Code packaged as a library&lt;/i&gt;&quot;]
+    C --&gt; C1[&quot;client.messages.create(...)&lt;br/&gt;no loop · no tools · you define everything&quot;]
+    A --&gt; A1[&quot;query(prompt, options)&lt;br/&gt;loop built in · Read/Write/Edit/Bash included&quot;]
+    style C fill:#eef5ff,stroke:#3b6ea5
+    style A fill:#ffe9d6,stroke:#d2691e</div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Client SDK</strong> (<code>anthropic</code>)</th>
+<th><strong>Agent SDK</strong> (<code>claude-agent-sdk</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What it is</td>
+<td>a wrapper over the Claude HTTP API</td>
+<td>Claude Code packaged as a library</td>
+</tr>
+<tr>
+<td>You call</td>
+<td><code>client.messages.create(...)</code></td>
+<td><code>query(prompt, options)</code></td>
+</tr>
+<tr>
+<td>The agent loop</td>
+<td>none by default — you write it, or use the Tool Runner helper</td>
+<td>built in</td>
+</tr>
+<tr>
+<td>Built-in tools</td>
+<td><strong>none.</strong> You define every tool</td>
+<td>Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch …</td>
+</tr>
+<tr>
+<td>Also covers</td>
+<td>Batches, Files, token counting, Models, Managed Agents</td>
+<td>hooks, subagents, MCP, permissions, sessions</td>
+</tr>
+<tr>
+<td>Reach for it when</td>
+<td>anything that is not a coding/filesystem agent: chat, extraction, classification, RAG, your own tools</td>
+<td>you want Claude Code's abilities inside your own program</td>
+</tr>
+</tbody>
+</table>
+<p><strong>So: not all Claude SDK is Agent SDK.</strong> Most Claude applications use only the Client SDK. The Agent SDK is a narrower, heavier thing — it spawns the <code>claude</code> CLI as a subprocess, which is why a Python-only install is not enough and you also need the Node package.</p>
+<p>If you remember one line: <strong>the Client SDK gives you a model. The Agent SDK gives you a coding agent.</strong></p>
+<hr />
+<h2 id="part-4-the-four-ways-to-build-an-agent-on-one-page">Part 4 — The four ways to build an agent, on one page</h2>
+<p>Two independent questions separate every option. Not one question — this is why the options feel like a flat list of five similar things when they are actually a 2×2.</p>
+<ol>
+<li><strong>Who supplies the harness</strong> — the loop and the context management?</li>
+<li><strong>Who supplies the deployment</strong> — the machine the tools actually run on?</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Approach</th>
+<th>You write</th>
+<th>Harness</th>
+<th>Deployment</th>
+<th>Tools you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Manual loop</strong> (Messages API)</td>
+<td>the <code>while</code> loop</td>
+<td><strong>yours</strong></td>
+<td><strong>yours</strong></td>
+<td>only what you define</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Tool Runner</strong> (<code>beta.messages.tool_runner</code>)</td>
+<td>just the tool functions</td>
+<td>SDK's</td>
+<td><strong>yours</strong></td>
+<td>only what you define</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Managed Agents</strong></td>
+<td>agent config</td>
+<td>Anthropic's</td>
+<td><strong>Anthropic's</strong></td>
+<td>hosted sandbox: bash, files, code exec, Skills, MCP</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Agent SDK</strong> (<code>claude-agent-sdk</code>)</td>
+<td>a prompt + options</td>
+<td>Claude Code's</td>
+<td><strong>yours</strong></td>
+<td>Read/Write/Edit/Bash/Glob/Grep/WebSearch + MCP + subagents</td>
+</tr>
+</tbody>
+</table>
+<p>Two traps live in that table.</p>
+<p><strong>Options 2 and 4 both "give you the loop,"</strong> so they get conflated constantly. The difference is <em>whose</em> loop and <em>whose</em> tools. The Tool Runner runs <strong>your</strong> tools. The Agent SDK ships <strong>Claude Code's</strong> tools and is a filesystem/coding agent out of the box. Different packages, different problems.</p>
+<p><strong>Only option 3 takes the machine off your hands.</strong> That is the real line through the table. Everything else, you deploy, monitor and pay for.</p>
+<blockquote>
+<p><strong>The one-line frame:</strong> harness and deployment are <strong>two separate purchases.</strong> The manual loop buys neither. Tool Runner and the Agent SDK buy the harness only. Managed Agents buys both.</p>
+</blockquote>
+<p><strong>Study 01 Part 4</strong> is this with the decision tree, the hand-written loop in full, and Managed Agents' object model (agent · environment · session · deployment · credential vault).</p>
+<hr />
+<h2 id="part-5-where-claude-code-fits">Part 5 — Where Claude Code fits</h2>
+<p>Claude Code is not on the SDK list above, and that is the point: <strong>it is a product built at Altitude 3, not a library you build with.</strong> The Agent SDK is Claude Code offered as a library; the CLI is Claude Code offered as a tool.</p>
+<p>The practical difference is what the skill looks like:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>At Altitudes 1–2 you…</th>
+<th>At Altitude 3 you…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Work by</td>
+<td>writing code</td>
+<td>writing configuration</td>
+</tr>
+<tr>
+<td>Control tools by</td>
+<td>choosing which functions to expose</td>
+<td><code>allow</code> / <code>ask</code> / <code>deny</code> rules</td>
+</tr>
+<tr>
+<td>Control context by</td>
+<td>building the <code>messages</code> array</td>
+<td><code>CLAUDE.md</code>, imports, session hygiene</td>
+</tr>
+<tr>
+<td>Control cost by</td>
+<td><code>max_tokens</code>, caching, batch</td>
+<td>model pinning, scope, what you let it read</td>
+</tr>
+<tr>
+<td>Fail by</td>
+<td>a bug</td>
+<td><strong>a rule you thought was enforced and wasn't</strong></td>
+</tr>
+</tbody>
+</table>
+<p>That last row is the whole of Study 03. Claude Code has <strong>two</strong> configuration systems that look alike and behave nothing alike:</p>
+<div class="mermaid">flowchart LR
+    S[&quot;&lt;b&gt;settings.json&lt;/b&gt;&lt;br/&gt;&lt;i&gt;enforced configuration&lt;/i&gt;&lt;br/&gt;permissions · model · hooks · MCP&lt;br/&gt;&lt;b&gt;the badge reader&lt;/b&gt;&quot;]
+    C[&quot;&lt;b&gt;CLAUDE.md&lt;/b&gt;&lt;br/&gt;&lt;i&gt;context, not enforcement&lt;/i&gt;&lt;br/&gt;conventions · architecture · workflows&lt;br/&gt;&lt;b&gt;the onboarding handbook&lt;/b&gt;&quot;]
+    S --- V{&quot;If this is&lt;br/&gt;ignored, what&lt;br/&gt;does it cost?&quot;}
+    C --- V
+    V --&gt;|&quot;rework&quot;| C
+    V --&gt;|&quot;a credential,&lt;br/&gt;a patient record&quot;| S
+    style S fill:#ffe9d6,stroke:#d2691e
+    style C fill:#eef5ff,stroke:#3b6ea5</div>
+<blockquote>
+<p><strong>In plain terms.</strong> Nobody writes <em>"please do not enter the server room"</em> in an employee handbook and calls the room secured. <code>CLAUDE.md</code> is the handbook. <code>settings.json</code> is the badge reader. Both are legitimate; putting a thing in the wrong one is how <em>"Claude ignored my rule"</em> happens.</p>
+</blockquote>
+<p><strong>Study 03</strong> is this altitude: the four scopes, the precedence ladder (which does not run the way the course's diagram reads), imports and the depth at which they silently stop, 160 settings keys extracted from the shipped build, permission rules, MCP, plugins, model pinning, and an applied section that configures real repositories.</p>
+<hr />
+<h2 id="part-6-you-are-here">Part 6 — You are here</h2>
+<div class="mermaid">flowchart TB
+    Z[&quot;&lt;b&gt;Study 00 — The Map&lt;/b&gt;&lt;br/&gt;&lt;i&gt;the shape of the subject&lt;/i&gt;&quot;]
+    Z --&gt; O2[&quot;&lt;b&gt;Study 02&lt;/b&gt; — the request&lt;br/&gt;What does every call cost me?&lt;br/&gt;&lt;i&gt;Altitude 1&lt;/i&gt;&quot;]
+    Z --&gt; O1[&quot;&lt;b&gt;Study 01&lt;/b&gt; — the loop&lt;br/&gt;Agent or workflow? Whose harness, whose machine?&lt;br/&gt;&lt;i&gt;Altitude 2&lt;/i&gt;&quot;]
+    Z --&gt; O3[&quot;&lt;b&gt;Study 03&lt;/b&gt; — the product&lt;br/&gt;Enforced config, or persuasion?&lt;br/&gt;&lt;i&gt;Altitude 3&lt;/i&gt;&quot;]
+    style Z fill:#ffe9d6,stroke:#d2691e</div>
+<table>
+<thead>
+<tr>
+<th>Study</th>
+<th>The question it answers</th>
+<th>Altitude</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>00</strong> — The Map</td>
+<td>What am I even looking at?</td>
+<td>all</td>
+</tr>
+<tr>
+<td><strong>01</strong> — Agent architecture &amp; the Agent SDK</td>
+<td>Should this be an agent at all, and if so, whose loop?</td>
+<td>2</td>
+</tr>
+<tr>
+<td><strong>02</strong> — The Messages API &amp; the cost levers</td>
+<td>What is actually in a request, and what does each field cost?</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>03</strong> — Configuring Claude Code</td>
+<td>Which of my rules are enforced, and which are merely requests?</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<p>Studies 01 and 02 are numbered in the order the course teaches them. <strong>If you are orienting rather than revising, read 02 before 01</strong> — the request is underneath the loop, and the loop makes more sense once you have seen what it is a loop <em>of</em>.</p>
+<hr />
+<h2 id="part-7-the-vocabulary-settled">Part 7 — The vocabulary, settled</h2>
+<p>Eight words the material uses loosely. These definitions hold for the rest of the track.</p>
+<table>
+<thead>
+<tr>
+<th>Word</th>
+<th>What it means here</th>
+<th>What it is <strong>not</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Message</strong></td>
+<td>one turn in a transcript: a role plus content blocks</td>
+<td>not a request — one request carries the whole array</td>
+</tr>
+<tr>
+<td><strong>Turn</strong></td>
+<td>one user message plus the assistant message answering it</td>
+<td>not one API call; an agentic turn can span many</td>
+</tr>
+<tr>
+<td><strong>Call</strong></td>
+<td>one HTTP request to the Messages API</td>
+<td>not one message</td>
+</tr>
+<tr>
+<td><strong>Block</strong></td>
+<td>a typed element of <code>content</code>: text, image, <code>tool_use</code>, <code>tool_result</code>, <code>thinking</code></td>
+<td>not a message</td>
+</tr>
+<tr>
+<td><strong>Tool</strong></td>
+<td>a function <em>you</em> describe to the model, which the model can only <em>ask</em> you to run</td>
+<td>never something the model executes itself</td>
+</tr>
+<tr>
+<td><strong>Loop</strong></td>
+<td>your <code>while</code> on <code>stop_reason</code> — the thing that makes an agent an agent</td>
+<td>not a model behaviour, not inside the model</td>
+</tr>
+<tr>
+<td><strong>Harness</strong></td>
+<td>the surrounding program that turns a model into an agent: loop, context management, tool dispatch</td>
+<td>not the model, and not the deployment</td>
+</tr>
+<tr>
+<td><strong>Deployment</strong></td>
+<td>the machine the tools actually execute on</td>
+<td>a separate purchase from the harness</td>
+</tr>
+</tbody>
+</table>
+<p>One more, because the course uses it three ways: <strong>"agent."</strong> It means (a) the architectural pattern — a dynamic policy, Study 01 Part 1; (b) a concrete product object — a Managed Agents <code>agent</code> config, Study 01 Part 7; (c) colloquially, any LLM program at all. When it matters, this track says which.</p>
+<hr />
+<p><em>Built for the Emergtech AI Engineer Accelerator. Concepts mined from the Claude Certified Developer — Foundations course (Andrew Brown / ExamPro, freeCodeCamp) and cross-checked against the installed SDKs, Anthropic's reference documentation, and the shipped Claude Code build.</em></p>
+</body>
+</html>

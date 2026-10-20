@@ -64,6 +64,10 @@ Make it something a team can run — then prove it on one real system.
 
 The ML series above covers agents in the abstract. This track asks what the **vendor** hands you, and what you are still on the hook for.
 
+**Start with the front door — 00a then 00b — before the numbered studies.**
+
+- **What am I even looking at?** — The Map: one analogy for the whole stack, four altitudes, two SDKs — [Claude 00a](study-docs/Claude_Study_00a_The_Map.md)
+- **What do I have to unlearn?** — The Mindset Shifts: 22 shifts from deterministic software — [Claude 00b](study-docs/Claude_Study_00b_The_Mindset_Shifts.md)
 - **Agent or workflow? Whose harness, whose machine?** — Agent architecture & the Agent SDK — [Claude 01](study-docs/Claude_Study_01_Agent_Architecture_and_the_Agent_SDK.md) · [notebook](notebooks/Claude_Study_01_Agent_Architecture.ipynb)
 - **What every request costs you** — The Messages API & the cost levers — [Claude 02](study-docs/Claude_Study_02_Messages_API_and_the_Cost_Levers.md) · [notebook](notebooks/Claude_Study_02_Messages_API.ipynb)
 - **Enforced config vs. persuasion** — Settings, CLAUDE.md, plugins & surfaces — [Claude 03](study-docs/Claude_Study_03_Configuring_Claude_Code.md) · [notebook](notebooks/Claude_Study_03_Configuring_Claude_Code.ipynb)
